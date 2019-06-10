@@ -1,0 +1,8 @@
+{
+    "python.pythonPath": ".venv/bin/python",
+    "python.linting.enabled": true,
+    "restructuredtext.confPath": "${workspaceFolder}/docs/conf.py",
+    "cSpell.words": [
+        "gaocegege"
+    ]
+}

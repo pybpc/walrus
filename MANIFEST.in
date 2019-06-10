@@ -1,0 +1,8 @@
+global-include *.py
+
+include README.rst
+include LICENSE
+
+prune .github
+prune .venv
+prune .vscode

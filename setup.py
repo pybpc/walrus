@@ -24,7 +24,7 @@ setup(
     author='Jarry Shaw',
     author_email='jarryshaw@icloud.com',
     url='https://github.com/JarryShaw/walrus',
-    license='MIT License',
+    license='Apache Software License',
     keywords=['walrus operator', 'assignment expression', 'back-port compiler'],
     description='Back-port compiler for Python 3.8 assignment expressions.',
     long_description=long_desc,

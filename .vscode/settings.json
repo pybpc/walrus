@@ -3,6 +3,15 @@
     "python.linting.enabled": true,
     "restructuredtext.confPath": "${workspaceFolder}/docs/conf.py",
     "cSpell.words": [
-        "gaocegege"
+        "Envs",
+        "NPROCESSORS",
+        "aktau",
+        "gaocegege",
+        "getcwd",
+        "ispy",
+        "namedexpr",
+        "parso",
+        "sched",
+        "sysconf"
     ]
 }

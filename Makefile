@@ -1,7 +1,42 @@
+# get version string
+version  = $(shell cat poseur.py | grep "^__version__" | sed "s/__version__ = '\(.*\)'/\1/")
+
+dist: pipenv test pypi setup github formula maintainer after
+setup: setup-manual
+github: git-upload git-release
+
+after: git-after
 clean: pypi-clean
 pipenv: pipenv-update
 pypi: pypi-dist pypi-upload
 maintainer: update-maintainer
+
+coverage:
+	pipenv run coverage run tests/test.py
+	pipenv run coverage html
+	open htmlcov/index.html
+	echo "Press ENTER to continue..."
+	read
+	rm -rf htmlcov
+	rm .coverage
+
+.ONESHELL:
+formula: setup-formula
+	set -ae
+	cd Tap
+	git pull
+	git add Formula/poseur.rb
+	git commit -S -m "poseur: $(version)"
+	git push
+
+setup-version:
+	pipenv run python scripts/setup-version.py
+
+setup-formula: setup-version pipenv-update
+	pipenv run python scripts/setup-formula.py
+
+setup-manual: setup-version
+	pipenv run rst2man.py share/poseur.rst > share/poseur.1
 
 pipenv-init:
 	pipenv install --dev \
@@ -48,3 +83,23 @@ pypi-upload:
 	twine check dist/* || true
 	twine upload dist/* -r pypi --skip-existing
 	twine upload dist/* -r pypitest --skip-existing
+
+git-upload:
+	git pull
+	git add .
+	git commit -S
+	git push
+
+git-after:
+	git pull
+	git add .
+	git commit -S -m "Regular update after distribution"
+	git push
+
+git-release:
+	go run github.com/aktau/github-release release \
+	    --user JarryShaw \
+	    --repo poseur \
+	    --tag "v$(version)" \
+	    --name "poseur v$(version)" \
+	    --description "$$(git log -1 --pretty=%B)"

@@ -11,7 +11,7 @@ except ImportError:
 ROOT = os.path.dirname(os.path.realpath(__file__))
 
 # README
-with open(os.path.join(ROOT, 'README.rst'), encoding='utf-8') as file:
+with open(os.path.join(ROOT, 'README.md'), encoding='utf-8') as file:
     long_desc = file.read()
 
 # version string
@@ -40,7 +40,7 @@ setup(
     package_data={
         '': [
             'LICENSE',
-            'README.rst',
+            'README.md',
             'CHANGELOG.md',
         ],
     },

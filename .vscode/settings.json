@@ -3,6 +3,10 @@
     "python.linting.enabled": true,
     "restructuredtext.confPath": "${workspaceFolder}/docs/conf.py",
     "cSpell.words": [
-        "gaocegege"
+        "CWORD",
+        "aktau",
+        "cmds",
+        "gaocegege",
+        "parso"
     ]
 }

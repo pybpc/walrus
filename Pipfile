@@ -1,18 +1,33 @@
 [[source]]
+name = "tuna"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+verify_ssl = true
+
+[[source]]
+name = "sjtu"
+url = "https://mirrors.sjtug.sjtu.edu.cn/pypi/web/simple"
+verify_ssl = true
+
+[[source]]
 name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-python-walrus = {editable = true,path = "."}
+walrus = {editable = true,path = "."}
 autopep8 = "*"
 codecov = "*"
 coverage = "*"
 doc8 = "*"
+homebrew-pypi-poet = "*"
 pylint = "*"
+requests = "*"
 sphinx = "*"
+ipython = "*"
 
 [packages]
+tbtrim = "*"
+parso = "~=0.5.0"
 
 [requires]
-python_version = "3.7"
+python_version = "3.8"

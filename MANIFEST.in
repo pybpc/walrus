@@ -1,6 +1,6 @@
 global-include *.py
 
-include README.rst
+include README.md
 include LICENSE
 
 prune .github

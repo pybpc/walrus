@@ -1,0 +1,26 @@
+# base configurations
+dist: xenial
+language: python
+python:
+  - "3.6"
+  - "3.7"
+  - "3.8-dev"
+
+# no submodules
+git:
+  submodules: false
+
+# command to install dependencies
+install:
+  - pip install pipenv
+  - rm -f setup.py
+  - cp -f scripts/setup.pypi.py setup.py
+  - pipenv install --dev
+
+# command to run tests
+script:
+  - coverage run tests/test.py
+
+# coverage
+after_success:
+  - codecov

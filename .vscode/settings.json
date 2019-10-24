@@ -12,6 +12,11 @@
         "namedexpr",
         "parso",
         "sched",
-        "sysconf"
+        "sysconf",
+        "CWORD",
+        "aktau",
+        "cmds",
+        "gaocegege",
+        "parso"
     ]
 }

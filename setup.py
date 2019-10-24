@@ -31,6 +31,10 @@ setup(
     long_description_content_type='text/markdown; charset=UTF-8',
     python_requires='>=3.3',
     zip_safe=True,
+    install_requires=[
+        'parso~=0.5.0',     # universal AST support
+        'tbtrim>=0.2.1',    # traceback trim support
+    ],
     py_modules=['walrus'],
     entry_points={
         'console_scripts': [

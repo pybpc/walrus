@@ -104,10 +104,10 @@ such functions to check assignment expressions at runtime, if `-nl` not set.
 
 `walrus` currently supports three environment arguments:
 
-- `F2FORMAT_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
-- `F2FORMAT_VERSION` -- convert against Python version (same as `--python` option in CLI)
-- `F2FORMAT_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
-- `WALRUS_LINSEP` -- line separator to process source files (same as `--linesep` option in CLI)
+- `WALRUS_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
+- `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
+- `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
+- `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_DISMISS` -- dismiss runtime checks for positional-only arguments (same as `--dismiss` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
@@ -125,10 +125,10 @@ Args:
 
 Envs:
 
-- `F2FORMAT_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
-- `F2FORMAT_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
-- `F2FORMAT_VERSION`-- convert against Python version (same as `--python` option in CLI)
-- `WALRUS_LINSEP` -- line separator to process source files (same as `--linesep` option in CLI)
+- `WALRUS_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
+- `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
+- `WALRUS_VERSION`-- convert against Python version (same as `--python` option in CLI)
+- `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_DISMISS` -- dismiss runtime checks for positional-only arguments (same as `--dismiss` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
@@ -149,8 +149,8 @@ Args:
 
 Envs:
 
-- `F2FORMAT_VERSION`-- convert against Python version (same as `--python` option in CLI)
-- `WALRUS_LINSEP` -- line separator to process source files (same as `--linesep` option in CLI)
+- `WALRUS_VERSION`-- convert against Python version (same as `--python` option in CLI)
+- `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_DISMISS` -- dismiss runtime checks for positional-only arguments (same as `--dismiss` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 

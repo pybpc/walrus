@@ -32,7 +32,7 @@ finally:    # alias and aftermath
     del multiprocessing
 
 # version string
-__version__ = '0.2.0'
+__version__ = '0.1.0'
 
 # from configparser
 BOOLEAN_STATES = {'1': True, '0': False,
@@ -133,7 +133,7 @@ def process_if(node):
      - `node` -- `parso.python.tree.IfStmt`, parso AST for `if` statement
 
     Envs:
-     - `WALRUS_LINSEP` -- line separator to process source files (same as `--linesep` option in CLI)
+     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 
     Returns:
      - `str` -- converted string
@@ -148,13 +148,13 @@ def process_if(node):
         if isinstance(child, parso.python.tree.PythonLeaf):
             string += child.get_code()
         else:
-            report = process_comp(child)
-            if report[1] is not None:  # walrus assignment string
-                string = '%s%s%s%s' % (report[1],
+            comp, expr = process_comp(child)
+            if expr is not None:  # walrus assignment string
+                string = '%s%s%s%s' % (expr,
                                        WALRUS_LINESEP,
                                        '\t'.expandtabs(node.get_first_leaf().column),
                                        string)
-            string += report[0]  #  converted comparison string
+            string += comp  # converted comparison string
 
     return string
 
@@ -167,7 +167,7 @@ def walk(node):
                  parso AST
 
     Envs:
-     - `WALRUS_LINSEP` -- line separator to process source files (same as `--linesep` option in CLI)
+     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 
     Returns:
      - `str` -- converted string
@@ -200,7 +200,7 @@ def convert(string, source='<unknown>'):
 
     Envs:
      - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
-     - `WALRUS_LINSEP` -- line separator to process source files (same as `--linesep` option in CLI)
+     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 
     Returns:
      - `str` -- converted string
@@ -226,7 +226,7 @@ def walrus(filename):
      - `WALRUS_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
      - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
      - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
-     - `WALRUS_LINSEP` -- line separator to process source files (same as `--linesep` option in CLI)
+     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 
     """
     WALRUS_QUIET = BOOLEAN_STATES.get(os.getenv('WALRUS_QUIET', '0').casefold(), False)
@@ -343,7 +343,7 @@ def main(argv=None):
      - `WALRUS_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
      - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
      - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
-     - `WALRUS_LINSEP` -- line separator to process source files (same as `--linesep` option in CLI)
+     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 
     """
     parser = get_parser()
@@ -353,7 +353,7 @@ def main(argv=None):
     ARCHIVE = args.archive_path
     os.environ['WALRUS_VERSION'] = args.python
     os.environ['WALRUS_ENCODING'] = args.encoding
-    os.environ['WALRUS_LINSEP'] = args.linesep
+    os.environ['WALRUS_LINESEP'] = args.linesep
     WALRUS_QUIET = os.getenv('WALRUS_QUIET')
     os.environ['WALRUS_QUIET'] = '1' if args.quiet else ('0' if WALRUS_QUIET is None else WALRUS_QUIET)
 

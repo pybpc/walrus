@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import collections
 import glob
 import locale
 import os
@@ -32,7 +33,7 @@ finally:    # alias and aftermath
     del multiprocessing
 
 # version string
-__version__ = '0.1.0'
+__version__ = '0.1.0.dev0'
 
 # from configparser
 BOOLEAN_STATES = {'1': True, '0': False,
@@ -77,6 +78,16 @@ tbtrim.set_trim_rule(predicate, strict=True, target=ConvertError)
 ###############################################################################
 # Main convertion implementation
 
+FUNC_TEMPLATE = [
+    '',
+    'def walrus_wrapper_{name}_{uuid}():',
+    '    """Wrapper function for assignment expression `{expr}`."""',
+    '    {keyword} {name}',
+    '    {name} = {expr}',
+    '    return {name}',
+    '',
+]
+
 
 def parse(string, source, error_recovery=False):
     """Parse source string.
@@ -105,58 +116,77 @@ def parse(string, source, error_recovery=False):
         raise ConvertError(message).with_traceback(error.__traceback__) from None
 
 
-def process_comp(node):
-    """Process comparison node.
+def make_func(name, expr, uid, column, linesep):
+    """Generate wrapper function.
 
     Args:
-     - `node` -- `parso.python.tree.PythonNode`, parso AST for comparison node
+     - `name` -- `str`, variable name
+     - `expr` -- `str`, variable expression
+     - `uid` -- `str`, hash ID of wrapped node
+     - `column` -- `int`, current indentation level
+     - `linesep` -- `str`, line seperator (cf. `WALRUS_LINESEP`)
 
     Returns:
-     - `str` -- converted comparison string
-     - `Union[str, None]` -- walrus assignment string
+     - `str` -- wrapper function
 
     """
-    string = ''
-    assign = None
-
-    for child in node.children:
-        if hasattr(child, 'children'):
-            pass
-
-    return string, assign
+    return ('%s%s' % (linesep,
+                      '\t'.expandtabs(column))).join(FUNC_TEMPLATE).format(keyword='nonlocal' if column else 'global',
+                                                                           name=name,
+                                                                           expr=expr.strip(),
+                                                                           uuid=uid)
 
 
-def process_if(node):
-    """Process `if` statement.
+def find_start(buffer):
+    """Find child at line start.
 
     Args:
-     - `node` -- `parso.python.tree.IfStmt`, parso AST for `if` statement
+     - `buffer` -- `OrderedDict[Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf], str],
+                   children string buffer
+
+    Returns:
+     - `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]` -- child at line start
+
+    """
+    for leaf in reversed(buffer.keys()):
+        if leaf.start_pos[1] == 0:
+            return leaf
+    return None
+
+
+def process(node, column):
+    """Process `namedexpr_test`.
+
+    Args:
+     - `node` -- `parso.python.tree.PythonNode`, assignment expression node
+     - `column` -- `int`, current indentation level
 
     Envs:
      - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 
     Returns:
      - `str` -- converted string
+     - `str` -- wrapper function
 
     """
     WALRUS_LINESEP = os.getenv('WALRUS_LINESEP', os.linesep)
 
-    # string buffer
-    string = ''
+    # split assignment expression
+    node_name, _, node_expr = node.children
+    name = node_name.value
+    expr = walk(node_expr)
+    uid = hash(node)
 
-    for child in node.children:
-        if isinstance(child, parso.python.tree.PythonLeaf):
-            string += child.get_code()
-        else:
-            comp, expr = process_comp(child)
-            if expr is not None:  # walrus assignment string
-                string = '%s%s%s%s' % (expr,
-                                       WALRUS_LINESEP,
-                                       '\t'.expandtabs(node.get_first_leaf().column),
-                                       string)
-            string += comp  # converted comparison string
+    var = '%s%s = locals().get(%r)%s' % ('\t'.expandtabs(column), name, name, WALRUS_LINESEP)
+    func = make_func(name, expr, uid, column, WALRUS_LINESEP)
+    if column:
+        function = '%s%s' % (var, func)
+    else:
+        function = '%s%s%s%s' % (var, WALRUS_LINESEP, func, WALRUS_LINESEP)
 
-    return string
+    string = 'walrus_wrapper_%s_%s()' % (name, uid)
+
+    return string, function
 
 
 def walk(node):
@@ -176,17 +206,24 @@ def walk(node):
     # string buffer
     string = ''
 
-    if node.type == 'if_stmt':
-        return process_if(node)
-
     if isinstance(node, parso.python.tree.PythonLeaf):
         string += node.get_code()
 
     if hasattr(node, 'children'):
+        # walrus conversion not supported in comprehensions yet
+        flag = node.type in ('testlist_comp', 'dictorsetmaker')
+
+        buffer = collections.OrderedDict()
         for child in node.children:
             if child.type == 'namedexpr_test':
-                warnings.warn('unsupported assignment expression convertion in %s' % node.type, ConvertWarning)
-            string += walk(child)
+                if flag:
+                    warnings.warn('unsupported assignment expression convertion in %s' % node.type, ConvertWarning)
+                temp, func = process(child, 0)
+                buffer[child] = temp
+                print(func)
+            else:
+                buffer[child] = walk(child)
+        string += ''.join(buffer.values())
 
     return string
 
@@ -387,7 +424,8 @@ def main(argv=None):
     if mp is None or CPU_CNT <= 1:
         [walrus(filename) for filename in filelist]  # pylint: disable=expression-not-assigned # pragma: no cover
     else:
-        mp.Pool(processes=CPU_CNT).map(walrus, filelist)
+        with mp.Pool(processes=CPU_CNT) as pool:
+            pool.map(walrus, filelist)
 
 
 if __name__ == '__main__':

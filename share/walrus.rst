@@ -64,11 +64,7 @@ compatibility configuration for none-unicode files
 -s *SEP*, --linesep *SEP*
                       line separator to process source files
 
--d, --dismiss         dismiss runtime checks for positional-only parameters
 -nl, --no-linting     do not lint converted codes
-
--r *VAR*, --decorator *VAR*
-                      name of decorator for runtime checks (${DECORATOR})
 
 ENVIRONMENT
 ===========
@@ -79,9 +75,7 @@ ENVIRONMENT
 :WALRUS_ENCODING:     encoding to open source files
 :WALRUS_VERSION:      convert against Python version
 :WALRUS_LINESEP:      line separator to process source files
-:WALRUS_DISMISS:      dismiss runtime checks for positional-only arguments
 :WALRUS_LINTING:      lint converted codes
-:WALRUS_DECORATOR:    name of decorator for runtime checks
 
 SEE ALSO
 ========

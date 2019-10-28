@@ -80,11 +80,11 @@ tbtrim.set_trim_rule(predicate, strict=True, target=ConvertError)
 
 FUNC_TEMPLATE = [
     '',
-    'def walrus_wrapper_{name}_{uuid}():',
-    '    """Wrapper function for assignment expression `{expr}`."""',
-    '    {keyword} {name}',
-    '    {name} = {expr}',
-    '    return {name}',
+    'def _walrus_wrapper_%(name)s_%(uuid)s():',
+    '    """Wrapper function for assignment expression `%(expr)s`."""',
+    '    %(keyword)s %(name)s',
+    '    %(name)s = %(expr)s',
+    '    return %(name)s',
     '',
 ]
 
@@ -131,27 +131,10 @@ def make_func(name, expr, uid, column, linesep):
 
     """
     return ('%s%s' % (linesep,
-                      '\t'.expandtabs(column))).join(FUNC_TEMPLATE).format(keyword='nonlocal' if column else 'global',
+                      '\t'.expandtabs(column))).join(FUNC_TEMPLATE) % dict(keyword='nonlocal' if column else 'global',
                                                                            name=name,
                                                                            expr=expr.strip(),
                                                                            uuid=uid)
-
-
-def find_start(buffer):
-    """Find child at line start.
-
-    Args:
-     - `buffer` -- `OrderedDict[Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf], str],
-                   children string buffer
-
-    Returns:
-     - `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]` -- child at line start
-
-    """
-    for leaf in reversed(buffer.keys()):
-        if leaf.start_pos[1] == 0:
-            return leaf
-    return None
 
 
 def process(node, column):
@@ -184,7 +167,7 @@ def process(node, column):
     else:
         function = '%s%s%s%s' % (var, WALRUS_LINESEP, func, WALRUS_LINESEP)
 
-    string = 'walrus_wrapper_%s_%s()' % (name, uid)
+    string = '_walrus_wrapper_%s_%s()' % (name, uid)
 
     return string, function
 
@@ -326,6 +309,8 @@ def get_parser():
                                help='convert against Python version (%s)' % __walrus_version__)
     convert_group.add_argument('-s', '--linesep', action='store', default=__walrus_linesep__, metavar='SEP',
                                help='line separator to process source files (%r)' % __walrus_linesep__)
+    convert_group.add_argument('-nl', '--no-linting', action='store_false', dest='linting',
+                               help='do not lint converted codes')
 
     parser.add_argument('file', nargs='+', metavar='SOURCE', default=__cwd__,
                         help='python source files and folders to be converted (%s)' % __cwd__)
@@ -381,6 +366,7 @@ def main(argv=None):
      - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
      - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
      - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+     - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
     """
     parser = get_parser()
@@ -393,6 +379,8 @@ def main(argv=None):
     os.environ['WALRUS_LINESEP'] = args.linesep
     WALRUS_QUIET = os.getenv('WALRUS_QUIET')
     os.environ['WALRUS_QUIET'] = '1' if args.quiet else ('0' if WALRUS_QUIET is None else WALRUS_QUIET)
+    WALRUS_LINTING = os.getenv('WALRUS_LINTING')
+    os.environ['WALRUS_LINTING'] = '1' if args.linting else ('0' if WALRUS_LINTING is None else WALRUS_LINTING)
 
     # make archive directory
     if args.archive:  # pragma: no cover

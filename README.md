@@ -86,7 +86,6 @@ convert options:
                         convert against Python version (${LATEST_VERSION})
   -s SEP, --linesep SEP
                         line separator to process source files (${OS_LINESEP})
-  -d, --dismiss         dismiss runtime checks for assignment expressions
   -nl, --no-linting     do not lint converted codes
 ```
 
@@ -108,7 +107,6 @@ such functions to check assignment expressions at runtime, if `-nl` not set.
 - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
 - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-- `WALRUS_DISMISS` -- dismiss runtime checks for positional-only arguments (same as `--dismiss` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
 ### APIs
@@ -129,7 +127,6 @@ Envs:
 - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
 - `WALRUS_VERSION`-- convert against Python version (same as `--python` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-- `WALRUS_DISMISS` -- dismiss runtime checks for positional-only arguments (same as `--dismiss` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
 Raises:
@@ -151,7 +148,6 @@ Envs:
 
 - `WALRUS_VERSION`-- convert against Python version (same as `--python` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-- `WALRUS_DISMISS` -- dismiss runtime checks for positional-only arguments (same as `--dismiss` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
 Returns:

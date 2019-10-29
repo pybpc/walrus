@@ -78,15 +78,18 @@ tbtrim.set_trim_rule(predicate, strict=True, target=ConvertError)
 ###############################################################################
 # Main convertion implementation
 
-FUNC_TEMPLATE = [
-    '',
-    'def _walrus_wrapper_%(name)s_%(uuid)s():',
-    '    """Wrapper function for assignment expression `%(expr)s`."""',
-    '    %(keyword)s %(name)s',
-    '    %(name)s = %(expr)s',
-    '    return %(name)s',
-    '',
-]
+# code insertion helpers
+_WALRUS_POS_PTR = None
+_WALRUS_POS_BUF = None
+
+# walrus wrapper template
+FUNC_TEMPLATE = '''
+def __walrus_wrapper_%(name)s_%(uuid)s():
+    """Wrapper function for assignment expression `%(expr)s`."""
+    %(keyword)s %(name)s
+    %(name)s = %(expr)s
+    return %(name)s
+'''.splitlines()
 
 
 def parse(string, source, error_recovery=False):
@@ -167,9 +170,70 @@ def process(node, column):
     else:
         function = '%s%s%s%s' % (var, WALRUS_LINESEP, func, WALRUS_LINESEP)
 
-    string = '_walrus_wrapper_%s_%s()' % (name, uid)
+    string = '__walrus_wrapper_%s_%s()' % (name, uid)
 
     return string, function
+
+
+def update_pointer(node):
+    """Update pointer if needed.
+
+    Args:
+     - `node` -- `Union[parso.python.tree.Module, parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`,
+                 parso AST
+
+    Returns:
+     - `int` -- current indentation columns
+
+    """
+    global _WALRUS_POS_PTR
+
+    start_pos = node.get_first_leaf().start_pos
+    if _WALRUS_POS_PTR is None:
+        _WALRUS_POS_PTR = start_pos
+    elif start_pos[0] > _WALRUS_POS_PTR[0]:
+        _WALRUS_POS_PTR = start_pos
+    return _WALRUS_POS_PTR[1]
+
+
+def process_module(node):
+    """Walk top nodes of the AST module.
+
+    Args:
+     - `node` -- `parso.python.tree.Module`, parso AST
+
+    Envs:
+     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+
+    Returns:
+     - `str` -- processed source string
+
+    """
+    column = update_pointer(node)
+
+    # string buffer
+    string = ''
+
+    if isinstance(node, parso.python.tree.PythonLeaf):
+        string += node.get_code()
+
+    if hasattr(node, 'children'):
+        # walrus conversion not fully tested in comprehensions yet
+        flag = node.type in ('testlist_comp', 'dictorsetmaker')
+
+        buffer = collections.OrderedDict()
+        for child in node.children:
+            if child.type == 'namedexpr_test':
+                if flag:
+                    warnings.warn('untested assignment expression convertion in %s' % node.type, ConvertWarning)
+                temp, func = process(child, 0)
+                buffer[child] = temp
+                print(func)
+            else:
+                buffer[child] = walk(child)
+        string += ''.join(buffer.values())
+
+    return string
 
 
 def walk(node):
@@ -186,6 +250,10 @@ def walk(node):
      - `str` -- converted string
 
     """
+    if isinstance(node, parso.python.tree.Module):
+        return process_module(node)
+    column = update_pointer(node)
+
     # string buffer
     string = ''
 
@@ -193,14 +261,14 @@ def walk(node):
         string += node.get_code()
 
     if hasattr(node, 'children'):
-        # walrus conversion not supported in comprehensions yet
+        # walrus conversion not fully tested in comprehensions yet
         flag = node.type in ('testlist_comp', 'dictorsetmaker')
 
         buffer = collections.OrderedDict()
         for child in node.children:
             if child.type == 'namedexpr_test':
                 if flag:
-                    warnings.warn('unsupported assignment expression convertion in %s' % node.type, ConvertWarning)
+                    warnings.warn('untested assignment expression convertion in %s' % node.type, ConvertWarning)
                 temp, func = process(child, 0)
                 buffer[child] = temp
                 print(func)

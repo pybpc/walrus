@@ -3,21 +3,21 @@
     "python.linting.enabled": true,
     "restructuredtext.confPath": "${workspaceFolder}/docs/conf.py",
     "cSpell.words": [
+        "CWORD",
         "Envs",
         "NPROCESSORS",
         "aktau",
+        "bufpre",
+        "bufsuf",
+        "cmds",
+        "dictorsetmaker",
+        "funcdef",
         "gaocegege",
         "getcwd",
         "ispy",
         "namedexpr",
         "parso",
         "sched",
-        "sysconf",
-        "CWORD",
-        "aktau",
-        "cmds",
-        "gaocegege",
-        "dictorsetmaker",
-        "parso"
+        "sysconf"
     ]
 }

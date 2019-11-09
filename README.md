@@ -13,7 +13,7 @@
  > Write *assignment expressions* in Python 3.8 flavour, and let `walrus` worry about back-port issues :beer:
 
 &emsp; Since [PEP 572](https://www.python.org/dev/peps/pep-0572/), Python introduced *assignment expressions*
-syntax in version __3.8__. For those who wish to use *assignment expressions* in their codes, `walrus` provides an
+syntax in version __3.8__. For those who wish to use *assignment expressions* in their code, `walrus` provides an
 intelligent, yet imperfect, solution of a **backport compiler** by replacing *assignment expressions* syntax with
 old-fashioned assignment-then-conditional syntax, which guarantees you to always write *assignment expressions* in
 Python 3.8 flavour then compile for compatibility later.

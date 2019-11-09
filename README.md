@@ -36,7 +36,7 @@ brew install jarryshaw/tap/walrus
 &emsp; Simply run the following to install the current version from PyPI:
 
 ```sh
-pip install walrus
+pip install python-walrus
 ```
 
 &emsp; Or install the latest version from the git repository:

@@ -58,6 +58,10 @@ class ContextError(RuntimeError):
     """Missing conversion context."""
 
 
+class EnvironError(EnvironmentError):
+    """Invalid environment."""
+
+
 ###############################################################################
 # Traceback trim (tbtrim)
 
@@ -163,6 +167,45 @@ class ConvertContext:
         self._indent = tabsize or indent
         self._func = list()
         self._vars = list()
+        self._root = node
+
+    def guess_linesep(self):
+        """Guess line separator based on source code.
+
+        Returns:
+        - `str` -- line separator
+
+        """
+        root = self._root.get_root_node()
+        code = root.get_code()
+
+        pool = [0, 0]  # LF, CRLF
+        for line in code.splitlines(True):
+            if line.endswith('\r\n'):
+                pool[1] += 1
+            else:
+                pool[0] += 1
+        if pool[0] >= pool[1]:
+            return '\n'
+        return '\r\n'
+
+
+    def get_linesep(self):
+        """Get current line separator configuration.
+
+        Returns:
+        - `str` -- line separator
+
+        """
+        env = os.getenv('POSEUR_LINESEP')
+        if env is not None:
+            env_name = env.upper()
+            if env_name == 'LF':
+                return '\n'
+            if env_name == 'CRLF':
+                return '\r\n'
+            raise EnvironError('invlid line separator %r' % env)
+        return self.guess_linesep()
 
     def extract(self, node):
         """Process assignment expression (`namedexpr_test`).
@@ -496,7 +539,7 @@ __cwd__ = os.getcwd()
 __archive__ = os.path.join(__cwd__, 'archive')
 __walrus_version__ = os.getenv('WALRUS_VERSION', WALRUS_VERSION[-1])
 __walrus_encoding__ = os.getenv('WALRUS_ENCODING', LOCALE_ENCODING)
-__walrus_linesep__ = os.getenv('WALRUS_LINESEP', os.linesep)
+__walrus_linesep__ = os.getenv('WALRUS_LINESEP', 'CRLF' if os.linesep == '\r\n' else 'LF')
 __walrus_tabsize__ = os.getenv('WALRUS_TABSIZE', '4')
 
 

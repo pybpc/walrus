@@ -60,7 +60,7 @@ git pull
 ```man
 usage: walrus [options] <python source files and folders...>
 
-Convert f-string to str.format for Python 3 compatibility.
+Back-port compiler for Python 3.8 positional-only parameters.
 
 positional arguments:
   SOURCE                python source files and folders to be converted (${CWD})

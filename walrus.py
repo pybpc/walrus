@@ -509,7 +509,7 @@ def get_parser():
     """
     parser = argparse.ArgumentParser(prog='walrus',
                                      usage='walrus [options] <python source files and folders...>',
-                                     description='Back-port compiler for Python 3.8 positional-only parameters.')
+                                     description='Back-port compiler for Python 3.8 assignment expressions.')
     parser.add_argument('-V', '--version', action='version', version=__version__)
     parser.add_argument('-q', '--quiet', action='store_true',
                         help='run in quiet mode')

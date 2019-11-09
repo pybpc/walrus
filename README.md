@@ -60,7 +60,7 @@ git pull
 ```man
 usage: walrus [options] <python source files and folders...>
 
-Back-port compiler for Python 3.8 positional-only parameters.
+Back-port compiler for Python 3.8 assignment expressions.
 
 positional arguments:
   SOURCE                python source files and folders to be converted (${CWD})

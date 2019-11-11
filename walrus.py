@@ -162,50 +162,11 @@ class ConvertContext:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 
         """
-        self._linesep = os.getenv('WALRUS_LINESEP', os.linesep)
+        self._linesep = guess_linesep(node)
         self._column = node.get_first_leaf().column + indent
         self._indent = tabsize or indent
         self._func = list()
         self._vars = list()
-        self._root = node
-
-    def guess_linesep(self):
-        """Guess line separator based on source code.
-
-        Returns:
-        - `str` -- line separator
-
-        """
-        root = self._root.get_root_node()
-        code = root.get_code()
-
-        pool = [0, 0]  # LF, CRLF
-        for line in code.splitlines(True):
-            if line.endswith('\r\n'):
-                pool[1] += 1
-            else:
-                pool[0] += 1
-        if pool[0] >= pool[1]:
-            return '\n'
-        return '\r\n'
-
-
-    def get_linesep(self):
-        """Get current line separator configuration.
-
-        Returns:
-        - `str` -- line separator
-
-        """
-        env = os.getenv('POSEUR_LINESEP')
-        if env is not None:
-            env_name = env.upper()
-            if env_name == 'LF':
-                return '\n'
-            if env_name == 'CRLF':
-                return '\r\n'
-            raise EnvironError('invlid line separator %r' % env)
-        return self.guess_linesep()
 
     def extract(self, node):
         """Process assignment expression (`namedexpr_test`).
@@ -268,11 +229,42 @@ class ConvertContext:
         return prefix + variables + functions + suffix
 
 
-def process_suite(node, indent, *, async_ctx=None):
-    """Process node with suite.
+def process_classdef(node, indent):
+    """Process class declaration.
 
     Args:
-     - `node` -- `parso.python.tree.PythonNode`, parso AST
+     - `node` -- `parso.python.tree.Class`, class AST
+     - `indent` -- `int`, indentation tab size
+
+    Returns:
+     - `str` -- processed source string
+
+    """
+    prefix = ''
+    suffix = ''
+
+    ctx = ConvertContext(node, indent)
+
+    children = iter(node.children)
+    for child in children:
+        prefix += walk(child, ctx)
+        if child.type == 'operator' and child.value == ':':
+            prefix += ctx.linesep
+            break
+
+    for child in children:
+        bufpre, bufsuf = check_suffix(walk(child, ctx))
+        prefix += bufpre
+        suffix += bufsuf
+
+    return ctx.finalize(prefix, suffix)
+
+
+def process_funcdef(node, indent, *, async_ctx=None):
+    """Process function declaration.
+
+    Args:
+     - `node` -- `parso.python.tree.Function`, function AST
      - `indent` -- `int`, indentation tab size
 
     Kwds:
@@ -303,6 +295,40 @@ def process_suite(node, indent, *, async_ctx=None):
         suffix += bufsuf
 
     return ctx.finalize(prefix, suffix)
+
+
+def walk_expr(node):
+    """Walk expression part of variable assignment.
+
+    Args:
+     - `node` -- `Union[parso.python.tree.PythonLeaf, parso.python.tree.PythonNode]`, expression AST
+
+    Returns:
+     - `str` -- processed source string
+
+    """
+
+
+def process_expr(node):
+    """Process variable assignment.
+
+    Args:
+     - `node` -- `parso.python.tree.ExprStmt`, assignment AST
+
+    Returns:
+     - `str` -- processed source string
+
+    """
+    string = ''
+
+    # <Name: ...>
+    string += node.children[0].get_code()
+    # <Operator: =>
+    string += node.children[0].get_code()
+    # PythonLeaf / PythonNode<atom>
+    string += walk_expr(node.children[0])
+
+    return string
 
 
 def has_walrus(node):
@@ -421,6 +447,59 @@ def process_module(node):
     return ctx.finalize(prefix, suffix)
 
 
+def guess_linesep(node):  # pylint: disable=inconsistent-return-statements
+    """Guess line separator based on source code.
+
+    Args:
+     - `node` -- `Union[parso.python.tree.Module, parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`,
+                 parso AST
+
+    Returns:
+     - `str` -- line separator
+
+    """
+    root = node.get_root_node()
+    code = root.get_code()
+
+    pool = {
+        '\r': 0,
+        '\r\n': 0,
+        '\n': 0,
+    }
+    for line in code.splitlines(True):
+        if line.endswith('\r'):
+            pool['\r'] += 1
+        elif line.endswith('\r\n'):
+            pool['\r\n'] += 1
+        else:
+            pool['\n'] += 1
+
+    sort = sorted(pool, key=lambda k: pool[k])
+    if pool[sort[0]] == pool[sort[1]]:
+        return get_linesep()
+    return sort[0]
+
+
+def get_linesep():
+    """Get current line separator configuration.
+
+    Returns:
+     - `str` -- line separator
+
+    """
+    env = os.getenv('POSEUR_LINESEP', os.linesep)
+    env_name = env.upper()
+    if env_name == 'CR':
+        return '\r'
+    if env_name == 'CRLF':
+        return '\r\n'
+    if env_name == 'LF':
+        return '\n'
+    if env in ['\r', '\r\n', '\n']:
+        return env
+    raise EnvironError('invlid line separator %r' % env)
+
+
 def walk(node, ctx=None):
     """Walk parso AST.
 
@@ -448,18 +527,19 @@ def walk(node, ctx=None):
         pass
 
     # if node.type in ('funcdef', 'classdef', 'if_stmt', 'while_stmt', 'for_stmt', 'with_stmt'):
-    if node.type in ('funcdef', 'classdef'):
-        return process_suite(node, ctx.tabsize)
+    if node.type == 'funcdef':
+        return process_funcdef(node, ctx.tabsize)
 
     if node.type == 'async_stmt':
         child_1st = node.children[0]
         child_2nd = node.children[1]
 
         flag_1st = child_1st.type == 'keyword' and child_1st.value == 'async'
-        flag_2nd = child_2nd.type in ('funcdef', 'with_stmt', 'for_stmt')
+        flag_2nd = child_2nd.type
+        # flag_2nd = child_2nd.type in ('funcdef', 'with_stmt', 'for_stmt')
 
-        if flag_1st and flag_2nd:  # pragma: no cover
-            return process_suite(child_2nd, ctx.tabsize, async_ctx=child_1st)
+        if flag_1st and flag_2nd == 'funcdef':  # pragma: no cover
+            return process_funcdef(child_2nd, ctx.tabsize, async_ctx=child_1st)
 
     if isinstance(node, parso.python.tree.PythonLeaf):
         string += node.get_code()
@@ -539,7 +619,7 @@ __cwd__ = os.getcwd()
 __archive__ = os.path.join(__cwd__, 'archive')
 __walrus_version__ = os.getenv('WALRUS_VERSION', WALRUS_VERSION[-1])
 __walrus_encoding__ = os.getenv('WALRUS_ENCODING', LOCALE_ENCODING)
-__walrus_linesep__ = os.getenv('WALRUS_LINESEP', 'CRLF' if os.linesep == '\r\n' else 'LF')
+__walrus_linesep__ = os.getenv('WALRUS_LINESEP', os.linesep)
 __walrus_tabsize__ = os.getenv('WALRUS_TABSIZE', '4')
 
 
@@ -643,12 +723,23 @@ def main(argv=None):
     ARCHIVE = args.archive_path
     os.environ['WALRUS_VERSION'] = args.python
     os.environ['WALRUS_ENCODING'] = args.encoding
-    os.environ['WALRUS_LINESEP'] = args.linesep
     os.environ['WALRUS_TABSIZE'] = str(args.tabsize)
     WALRUS_QUIET = os.getenv('WALRUS_QUIET')
     os.environ['WALRUS_QUIET'] = '1' if args.quiet else ('0' if WALRUS_QUIET is None else WALRUS_QUIET)
     WALRUS_LINTING = os.getenv('WALRUS_LINTING')
     os.environ['WALRUS_LINTING'] = '1' if args.linting else ('0' if WALRUS_LINTING is None else WALRUS_LINTING)
+
+    linesep = args.linesep.upper()
+    if linesep == 'CR':
+        os.environ['POSEUR_LINESEP'] = '\r'
+    elif linesep == 'CRLF':
+        os.environ['POSEUR_LINESEP'] = '\r\n'
+    elif linesep == 'LF':
+        os.environ['POSEUR_LINESEP'] = '\n'
+    elif args.linesep in ['\r', '\r\n', '\n']:
+        os.environ['POSEUR_LINESEP'] = args.linesep
+    else:
+        raise EnvironError('invalid line separator %r' % args.linesep)
 
     # make archive directory
     if args.archive:  # pragma: no cover

@@ -16,8 +16,10 @@
         "getcwd",
         "ispy",
         "namedexpr",
+        "nuid",
         "parso",
         "sched",
+        "sreturn",
         "sysconf"
     ]
 }

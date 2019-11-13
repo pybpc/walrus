@@ -83,10 +83,10 @@ tbtrim.set_trim_rule(predicate, strict=True, target=(ConvertError, ContextError)
 # walrus wrapper template
 FUNC_TEMPLATE = '''
 def __walrus_wrapper_%(name)s_%(uuid)s():
-%(tabsize)s"""Wrapper function for assignment expression `%(expr)s`."""
-%(tabsize)s%(keyword)s %(name)s
-%(tabsize)s%(name)s = %(expr)s
-%(tabsize)sreturn %(name)s
+    """Wrapper function for assignment expression `%(expr)s`."""
+    %(keyword)s %(name)s
+    %(name)s = %(expr)s
+    return %(name)s
 '''.splitlines()
 
 
@@ -117,227 +117,441 @@ def parse(string, source, error_recovery=False):
         raise ConvertError(message).with_traceback(error.__traceback__) from None
 
 
-class Context:
+class ConvertContext:
     """Conversion context."""
 
     @property
-    def string(self):
-        return self._buffer
-
-    @property
-    def column(self):
-        return self._column
-
-    @property
     def tabsize(self):
-        return self._tabsize
+        """Indentation tab size.
+
+        Returns:
+         - `int` -- inndentation tab size
+
+        """
+        return self._indent
 
     @property
     def linesep(self):
-        return self._linesep
-
-    def __init__(self, node, column=0, tabsize=None, linesep=None):
-        """"Conversion context.
-
-        Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
-         - `column` -- `int`, current indentation level
-         - `tabsize` -- `Optional[int]`, indentation tab size
-         - `linesep` -- `Optional[str]`, line seperator
-
-        Envs:
-         - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-         - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
-
-        """
-        if tabsize is None:
-            tabsize = self.guess_tabsize(node)
-        if linesep is None:
-            linesep = self.guess_linesep(node)
-
-        self._column = column  # current indentation
-        self._tabsize = tabsize  # indentation size
-        self._linesep = linesep  # line seperator
-
-        self._indent = self._column  # indentation tracker
-        self._insert = True  # flag if buffer is now prefix
-
-        self._prefix = ''  # codes before insersion point
-        self._suffix = ''  # codes after insersion point
-        self._buffer = ''  # final result
-
-        self._vars = list()  # variable initialisation
-        self._func = list()  # wrapper functions ({name, expr, uuid})
-
-        self._process(node)  # traverse children
-        self._concat()  # generate final result
-
-    def _process(self, node):
-        """Walk parso AST.
-
-        Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
-
-        """
-        # process module
-        if isinstance(node, parso.python.tree.Module):
-            self._process_module(node)
-            return
-
-        # check for specific processors
-        if hasattr(node, 'children'):
-            for child in node.children:
-                func_name = '_process_%s' % child.type
-                func = getattr(self, func_name, self._process)
-                func(child)
-            return
-
-        # leaf node
-        code = node.get_code()
-        if self._insert:
-            self._prefix += code
-        else:
-            self._suffix += code
-
-    def _process_module(self, node):
-        """Walk top nodes of the AST module.
-
-        Args:
-         - `node` -- `parso.python.tree.Module`, parso AST
-
-        """
-
-    def _process_namedexpr_test(self, node):
-        """Process assignment expression (`namedexpr_test`).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, assignment expression node
-
-        """
-        # split assignment expression
-        node_name, _, node_expr = node.children
-        name = node_name.value
-        nuid = uuid.uuid4().hex
-
-        # calculate expression string
-        expr = Context(node_expr, self._indent, self._tabsize, self._linesep).string
-
-        # replacing codes
-        code = '__walrus_wrapper_%s_%s()' % (name, nuid)
-        if self._insert:
-            self._prefix += code
-        else:
-            self._suffix += code
-
-        # keep records
-        self._vars.append(name)
-        self._func.append(dict(name=name, expr=expr, uuid=nuid))
-
-    def _process_funcdef(self, node):
-        """Process function definition (``funcdef``).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, function node
-
-        """
-
-    def _process_classdef(self, node):
-        """Process class definition (``classdef``).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, class node
-
-        """
-
-    def _concat(self):
-        """Concatenate final string."""
-        # first, the prefix codes
-        self._buffer += self._prefix
-
-        # then, the variables and functions
-        indent = '\t'.expandtabs(self._column)
-        for var in sorted(set(self._vars)):
-            self._buffer += '%(indent)s%(name)s = locales().get(%(name)r)%(linesep)s' % dict(
-                indent=indent, name=var, linesep=self._linesep,
-            )
-        keyword = 'nonlocal' if self._column > 0 else 'global'
-        for func in sorted(self._func, key=lambda func: func['name']):
-            self._buffer += (
-                '%s%s' % (self.linesep, indent)
-            ).join(FUNC_TEMPLATE) % dict(keyword=keyword, tabsize=self._tabsize, **func) + self._linesep
-
-        # finally, the suffix codes
-        self._buffer += self._suffix
-
-    @classmethod
-    def guess_tabsize(cls, node):
-        """Check indentation tab size.
-
-        Args:
-         - `node` -- `Union[parso.python.tree.Module, parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`,
-                     parso AST
-
-        Env:
-         - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
-
-        Returns:
-         - `int` -- indentation tab size
-
-        """
-        for child in node.children:
-            if child.type != 'suite':
-                if hasattr(child, 'children'):
-                    return cls.guess_tabsize(child)
-                continue
-            return child.children[1].get_first_leaf().column
-        return int(os.getenv('WALRUS_TABSIZE', __walrus_tabsize__))
-
-    @staticmethod
-    def guess_linesep(node):
-        """Guess line separator based on source code.
-
-        Args:
-         - `node` -- `Union[parso.python.tree.Module, parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`,
-                     parso AST
-
-        Envs:
-         - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+        """Line separator.
 
         Returns:
          - `str` -- line separator
 
         """
-        root = node.get_root_node()
-        code = root.get_code()
+        return self._linesep
 
-        pool = {
-            '\r': 0,
-            '\r\n': 0,
-            '\n': 0,
-        }
-        for line in code.splitlines(True):
-            if line.endswith('\r'):
-                pool['\r'] += 1
-            elif line.endswith('\r\n'):
-                pool['\r\n'] += 1
+    @property
+    def column(self):
+        """Current indentation.
+
+        Returns:
+         - `int` -- current inndentation
+
+        """
+        return self._column
+
+    def __init__(self, node, indent=0, tabsize=None):
+        """"Hold process context.
+
+        Args:
+         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `indent` -- `int`, tab size addon for suites
+         - `tabsize` -- `int`, indentation tab size
+
+        Envs:
+         - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+
+        """
+        self._linesep = guess_linesep(node)
+        self._column = node.get_first_leaf().column + indent
+        self._indent = tabsize or indent
+        self._func = list()
+        self._vars = list()
+
+    def extract(self, node):
+        """Process assignment expression (`namedexpr_test`).
+
+        Args:
+        - `node` -- `parso.python.tree.PythonNode`, assignment expression node
+
+        Returns:
+         - `str` -- converted string
+
+        """
+        # split assignment expression
+        node_name, _, node_expr = node.children
+        name = node_name.value
+        expr = walk(node_expr, self)
+        uid = uuid.uuid4().hex
+
+        function = self.make_func(name, expr, uid)
+        string = '__walrus_wrapper_%s_%s()' % (name, uid)
+
+        if name not in self._vars:
+            variable = '%s%s = locals().get(%r)%s' % ('\t'.expandtabs(self.column),
+                                                      name, name, self.linesep)
+            self._vars.append(variable)
+        self._func.append(function)
+
+        return string
+
+    def make_func(self, name, expr, uid):
+        """Generate wrapper function.
+
+        Args:
+         - `name` -- `str`, variable name
+         - `expr` -- `str`, variable expression
+         - `uid` -- `str`, hash ID of wrapped node
+
+        Returns:
+         - `str` -- wrapper function
+
+        """
+        return (
+            '%s%s' % (self.linesep, '\t'.expandtabs(self.column))
+        ).join(FUNC_TEMPLATE) % dict(keyword='nonlocal' if self.column else 'global',
+                                     name=name, expr=expr.strip(), uuid=uid) + self.linesep
+
+    def finalize(self, prefix, suffix):
+        """Format final results.
+
+        Args:
+         - `prefix` -- `str`, prefix string
+         - `suffix` -- `str`, suffix string
+
+        Returns:
+         - `str` -- finalised converted string
+
+        """
+        variables = self.linesep.join(self._vars)
+        functions = self.linesep.join(self._func)
+
+        return prefix + variables + functions + suffix
+
+
+def process_classdef(node, indent):
+    """Process class declaration.
+
+    Args:
+     - `node` -- `parso.python.tree.Class`, class AST
+     - `indent` -- `int`, indentation tab size
+
+    Returns:
+     - `str` -- processed source string
+
+    """
+    prefix = ''
+    suffix = ''
+
+    ctx = ConvertContext(node, indent)
+
+    children = iter(node.children)
+    for child in children:
+        prefix += walk(child, ctx)
+        if child.type == 'operator' and child.value == ':':
+            prefix += ctx.linesep
+            break
+
+    for child in children:
+        bufpre, bufsuf = check_suffix(walk(child, ctx))
+        prefix += bufpre
+        suffix += bufsuf
+
+    return ctx.finalize(prefix, suffix)
+
+
+def process_funcdef(node, indent, *, async_ctx=None):
+    """Process function declaration.
+
+    Args:
+     - `node` -- `parso.python.tree.Function`, function AST
+     - `indent` -- `int`, indentation tab size
+
+    Kwds:
+     - `async_ctx` -- `parso.python.tree.Keyword`, `async` keyword AST node
+
+    Returns:
+     - `str` -- processed source string
+
+    """
+    if async_ctx is None:
+        prefix = ''
+        ctx = ConvertContext(node, indent)
+    else:
+        prefix = async_ctx.get_code()
+        ctx = ConvertContext(async_ctx, indent)
+    suffix = ''
+
+    children = iter(node.children)
+    for child in children:
+        prefix += walk(child, ctx)
+        if child.type == 'operator' and child.value == ':':
+            prefix += ctx.linesep
+            break
+
+    for child in children:
+        bufpre, bufsuf = check_suffix(walk(child, ctx))
+        prefix += bufpre
+        suffix += bufsuf
+
+    return ctx.finalize(prefix, suffix)
+
+
+def walk_expr(node):
+    """Walk expression part of variable assignment.
+
+    Args:
+     - `node` -- `Union[parso.python.tree.PythonLeaf, parso.python.tree.PythonNode]`, expression AST
+
+    Returns:
+     - `str` -- processed source string
+
+    """
+
+
+def process_expr(node):
+    """Process variable assignment.
+
+    Args:
+     - `node` -- `parso.python.tree.ExprStmt`, assignment AST
+
+    Returns:
+     - `str` -- processed source string
+
+    """
+    string = ''
+
+    # <Name: ...>
+    string += node.children[0].get_code()
+    # <Operator: =>
+    string += node.children[0].get_code()
+    # PythonLeaf / PythonNode<atom>
+    string += walk_expr(node.children[0])
+
+    return string
+
+
+def has_walrus(node):
+    """Check if node has assignment expression.
+
+    Args:
+     - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, node to search
+
+    Return:
+     - `bool` -- if node has assignment expression
+
+    """
+    if node.type == 'test_namedexpr':
+        return True
+    if not hasattr(node, 'children'):
+        return False
+    return any(map(has_walrus, node.children))
+
+
+def find_walrus(node, root=0):
+    """Find node to insert walrus context.
+
+    Args:
+     - `node` -- `parso.python.tree.Module`, parso AST
+     - `root` -- `int`, index for insertion (based on `node`)
+
+    Returns:
+     - `int` -- index for insertion (based on `node`)
+
+    """
+    for index, child in enumerate(node.children, start=1):
+        if has_walrus(child):
+            return root
+        if child.get_first_leaf().column == 0:
+            root = index
+    return -1
+
+
+def check_indent(node):
+    """Check indentation tab size.
+
+    Args:
+     - `node` -- `parso.python.tree.Module`, parso AST
+
+    Returns:
+     - `int` -- indentation tab size
+
+    """
+    for child in node.children:
+        if child.type != 'suite':
+            if hasattr(child, 'children'):
+                tabsize = check_indent(child)
+                if tabsize > 0:
+                    return tabsize
+            continue
+        return child.children[1].get_first_leaf().column
+    return 0
+
+
+def check_suffix(string):
+    """Strip comments from string.
+
+    Args:
+     - `string` -- `str`, buffer string
+
+    Returns:
+     - `str` -- prefix comments
+     - `str` -- suffix strings
+
+    """
+    prefix = ''
+    suffix = ''
+
+    lines = iter(string.splitlines(True))
+    for line in lines:
+        if line.strip().startswith('#'):
+            prefix += line
+            continue
+        suffix += line
+        break
+
+    for line in lines:
+        suffix += line
+    return prefix, suffix
+
+
+def process_module(node):
+    """Walk top nodes of the AST module.
+
+    Args:
+     - `node` -- `parso.python.tree.Module`, parso AST
+
+    Envs:
+     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+
+    Returns:
+     - `str` -- processed source string
+
+    """
+    WALRUS_TABSIZE = int(os.getenv('WALRUS_TABSIZE', __walrus_tabsize__))
+
+    prefix = ''
+    suffix = ''
+
+    tab = check_indent(node) or WALRUS_TABSIZE
+    ctx = ConvertContext(node, tabsize=tab)
+    pos = find_walrus(node)
+
+    for index, child in enumerate(node.children):
+        if index < pos:
+            prefix += walk(child, ctx)
+        else:
+            bufpre, bufsuf = check_suffix(walk(child, ctx))
+            prefix += bufpre
+            suffix += bufsuf
+    return ctx.finalize(prefix, suffix)
+
+
+def guess_linesep(node):  # pylint: disable=inconsistent-return-statements
+    """Guess line separator based on source code.
+
+    Args:
+     - `node` -- `Union[parso.python.tree.Module, parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`,
+                 parso AST
+
+    Returns:
+     - `str` -- line separator
+
+    """
+    root = node.get_root_node()
+    code = root.get_code()
+
+    pool = {
+        '\r': 0,
+        '\r\n': 0,
+        '\n': 0,
+    }
+    for line in code.splitlines(True):
+        if line.endswith('\r'):
+            pool['\r'] += 1
+        elif line.endswith('\r\n'):
+            pool['\r\n'] += 1
+        else:
+            pool['\n'] += 1
+
+    sort = sorted(pool, key=lambda k: pool[k])
+    if pool[sort[0]] == pool[sort[1]]:
+        return get_linesep()
+    return sort[0]
+
+
+def get_linesep():
+    """Get current line separator configuration.
+
+    Returns:
+     - `str` -- line separator
+
+    """
+    env = os.getenv('POSEUR_LINESEP', os.linesep)
+    env_name = env.upper()
+    if env_name == 'CR':
+        return '\r'
+    if env_name == 'CRLF':
+        return '\r\n'
+    if env_name == 'LF':
+        return '\n'
+    if env in ['\r', '\r\n', '\n']:
+        return env
+    raise EnvironError('invlid line separator %r' % env)
+
+
+def walk(node, ctx=None):
+    """Walk parso AST.
+
+    Args:
+     - `node` -- `Union[parso.python.tree.Module, parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`,
+                 parso AST
+     - `ctx` -- `ConvertContext`, conversion context
+
+    Envs:
+     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+
+    Returns:
+     - `str` -- converted string
+
+    """
+    if isinstance(node, parso.python.tree.Module):
+        return process_module(node)
+    if ctx is None:
+        raise ContextError('missing conversion context for node %r' % node)
+
+    # string buffer
+    string = ''
+
+    if node.type == 'try_stmt':
+        pass
+
+    # if node.type in ('funcdef', 'classdef', 'if_stmt', 'while_stmt', 'for_stmt', 'with_stmt'):
+    if node.type == 'funcdef':
+        return process_funcdef(node, ctx.tabsize)
+
+    if node.type == 'async_stmt':
+        child_1st = node.children[0]
+        child_2nd = node.children[1]
+
+        flag_1st = child_1st.type == 'keyword' and child_1st.value == 'async'
+        flag_2nd = child_2nd.type
+        # flag_2nd = child_2nd.type in ('funcdef', 'with_stmt', 'for_stmt')
+
+        if flag_1st and flag_2nd == 'funcdef':  # pragma: no cover
+            return process_funcdef(child_2nd, ctx.tabsize, async_ctx=child_1st)
+
+    if isinstance(node, parso.python.tree.PythonLeaf):
+        string += node.get_code()
+
+    if hasattr(node, 'children'):
+        for child in node.children:
+            if child.type == 'namedexpr_test':
+                string += ctx.extract(child)
             else:
-                pool['\n'] += 1
+                string += walk(child, ctx)
 
-        sort = sorted(pool, key=lambda k: pool[k])
-        if pool[sort[0]] > pool[sort[1]]:
-            return sort[0]
-
-        env = os.getenv('POSEUR_LINESEP', os.linesep)
-        env_name = env.upper()
-        if env_name == 'CR':
-            return '\r'
-        if env_name == 'CRLF':
-            return '\r\n'
-        if env_name == 'LF':
-            return '\n'
-        if env in ['\r', '\r\n', '\n']:
-            return env
-        raise EnvironError('invlid line separator %r' % env)
+    return string
 
 
 def convert(string, source='<unknown>'):
@@ -359,7 +573,7 @@ def convert(string, source='<unknown>'):
     module = parse(string, source)
 
     # convert source string
-    string = Context(module).string
+    string = walk(module)
 
     # return converted string
     return string
@@ -546,7 +760,7 @@ def main(argv=None):
             filelist.extend(find(path))
 
     # check if file is Python source code
-    ispy = lambda file: (os.path.isfile(file) and (os.path.splitext(file)[1] in ('.py', '.pyw')))
+    def ispy(file): return (os.path.isfile(file) and (os.path.splitext(file)[1] in ('.py', '.pyw')))
     filelist = sorted(filter(ispy, filelist))
 
     # if no file supplied

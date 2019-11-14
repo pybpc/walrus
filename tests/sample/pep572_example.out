@@ -1,0 +1,8 @@
+Found pattern in span (2, 5).
+Got 2 bytes b'\xde\xad'
+Got 2 bytes b'\xbe\xef'
+Got 2 bytes b'\xca\xfe'
+Got 2 bytes b'\xba\xbe'
+[3628800, 13168189440000, 47784725839872000000]
+3628800
+[20, 100]

@@ -17,6 +17,11 @@ os.environ['WALRUS_ENCODING'] = 'utf-8'
 os.environ['WALRUS_LINESEP'] = 'LF'
 
 
+def read_text_file(filename, encoding='utf-8'):
+    with open(filename, 'r', encoding=encoding) as file:
+        return file.read()
+
+
 class TestWalrus(unittest.TestCase):
     def test_get_parser(self):
         """Test the argument parser."""
@@ -41,17 +46,18 @@ class TestWalrus(unittest.TestCase):
     def test_main(self):
         """Test the main entrypoint."""
         with tempfile.TemporaryDirectory(prefix='walrus-test') as tmpdir:
-            all_test_files = os.listdir(os.path.join(ROOT, 'sample'))
+            all_test_cases = [fn[:-3] for fn in os.listdir(os.path.join(ROOT, 'sample')) if fn.endswith('.py')]
 
-            for test_file in all_test_files:
-                shutil.copy(os.path.join(ROOT, 'sample', test_file), tmpdir)
+            for test_case in all_test_cases:
+                shutil.copy(os.path.join(ROOT, 'sample', test_case + '.py'), tmpdir)
 
             main_func([tmpdir])
 
-            for test_file in all_test_files:
-                original_output = subprocess.check_output([sys.executable, os.path.join(ROOT, 'sample', test_file)])
-                converted_output = subprocess.check_output([sys.executable, os.path.join(tmpdir, test_file)])
-                self.assertEqual(original_output, converted_output, 'test case {!r} failed'.format(test_file))
+            for test_case in all_test_cases:
+                original_output = read_text_file(os.path.join(ROOT, 'sample', test_case + '.out'))
+                converted_output = subprocess.check_output([sys.executable, os.path.join(tmpdir, test_case + '.py')], universal_newlines=True)
+                with self.subTest(test_case=test_case):
+                    self.assertEqual(original_output, converted_output)
 
 
 if __name__ == '__main__':

@@ -81,9 +81,9 @@ tbtrim.set_trim_rule(predicate, strict=True, target=(ConvertError, ContextError)
 # Main convertion implementation
 
 # walrus wrapper template
-FUNC_TEMPLATE = '''\
-def __walrus_wrapper_%(name)s_%(uuid)s(%(args)s):
-%(tabsize)s"""Wrapper function for assignment expression."""
+FUNC_TEMPLATE = '''
+def __walrus_wrapper_%(name)s_%(uuid)s():
+%(tabsize)s"""Wrapper function for assignment expression `%(expr)s`."""
 %(tabsize)s%(keyword)s %(name)s
 %(tabsize)s%(name)s = %(expr)s
 %(tabsize)sreturn %(name)s
@@ -173,8 +173,7 @@ class Context:
         self._buffer = ''  # final result
 
         self._vars = list()  # variable initialisation
-        self._func = list()  # wrapper functions ({name, expr, uuid, args})
-        self._args = list()  # temporary arguments for wrapper funcions
+        self._func = list()  # wrapper functions ({name, expr, uuid})
 
         self._walk(node)  # traverse children
         self._concat()  # generate final result
@@ -185,9 +184,6 @@ class Context:
         else:
             self._suffix += code
         return self
-
-    def __str__(self):
-        return self._buffer.strip()
 
     def _walk(self, node):
         """Start traversing the AST module.
@@ -233,10 +229,10 @@ class Context:
         self += code
 
     def _process_suite(self, node):
-        """Process indented suite (`suite` or ...).
+        """Process indented suites.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, suite node
+         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
 
         """
         if not self.has_walrus(node):
@@ -245,41 +241,7 @@ class Context:
 
         indent = self._column + self._tabsize
         self += self._linesep + '\t'.expandtabs(indent)
-        self += Context(node, indent, self._tabsize, self._linesep, self._keyword).string.lstrip()
-
-    def _process_comprehension(self, node):
-        """Process comprehension statement (`testlist_comp` or `dictorsetmaker`).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, comprehension node
-
-        """
-        def extract(node):
-            """Extract name nodes."""
-            if hasattr(node, 'children'):
-                for child in node.children:
-                    extract(child)
-            if isinstance(node, parso.python.tree.Name):
-                self._args.append(node)
-
-        def walk(node):
-            """Traverse comprehension node."""
-            if not hasattr(node, 'children'):
-                return
-
-            for child in reversed(node.children):
-                if child.type != 'sync_comp_for':
-                    walk(child)
-                    continue
-
-                expr_list = child.children[1]
-                extract(expr_list)
-                break
-
-        walk(node)
-        for child in node.children:
-            self._process(child)
-        self._args.clear()
+        self += Context(node, indent, self._tabsize, self._linesep, self._keyword).string.strip()
 
     def _process_namedexpr_test(self, node):
         """Process assignment expression (`namedexpr_test`).
@@ -297,13 +259,12 @@ class Context:
         expr = Context(node_expr, self._column, self._tabsize, self._linesep, self._keyword).string.strip()
 
         # replacing codes
-        args = ', '.join(map(lambda name: name.value, self._args))
-        code = '__walrus_wrapper_%s_%s(%s)' % (name, nuid, args)
+        code = '__walrus_wrapper_%s_%s()' % (name, nuid)
         self += code
 
         # keep records
         self._vars.append(name)
-        self._func.append(dict(name=name, expr=expr, uuid=nuid, args=args))
+        self._func.append(dict(name=name, expr=expr, uuid=nuid))
 
     def _process_funcdef(self, node):
         """Process function definition (``funcdef``).
@@ -475,34 +436,6 @@ class Context:
             # suite
             self._process_suite(next(children))
 
-    def _process_testlist_comp(self, node):
-        """Process list comprehension (`testlist_comp`).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, list comprehension node
-
-        """
-        if self.has_comp_for(node) and self.has_walrus(node):
-            self._process_comprehension(node)
-            return
-
-        for child in node.children:
-            self._process(child)
-
-    def _process_dictorsetmaker(self, node):
-        """Process dict/set comprehension (`dictorsetmaker`).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, dict/set comprehension node
-
-        """
-        if self.has_comp_for(node) and self.has_walrus(node):
-            self._process_comprehension(node)
-            return
-
-        for child in node.children:
-            self._process(child)
-
     def _concat(self):
         """Concatenate final string."""
         # strip suffix comments
@@ -518,11 +451,11 @@ class Context:
             self._buffer += '%(indent)s%(name)s = locals().get(%(name)r)%(linesep)s' % dict(
                 indent=indent, name=var, linesep=self._linesep,
             )
-        linesep = self._linesep * (1 if self._column > 0 else 2)
+        keyword = 'nonlocal' if self._column > 0 else 'global'
         for func in sorted(self._func, key=lambda func: func['name']):
-            self._buffer += linesep + indent + (
+            self._buffer += (
                 '%s%s' % (self._linesep, indent)
-            ).join(FUNC_TEMPLATE) % dict(keyword=self._keyword, tabsize=tabsize, **func) + self._linesep + linesep
+            ).join(FUNC_TEMPLATE) % dict(keyword=keyword, tabsize=tabsize, **func) + self._linesep
 
         # finally, the suffix codes
         self._buffer += suffix
@@ -543,7 +476,7 @@ class Context:
 
         lines = iter(self._suffix.splitlines(True))
         for line in lines:
-            if line.startswith('#'):
+            if line.strip().startswith('#'):
                 prefix += line
                 continue
             suffix += line
@@ -552,26 +485,6 @@ class Context:
         for line in lines:
             suffix += line
         return prefix, suffix
-
-    @classmethod
-    def has_comp_for(cls, node):
-        """Check if node has comprehension statement. (`comp_for` or `sync_comp_for`)
-
-        Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
-
-        Returns:
-         - `bool` -- if node has comprehension statement
-
-        """
-        if node.type in ('comp_for', 'sync_comp_for'):
-            return True
-        if not hasattr(node, 'children'):
-            return False
-        for child in node.children:
-            if cls.has_comp_for(child):
-                return True
-        return False
 
     @classmethod
     def has_walrus(cls, node):

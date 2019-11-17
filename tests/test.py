@@ -54,9 +54,9 @@ class TestWalrus(unittest.TestCase):
             main_func([tmpdir])
 
             for test_case in all_test_cases:
-                original_output = read_text_file(os.path.join(ROOT, 'sample', test_case + '.out'))
-                converted_output = subprocess.check_output([sys.executable, os.path.join(tmpdir, test_case + '.py')], universal_newlines=True)  # pylint: disable=line-too-long
                 with self.subTest(test_case=test_case):
+                    original_output = read_text_file(os.path.join(ROOT, 'sample', test_case + '.out'))
+                    converted_output = subprocess.check_output([sys.executable, os.path.join(tmpdir, test_case + '.py')], universal_newlines=True)  # pylint: disable=line-too-long
                     self.assertEqual(original_output, converted_output)
 
 

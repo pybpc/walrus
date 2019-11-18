@@ -201,11 +201,13 @@ class Context:
             for child in node.children:
                 if self.has_walrus(child):
                     self._prefix_or_suffix = False
-                self._process(child)
+                    self._process(child)
+                else:
+                    self += child.get_code()
             return
 
         # process leaf
-        self._process(node)
+        self += node.get_code()
 
     def _process(self, node):
         """Walk parso AST.
@@ -229,8 +231,7 @@ class Context:
             return
 
         # leaf node
-        code = node.get_code()
-        self += code
+        self += node.get_code()
 
     def _process_suite(self, node):
         """Process indented suite (`suite` or ...).
@@ -288,6 +289,26 @@ class Context:
          - `node` -- `parso.python.tree.PythonNode`, assignment expression node
 
         """
+        def get_whitespaces(node):
+            """Extract whitespaces."""
+            code = node.get_code()
+
+            # preceding whitespaces
+            prefix = ''
+            for char in code:
+                if char not in ' \t\n\r\f\v':
+                    break
+                prefix += char
+
+            # succeeding whitespaces
+            suffix = ''
+            for char in reversed(code):
+                if char not in ' \t\n\r\f\v':
+                    break
+                suffix += char
+
+            return prefix, suffix
+
         # split assignment expression
         node_name, _, node_expr = node.children
         name = node_name.value
@@ -299,7 +320,8 @@ class Context:
         # replacing codes
         args = ', '.join(map(lambda name: name.value, self._args))
         code = '__walrus_wrapper_%s_%s(%s)' % (name, nuid, args)
-        self += code
+        prefix, suffix = get_whitespaces(node)
+        self += prefix + code + suffix
 
         # keep records
         self._vars.append(name)
@@ -346,9 +368,11 @@ class Context:
 
         while True:
             try:
+                # <Keyword: elif | else>
                 key = next(children)
             except StopIteration:
                 break
+            self._process(key)
 
             if key.value == 'elif':
                 # namedexpr_test
@@ -503,6 +527,31 @@ class Context:
         for child in node.children:
             self._process(child)
 
+    def _process_argument(self, node):
+        """Process function argument (`argument`).
+
+        Args:
+         - `node` -- `parso.python.tree.PythonNode`, argument node
+
+        """
+        children = iter(node.children)
+
+        # test
+        next(children)
+        try:
+            # <Operator: :=>
+            op = next(children)
+        except StopIteration:
+            self += node.get_code()
+            return
+
+        if self.is_walrus(op):
+            self._process_namedexpr_test(node)
+            return
+
+        # not walrus
+        self += node.get_code()
+
     def _concat(self):
         """Concatenate final string."""
         # strip suffix comments
@@ -522,9 +571,11 @@ class Context:
         for func in sorted(self._func, key=lambda func: func['name']):
             self._buffer += linesep + indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(FUNC_TEMPLATE) % dict(keyword=self._keyword, tabsize=tabsize, **func) + self._linesep + linesep
+            ).join(FUNC_TEMPLATE) % dict(keyword=self._keyword, tabsize=tabsize, **func) + linesep
 
         # finally, the suffix codes
+        if not suffix.startswith(self._linesep):
+            self._buffer += self._linesep
         self._buffer += suffix
 
     def _strip(self):
@@ -566,11 +617,10 @@ class Context:
         """
         if node.type in ('comp_for', 'sync_comp_for'):
             return True
-        if not hasattr(node, 'children'):
-            return False
-        for child in node.children:
-            if cls.has_comp_for(child):
-                return True
+        if hasattr(node, 'children'):
+            for child in node.children:
+                if cls.has_comp_for(child):
+                    return True
         return False
 
     @classmethod
@@ -584,13 +634,12 @@ class Context:
          - `bool` -- if node has assignment expression
 
         """
-        if node.type == 'namedexpr_test':
+        if cls.is_walrus(node):
             return True
-        if not hasattr(node, 'children'):
-            return False
-        for child in node.children:
-            if cls.has_walrus(child):
-                return True
+        if hasattr(node, 'children'):
+            for child in node.children:
+                if cls.has_walrus(child):
+                    return True
         return False
 
     @classmethod
@@ -681,6 +730,23 @@ class Context:
         if env in ['\r', '\r\n', '\n']:
             return env
         raise EnvironError('invlid line separator %r' % env)
+
+    @staticmethod
+    def is_walrus(node):
+        """Check if node is assignment expression.
+
+        Args:
+         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+
+        Returns:
+         - `bool` -- if node is assignment expression
+
+        """
+        if node.type == 'namedexpr_test':
+            return True
+        if node.type == 'operator' and node.value == ':=':
+            return True
+        return False
 
 
 def convert(string, source='<unknown>'):

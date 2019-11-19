@@ -89,6 +89,13 @@ def _walrus_wrapper_%(name)s_%(uuid)s(expr):
 %(tabsize)s%(name)s = expr
 %(tabsize)sreturn %(name)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
+# special template for ClassVar
+CLS_FUNC_TEMPLATE = '''\
+def _walrus_wrapper_%(cls)s_%(name)s_%(uuid)s(expr):
+%(tabsize)s"""Wrapper function for assignment expression."""
+%(tabsize)s%(cls)s.%(name)s = expr
+%(tabsize)sreturn %(name)s
+'''.splitlines()  # `str.splitlines` will remove trailing newline
 
 
 def parse(string, source, error_recovery=False):
@@ -164,6 +171,8 @@ class Context:
         self._context = list(context)  # names in global statements
 
         self._prefix_or_suffix = True  # flag if buffer is now prefix
+        self._cls_ctx = None  # current class definition context
+
         self._prefix = ''  # codes before insersion point
         self._suffix = ''  # codes after insersion point
         self._buffer = ''  # final result
@@ -252,6 +261,21 @@ class Context:
                       linesep=self._linesep, keyword=keyword)
         self += ctx.string.lstrip()
         self._context.extend(ctx.global_stmt)
+
+    def _process_class_suite(self, node):
+        """Process class suite (`suite`).
+
+        Args:
+         - `node` -- `parso.python.tree.PythonNode`, suite node
+
+        """
+        for child in node.children:
+            if child.type == 'simple_stmt':
+                self._cls_ctx = True
+                self._process(child)
+                self._cls_ctx = False
+            else:
+                self._process(child)
 
     def _process_namedexpr_test(self, node):
         """Process assignment expression (`namedexpr_test`).

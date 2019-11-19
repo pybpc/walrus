@@ -81,11 +81,12 @@ tbtrim.set_trim_rule(predicate, strict=True, target=(ConvertError, ContextError)
 # Main convertion implementation
 
 # walrus wrapper template
+NAME_TEMPLATE = '_walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
 FUNC_TEMPLATE = '''\
-def __walrus_wrapper_%(name)s_%(uuid)s(%(args)s):
+def _walrus_wrapper_%(name)s_%(uuid)s(expr):
 %(tabsize)s"""Wrapper function for assignment expression."""
 %(tabsize)s%(keyword)s %(name)s
-%(tabsize)s%(name)s = %(expr)s
+%(tabsize)s%(name)s = expr
 %(tabsize)sreturn %(name)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
@@ -125,22 +126,12 @@ class Context:
         return self._buffer
 
     @property
-    def column(self):
-        return self._column
+    def global_stmt(self):
+        if self._root.type == 'funcdef':
+            return list()
+        return self._context
 
-    @property
-    def tabsize(self):
-        return self._tabsize
-
-    @property
-    def linesep(self):
-        return self._linesep
-
-    @property
-    def keyword(self):
-        return self._keyword
-
-    def __init__(self, node, column=0, tabsize=None, linesep=None, keyword=None):
+    def __init__(self, node, column=0, tabsize=None, linesep=None, keyword=None, context=None):
         """"Conversion context.
 
         Args:
@@ -149,6 +140,7 @@ class Context:
          - `tabsize` -- `Optional[int]`, indentation tab size
          - `linesep` -- `Optional[str]`, line seperator
          - `keyword` -- `Optional[str]`, keyword for wrapper function
+         - `context` -- `Optional[List[str]]`, global context
 
         Envs:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
@@ -161,11 +153,15 @@ class Context:
             linesep = self.guess_linesep(node)
         if keyword is None:
             keyword = self.guess_keyword(node)
+        if context is None:
+            context = list()
 
+        self._root = node  # root node
         self._column = column  # current indentation
         self._tabsize = tabsize  # indentation size
         self._linesep = linesep  # line seperator
         self._keyword = keyword  # global / nonlocal keyword
+        self._context = list(context)  # names in global statements
 
         self._prefix_or_suffix = True  # flag if buffer is now prefix
         self._prefix = ''  # codes before insersion point
@@ -173,8 +169,7 @@ class Context:
         self._buffer = ''  # final result
 
         self._vars = list()  # variable initialisation
-        self._func = list()  # wrapper functions ({name, expr, uuid, args})
-        self._args = list()  # temporary arguments for wrapper funcions
+        self._func = list()  # wrapper functions ({name, uuid, keyword})
 
         self._walk(node)  # traverse children
         self._concat()  # generate final result
@@ -201,9 +196,7 @@ class Context:
             for child in node.children:
                 if self.has_walrus(child):
                     self._prefix_or_suffix = False
-                    self._process(child)
-                else:
-                    self += child.get_code()
+                self._process(child)
             return
 
         # process leaf
@@ -233,54 +226,32 @@ class Context:
         # leaf node
         self += node.get_code()
 
-    def _process_suite(self, node):
+    def _process_suite_node(self, node, func=False):
         """Process indented suite (`suite` or ...).
 
         Args:
          - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, suite node
+         - `func` -- `bool`, if the suite is of function definition
 
         """
         if not self.has_walrus(node):
             self += node.get_code()
             return
 
+        if func:
+            keyword = 'nonlocal'
+        else:
+            keyword = self._keyword
+
         indent = self._column + self._tabsize
         self += self._linesep + '\t'.expandtabs(indent)
-        self += Context(node, indent, self._tabsize, self._linesep, self._keyword).string.lstrip()
 
-    def _process_comprehension(self, node):
-        """Process comprehension statement (`testlist_comp` or `dictorsetmaker`).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, comprehension node
-
-        """
-        def extract(node):
-            """Extract name nodes."""
-            if hasattr(node, 'children'):
-                for child in node.children:
-                    extract(child)
-            if isinstance(node, parso.python.tree.Name):
-                self._args.append(node)
-
-        def walk(node):
-            """Traverse comprehension node."""
-            if not hasattr(node, 'children'):
-                return
-
-            for child in reversed(node.children):
-                if child.type != 'sync_comp_for':
-                    walk(child)
-                    continue
-
-                expr_list = child.children[1]
-                extract(expr_list)
-                break
-
-        walk(node)
-        for child in node.children:
-            self._process(child)
-        self._args.clear()
+        # process suite
+        ctx = Context(node=node, context=self._context,
+                      column=indent, tabsize=self._tabsize,
+                      linesep=self._linesep, keyword=keyword)
+        self += ctx.string.lstrip()
+        self._context.extend(ctx.global_stmt)
 
     def _process_namedexpr_test(self, node):
         """Process assignment expression (`namedexpr_test`).
@@ -315,17 +286,54 @@ class Context:
         nuid = uuid.uuid4().hex
 
         # calculate expression string
-        expr = Context(node_expr, self._column, self._tabsize, self._linesep, self._keyword).string.strip()
+        ctx = Context(node=node_expr, context=self._context,
+                      column=self._column, tabsize=self._tabsize,
+                      linesep=self._linesep, keyword=self._keyword)
+        expr = ctx.string.strip()
 
         # replacing codes
-        args = ', '.join(map(lambda name: name.value, self._args))
-        code = '__walrus_wrapper_%s_%s(%s)' % (name, nuid, args)
+        code = NAME_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
         prefix, suffix = get_whitespaces(node)
         self += prefix + code + suffix
 
+        self._context.extend(ctx.global_stmt)
+        if name in self._context:
+            keyword = 'global'
+        else:
+            keyword = self._keyword
+
         # keep records
         self._vars.append(name)
-        self._func.append(dict(name=name, expr=expr, uuid=nuid, args=args))
+        self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
+
+    def _process_global_stmt(self, node):
+        """Process function definition (``global_stmt``).
+
+        Args:
+         - `node` -- `parso.python.tree.GlobalStmt`, global statement node
+
+        """
+        children = iter(node.children)
+
+        # <Keyword: global>
+        next(children)
+        # <Name: ...>
+        name = next(children)
+        self._context.append(name.value)
+
+        while True:
+            try:
+                # <Operator: ,>
+                next(children)
+            except StopIteration:
+                break
+
+            # <Name: ...>
+            name = next(children)
+            self._context.append(name.value)
+
+        # process code
+        self += node.get_code()
 
     def _process_funcdef(self, node):
         """Process function definition (``funcdef``).
@@ -346,7 +354,7 @@ class Context:
         # <Operator: :>
         self._process(func_op)
         # suite
-        self._process_suite(func_suite)
+        self._process_suite_node(func_suite, func=True)
 
     def _process_if_stmt(self, node):
         """Process if statement (``if_stmt``).
@@ -364,7 +372,7 @@ class Context:
         # <Operator: :>
         self._process(next(children))
         # suite
-        self._process_suite(next(children))
+        self._process_suite_node(next(children))
 
         while True:
             try:
@@ -380,13 +388,13 @@ class Context:
                 # <Operator: :>
                 self._process(next(children))
                 # suite
-                self._process_suite(next(children))
+                self._process_suite_node(next(children))
                 continue
             if key.value == 'else':
                 # <Operator: :>
                 self._process(next(children))
                 # suite
-                self._process_suite(next(children))
+                self._process_suite_node(next(children))
                 continue
 
     def _process_while(self, node):
@@ -405,7 +413,7 @@ class Context:
         # <Operator: :>
         self._process(next(children))
         # suite
-        self._process_suite(next(children))
+        self._process_suite_node(next(children))
 
         try:
             key = next(children)
@@ -417,7 +425,7 @@ class Context:
         # <Operator: :>
         self._process(next(children))
         # suite
-        self._process_suite(next(children))
+        self._process_suite_node(next(children))
 
     def _process_for_stmt(self, node):
         """Process for statement (``for_stmt``).
@@ -439,7 +447,7 @@ class Context:
         # <Operator: :>
         self._process(next(children))
         # suite
-        self._process_suite(next(children))
+        self._process_suite_node(next(children))
 
         try:
             key = next(children)
@@ -451,7 +459,7 @@ class Context:
         # <Operator: :>
         self._process(next(children))
         # suite
-        self._process_suite(next(children))
+        self._process_suite_node(next(children))
 
     def _process_with_stmt(self, node):
         """Process with statement (``with_stmt``).
@@ -475,7 +483,7 @@ class Context:
                 break
 
         # suite
-        self._process_suite(next(children))
+        self._process_suite_node(next(children))
 
     def _process_try_stmt(self, node):
         """Process try statement (``try_stmt``).
@@ -497,35 +505,7 @@ class Context:
             # <Operator: :>
             self._process(next(children))
             # suite
-            self._process_suite(next(children))
-
-    def _process_testlist_comp(self, node):
-        """Process list comprehension (`testlist_comp`).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, list comprehension node
-
-        """
-        if self.has_comp_for(node) and self.has_walrus(node):
-            self._process_comprehension(node)
-            return
-
-        for child in node.children:
-            self._process(child)
-
-    def _process_dictorsetmaker(self, node):
-        """Process dict/set comprehension (`dictorsetmaker`).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, dict/set comprehension node
-
-        """
-        if self.has_comp_for(node) and self.has_walrus(node):
-            self._process_comprehension(node)
-            return
-
-        for child in node.children:
-            self._process(child)
+            self._process_suite_node(next(children))
 
     def _process_argument(self, node):
         """Process function argument (`argument`).
@@ -537,12 +517,12 @@ class Context:
         children = iter(node.children)
 
         # test
-        next(children)
+        test = next(children)
         try:
             # <Operator: :=>
             op = next(children)
         except StopIteration:
-            self += node.get_code()
+            self._process(test)
             return
 
         if self.is_walrus(op):
@@ -550,7 +530,10 @@ class Context:
             return
 
         # not walrus
-        self += node.get_code()
+        self._process(test)
+        self._process(op)
+        for child in children:
+            self._process(child)
 
     def _concat(self):
         """Concatenate final string."""
@@ -571,7 +554,7 @@ class Context:
         for func in sorted(self._func, key=lambda func: func['name']):
             self._buffer += linesep + indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(FUNC_TEMPLATE) % dict(keyword=self._keyword, tabsize=tabsize, **func) + linesep
+            ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + linesep
 
         # finally, the suffix codes
         if not suffix.startswith(self._linesep):
@@ -603,25 +586,6 @@ class Context:
         for line in lines:
             suffix += line
         return prefix, suffix
-
-    @classmethod
-    def has_comp_for(cls, node):
-        """Check if node has comprehension statement. (`comp_for` or `sync_comp_for`)
-
-        Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
-
-        Returns:
-         - `bool` -- if node has comprehension statement
-
-        """
-        if node.type in ('comp_for', 'sync_comp_for'):
-            return True
-        if hasattr(node, 'children'):
-            for child in node.children:
-                if cls.has_comp_for(child):
-                    return True
-        return False
 
     @classmethod
     def has_walrus(cls, node):

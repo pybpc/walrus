@@ -1,10 +1,14 @@
+### November 24th, 2019
+
+[ ] resolve *classvar* conversion issue
+
 ### November 18th, 2019
 
 [ ] work through unittest
 
 ### November 16th, 2019
 
-[ ] implement class conversion
+[x] implement class conversion
 [x] work on comprehension conversion
 
 ### November 8th, 2019

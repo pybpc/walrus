@@ -81,20 +81,27 @@ tbtrim.set_trim_rule(predicate, strict=True, target=(ConvertError, ContextError)
 # Main convertion implementation
 
 # walrus wrapper template
-NAME_TEMPLATE = '_walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
+CALL_TEMPLATE = '__walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
 FUNC_TEMPLATE = '''\
-def _walrus_wrapper_%(name)s_%(uuid)s(expr):
+def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 %(tabsize)s"""Wrapper function for assignment expression."""
 %(tabsize)s%(keyword)s %(name)s
 %(tabsize)s%(name)s = expr
 %(tabsize)sreturn %(name)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
-# special template for ClassVar
+
+# special templates for ClassVar
+CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.%(name)s_%(uuid)s(%(expr)s)'
+CLS_NAME_TEMPLATE = '''\
+class __WalrusWrapper%(cls)s:
+%(tabsize)s"""Wrapper class for assignment expression."""
+'''.splitlines()  # `str.splitlines` will remove trailing newline
 CLS_FUNC_TEMPLATE = '''\
-def _walrus_wrapper_%(cls)s_%(name)s_%(uuid)s(expr):
-%(tabsize)s"""Wrapper function for assignment expression."""
-%(tabsize)s%(cls)s.%(name)s = expr
-%(tabsize)sreturn %(name)s
+%(tabsize)s@staticmethod
+%(tabsize)sdef %(name)s_%(uuid)s(expr):
+%(tabsize)s%(tabsize)s"""Wrapper function for assignment expression."""
+%(tabsize)s%(tabsize)s%(cls)s.%(name)s = expr
+%(tabsize)s%(tabsize)sreturn %(cls)s.%(name)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 
@@ -139,7 +146,7 @@ class Context:
         return self._context
 
     def __init__(self, node, column=0, tabsize=None, linesep=None, keyword=None, context=None):
-        """"Conversion context.
+        """Conversion context.
 
         Args:
          - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
@@ -171,7 +178,6 @@ class Context:
         self._context = list(context)  # names in global statements
 
         self._prefix_or_suffix = True  # flag if buffer is now prefix
-        self._cls_ctx = None  # current class definition context
 
         self._prefix = ''  # codes before insersion point
         self._suffix = ''  # codes after insersion point
@@ -235,47 +241,40 @@ class Context:
         # leaf node
         self += node.get_code()
 
-    def _process_suite_node(self, node, func=False):
+    def _process_suite_node(self, node, func=False, cls_ctx=None):
         """Process indented suite (`suite` or ...).
 
         Args:
          - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, suite node
          - `func` -- `bool`, if the suite is of function definition
+         - `cls_ctx` -- `Optional[str]`, class name when suite if of class contextion
 
         """
         if not self.has_walrus(node):
             self += node.get_code()
             return
 
+        indent = self._column + self._tabsize
+        self += self._linesep + '\t'.expandtabs(indent)
+
         if func:
             keyword = 'nonlocal'
         else:
             keyword = self._keyword
 
-        indent = self._column + self._tabsize
-        self += self._linesep + '\t'.expandtabs(indent)
-
         # process suite
-        ctx = Context(node=node, context=self._context,
-                      column=indent, tabsize=self._tabsize,
-                      linesep=self._linesep, keyword=keyword)
+        if cls_ctx is None:
+            ctx = Context(node=node, context=self._context,
+                          column=indent, tabsize=self._tabsize,
+                          linesep=self._linesep, keyword=keyword)
+        else:
+            ctx = ClassContext(cls_ctx=cls_ctx,
+                               node=node, context=self._context,
+                               column=indent, tabsize=self._tabsize,
+                               linesep=self._linesep, keyword=keyword)
+
         self += ctx.string.lstrip()
         self._context.extend(ctx.global_stmt)
-
-    def _process_class_suite(self, node):
-        """Process class suite (`suite`).
-
-        Args:
-         - `node` -- `parso.python.tree.PythonNode`, suite node
-
-        """
-        for child in node.children:
-            if child.type == 'simple_stmt':
-                self._cls_ctx = True
-                self._process(child)
-                self._cls_ctx = False
-            else:
-                self._process(child)
 
     def _process_namedexpr_test(self, node):
         """Process assignment expression (`namedexpr_test`).
@@ -316,7 +315,7 @@ class Context:
         expr = ctx.string.strip()
 
         # replacing codes
-        code = NAME_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
+        code = CALL_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
         prefix, suffix = get_whitespaces(node)
         self += prefix + code + suffix
 
@@ -358,6 +357,27 @@ class Context:
 
         # process code
         self += node.get_code()
+
+    def _process_classdef(self, node):
+        """Process class definition (``classdef``).
+
+        Args:
+         - `node` -- `parso.python.tree.Class`, class node
+
+        """
+        # <Name: ...>
+        name = node.name
+
+        # <Keyword: class>
+        # <Name: ...>
+        # [<Operator: (>, PythonNode(arglist, [...]]), <Operator: )>]
+        # <Operator: :>
+        for child in node.children[:-1]:
+            self._process(child)
+
+        # PythonNode(suite, [...]) / PythonNode(simple_stmt, [...])
+        suite = node.children[-1]
+        self._process_suite_node(suite, cls_ctx=name.value)
 
     def _process_funcdef(self, node):
         """Process function definition (``funcdef``).
@@ -581,7 +601,7 @@ class Context:
             ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + linesep
 
         # finally, the suffix codes
-        if not suffix.startswith(self._linesep):
+        if self._buffer and not suffix.startswith(self._linesep):
             self._buffer += self._linesep
         self._buffer += suffix
 
@@ -735,6 +755,112 @@ class Context:
         if node.type == 'operator' and node.value == ':=':
             return True
         return False
+
+
+class ClassContext(Context):
+    """Class (suite) conversion context."""
+
+    def __init__(self, cls_ctx, node, column=0, tabsize=None, linesep=None, keyword=None, context=None):
+        """Conversion context.
+
+        Args:
+         - `cls_ctx` -- `str`, class context name
+         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `column` -- `int`, current indentation level
+         - `tabsize` -- `Optional[int]`, indentation tab size
+         - `linesep` -- `Optional[str]`, line seperator
+         - `keyword` -- `Optional[str]`, keyword for wrapper function
+         - `context` -- `Optional[List[str]]`, global context
+
+        Envs:
+         - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+         - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+
+        """
+        self._cls_ctx = cls_ctx
+        super().__init__(node=node, context=context,
+                         column=column, tabsize=tabsize,
+                         linesep=linesep, keyword=keyword)
+
+    def _process_namedexpr_test(self, node):
+        """Process assignment expression (`namedexpr_test`).
+
+        Args:
+         - `node` -- `parso.python.tree.PythonNode`, assignment expression node
+
+        """
+        def get_whitespaces(node):
+            """Extract whitespaces."""
+            code = node.get_code()
+
+            # preceding whitespaces
+            prefix = ''
+            for char in code:
+                if char not in ' \t\n\r\f\v':
+                    break
+                prefix += char
+
+            # succeeding whitespaces
+            suffix = ''
+            for char in reversed(code):
+                if char not in ' \t\n\r\f\v':
+                    break
+                suffix += char
+
+            return prefix, suffix
+
+        # split assignment expression
+        node_name, _, node_expr = node.children
+        name = node_name.value
+        nuid = uuid.uuid4().hex
+
+        # calculate expression string
+        ctx = ClassContext(cls_ctx=self._cls_ctx,
+                           node=node_expr, context=self._context,
+                           column=self._column, tabsize=self._tabsize,
+                           linesep=self._linesep, keyword=self._keyword)
+        expr = ctx.string.strip()
+
+        # replacing codes
+        code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
+        prefix, suffix = get_whitespaces(node)
+        self += prefix + code + suffix
+
+        self._context.extend(ctx.global_stmt)
+        if name in self._context:
+            keyword = 'global'
+        else:
+            keyword = self._keyword
+
+        # keep records
+        self._vars.append(name)
+        self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
+
+    def _concat(self):
+        """Concatenate final string."""
+        # strip suffix comments
+        prefix, suffix = self._strip()
+
+        # first, the prefix codes
+        self._buffer += self._prefix + prefix
+
+        # then, the class and functions
+        indent = '\t'.expandtabs(self._column)
+        tabsize = '\t'.expandtabs(self._tabsize)
+        linesep = self._linesep
+        if self._func:
+            self._buffer += indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(CLS_NAME_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx) + linesep
+        for func in sorted(self._func, key=lambda func: func['name']):
+            self._buffer += linesep + indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(CLS_FUNC_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx, **func) + linesep
+
+        # finally, the suffix codes
+        if not suffix.startswith(self._linesep):
+            self._buffer += self._linesep
+        self._buffer += suffix
 
 
 def convert(string, source='<unknown>'):

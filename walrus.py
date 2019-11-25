@@ -95,9 +95,8 @@ def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 LCL_DICT_TEMPLATE = 'walrus_wrapper_%(cls)s_dict = dict()'
 LCL_NAME_TEMPLATE = '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s(locals())'
 LCL_VARS_TEMPLATE = '''\
-for %(cls)s_k, %(cls)s_v in walrus_wrapper_%(cls)s_dict.items():
-%(tabsize)ssetattr(%(cls)s, %(cls)s_k, %(cls)s_v)
-del walrus_wrapper_%(cls)s_dict, %(cls)s_k, %(cls)s_v
+[setattr(%(cls)s, k, v) for k, v in walrus_wrapper_%(cls)s_dict.items()]
+del walrus_wrapper_%(cls)s_dict
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 ## class clause
 CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set_%(name)s_%(uuid)s(%(expr)s)'

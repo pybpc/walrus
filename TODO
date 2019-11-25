@@ -1,24 +1,24 @@
 ### November 24th, 2019
 
-[ ] resolve *classvar* conversion issue
+- [x] resolve *classvar* conversion issue
 
 ### November 18th, 2019
 
-[ ] work through unittest
+- [x] work through unittest
 
 ### November 16th, 2019
 
-[x] implement class conversion
-[x] work on comprehension conversion
+- [x] implement class conversion
+- [x] work on comprehension conversion
 
 ### November 8th, 2019
 
-[x] test current implementation
+- [x] test current implementation
 
 ### October 29th, 2019
 
-[x] design the conversion algorithm
+- [x] design the conversion algorithm
 
 ### June 10th, 2019
 
-[x] initiate project
+- [x] initiate project

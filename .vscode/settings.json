@@ -21,7 +21,14 @@
         "parso",
         "sched",
         "sdef",
+        "sexcept",
+        "slocals",
+        "spass",
+        "sraise",
         "sreturn",
+        "ssetattr",
+        "stry",
+        "swalrus",
         "sysconf"
     ]
 }

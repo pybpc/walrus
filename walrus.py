@@ -91,17 +91,40 @@ def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 # special templates for ClassVar
-CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.%(name)s_%(uuid)s(%(expr)s)'
+## locals dict
+LCL_DICT_TEMPLATE = 'walrus_wrapper_%(cls)s_dict = dict()'
+LCL_NAME_TEMPLATE = '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s(locals())'
+LCL_VARS_TEMPLATE = '''\
+for %(cls)s_k, %(cls)s_v in walrus_wrapper_%(cls)s_dict.items():
+%(tabsize)ssetattr(%(cls)s, %(cls)s_k, %(cls)s_v)
+del walrus_wrapper_%(cls)s_dict, %(cls)s_k, %(cls)s_v
+'''.splitlines()  # `str.splitlines` will remove trailing newline
+## class clause
+CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set_%(name)s_%(uuid)s(%(expr)s)'
 CLS_NAME_TEMPLATE = '''\
 class __WalrusWrapper%(cls)s:
 %(tabsize)s"""Wrapper class for assignment expression."""
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 CLS_FUNC_TEMPLATE = '''\
 %(tabsize)s@staticmethod
-%(tabsize)sdef %(name)s_%(uuid)s(expr):
+%(tabsize)sdef set_%(name)s_%(uuid)s(expr):
 %(tabsize)s%(tabsize)s"""Wrapper function for assignment expression."""
-%(tabsize)s%(tabsize)s%(cls)s.%(name)s = expr
-%(tabsize)s%(tabsize)sreturn %(cls)s.%(name)s
+%(tabsize)s%(tabsize)swalrus_wrapper_%(cls)s_dict[%(name)r] = expr
+%(tabsize)s%(tabsize)sreturn walrus_wrapper_%(cls)s_dict[%(name)r]
+
+%(tabsize)s@staticmethod
+%(tabsize)sdef get_%(name)s_%(uuid)s(locals_=locals()):
+%(tabsize)s%(tabsize)s"""Wrapper function for assignment expression."""
+%(tabsize)s%(tabsize)s# get value from buffer dict
+%(tabsize)s%(tabsize)stry:
+%(tabsize)s%(tabsize)s%(tabsize)sreturn walrus_wrapper_%(cls)s_dict[%(name)r]
+%(tabsize)s%(tabsize)sexcept KeyError:
+%(tabsize)s%(tabsize)s%(tabsize)spass
+%(tabsize)s%(tabsize)s# get value from locals dict
+%(tabsize)s%(tabsize)stry:
+%(tabsize)s%(tabsize)s%(tabsize)sreturn locals_[%(name)r]
+%(tabsize)s%(tabsize)sexcept KeyError as error:
+%(tabsize)s%(tabsize)s%(tabsize)sraise NameError('name %%r is not defined' %% %(name)r).with_traceback(error.__traceback__)
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 
@@ -140,12 +163,23 @@ class Context:
         return self._buffer
 
     @property
+    def variables(self):
+        return self._vars
+
+    @property
+    def functions(self):
+        return self._func
+
+    @property
     def global_stmt(self):
         if self._root.type == 'funcdef':
             return list()
         return self._context
 
-    def __init__(self, node, column=0, tabsize=None, linesep=None, keyword=None, context=None):
+    def __init__(self, node,
+                 column=0, tabsize=None,
+                 linesep=None, keyword=None,
+                 context=None, raw=False):
         """Conversion context.
 
         Args:
@@ -155,6 +189,7 @@ class Context:
          - `linesep` -- `Optional[str]`, line seperator
          - `keyword` -- `Optional[str]`, keyword for wrapper function
          - `context` -- `Optional[List[str]]`, global context
+         - `raw` -- `bool`, raw processing flag
 
         Envs:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
@@ -187,7 +222,10 @@ class Context:
         self._func = list()  # wrapper functions ({name, uuid, keyword})
 
         self._walk(node)  # traverse children
-        self._concat()  # generate final result
+        if raw:
+            self._buffer = self._prefix + self._suffix
+        else:
+            self._concat()  # generate final result
 
     def __iadd__(self, code):
         if self._prefix_or_suffix:
@@ -311,8 +349,10 @@ class Context:
         # calculate expression string
         ctx = Context(node=node_expr, context=self._context,
                       column=self._column, tabsize=self._tabsize,
-                      linesep=self._linesep, keyword=self._keyword)
+                      linesep=self._linesep, keyword=self._keyword, raw=True)
         expr = ctx.string.strip()
+        self._vars.extend(ctx.variables)
+        self._func.extend(ctx.functions)
 
         # replacing codes
         code = CALL_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
@@ -365,8 +405,14 @@ class Context:
          - `node` -- `parso.python.tree.Class`, class node
 
         """
+        flag = self.has_walrus(node)
+
         # <Name: ...>
         name = node.name
+        if flag:
+            self += '\t'.expandtabs(self._column) \
+                 + LCL_DICT_TEMPLATE % dict(cls=name.value) \
+                 + self._linesep
 
         # <Keyword: class>
         # <Name: ...>
@@ -378,6 +424,13 @@ class Context:
         # PythonNode(suite, [...]) / PythonNode(simple_stmt, [...])
         suite = node.children[-1]
         self._process_suite_node(suite, cls_ctx=name.value)
+
+        if flag:
+            indent = '\t'.expandtabs(self._column)
+            tabsize = '\t'.expandtabs(self._tabsize)
+
+            self += ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(tabsize=tabsize, cls=name.value) \
+                 + self._linesep
 
     def _process_funcdef(self, node):
         """Process function definition (``funcdef``).
@@ -760,7 +813,14 @@ class Context:
 class ClassContext(Context):
     """Class (suite) conversion context."""
 
-    def __init__(self, cls_ctx, node, column=0, tabsize=None, linesep=None, keyword=None, context=None):
+    @property
+    def cls_var(self):
+        return self._cls_var
+
+    def __init__(self, cls_ctx, node,
+                 column=0, tabsize=None,
+                 linesep=None, keyword=None,
+                 context=None, raw=False, cls_var=None):
         """Conversion context.
 
         Args:
@@ -771,16 +831,63 @@ class ClassContext(Context):
          - `linesep` -- `Optional[str]`, line seperator
          - `keyword` -- `Optional[str]`, keyword for wrapper function
          - `context` -- `Optional[List[str]]`, global context
+         - `raw` -- `bool`, raw context processing flag
+         - `cls_var` -- `Dict[str, str]`, mapping for assignment variable and its UUID
 
         Envs:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
          - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
 
         """
+        if cls_var is None:
+            cls_var = dict()
+
+        self._cls_raw = raw
+        self._cls_var = cls_var
         self._cls_ctx = cls_ctx
+
         super().__init__(node=node, context=context,
                          column=column, tabsize=tabsize,
-                         linesep=linesep, keyword=keyword)
+                         linesep=linesep, keyword=keyword, raw=raw)
+
+    def _process_suite_node(self, node, func=False, cls_ctx=None):
+        """Process indented suite (`suite` or ...).
+
+        Args:
+         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, suite node
+         - `func` -- `bool`, if the suite is of function definition
+         - `cls_ctx` -- `Optional[str]`, class name when suite if of class contextion
+
+        """
+        if not self.has_walrus(node):
+            self += node.get_code()
+            return
+
+        indent = self._column + self._tabsize
+        self += self._linesep + '\t'.expandtabs(indent)
+
+        if cls_ctx is None:
+            cls_ctx = self._cls_ctx
+        cls_var = self._cls_var
+
+        if func:
+            keyword = 'nonlocal'
+
+            # process suite
+            ctx = Context(node=node, context=self._context,
+                          column=indent, tabsize=self._tabsize,
+                          linesep=self._linesep, keyword=keyword)
+        else:
+            keyword = self._keyword
+
+            # process suite
+            ctx = ClassContext(cls_ctx=cls_ctx, cls_var=cls_var,
+                               node=node, context=self._context,
+                               column=indent, tabsize=self._tabsize,
+                               linesep=self._linesep, keyword=keyword)
+
+        self += ctx.string.lstrip()
+        self._context.extend(ctx.global_stmt)
 
     def _process_namedexpr_test(self, node):
         """Process assignment expression (`namedexpr_test`).
@@ -815,11 +922,14 @@ class ClassContext(Context):
         nuid = uuid.uuid4().hex
 
         # calculate expression string
-        ctx = ClassContext(cls_ctx=self._cls_ctx,
+        ctx = ClassContext(cls_ctx=self._cls_ctx, cls_var=self._cls_var,
                            node=node_expr, context=self._context,
                            column=self._column, tabsize=self._tabsize,
-                           linesep=self._linesep, keyword=self._keyword)
+                           linesep=self._linesep, keyword=self._keyword, raw=True)
         expr = ctx.string.strip()
+        self._vars.extend(ctx.variables)
+        self._func.extend(ctx.functions)
+        self._cls_var.update(ctx.cls_var)
 
         # replacing codes
         code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
@@ -835,6 +945,23 @@ class ClassContext(Context):
         # keep records
         self._vars.append(name)
         self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
+        self._cls_var[name] = nuid
+
+    def _process_name(self, node):
+        """Process variable name (`name`).
+
+        Args:
+         - `node` -- `parso.python.tree.Name`, variable name
+
+        """
+        name = node.value
+
+        if name in self._cls_var:
+            self += LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=self._cls_var[name])
+            return
+
+        # normal processing
+        self += node.get_code()
 
     def _concat(self):
         """Concatenate final string."""
@@ -848,7 +975,7 @@ class ClassContext(Context):
         indent = '\t'.expandtabs(self._column)
         tabsize = '\t'.expandtabs(self._tabsize)
         linesep = self._linesep
-        if self._func:
+        if self._vars:
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(CLS_NAME_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx) + linesep

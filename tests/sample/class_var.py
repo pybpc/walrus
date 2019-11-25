@@ -7,6 +7,8 @@ class A:
     print(x := x + 1)
     print(y := x + 10)
     print(y + 100)
+    y = 999
+    print(y)
 
 
 print(x)

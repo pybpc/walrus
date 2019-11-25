@@ -18,8 +18,6 @@ intelligent, yet imperfect, solution of a **backport compiler** by replacing *as
 old-fashioned assignment-then-conditional syntax, which guarantees you to always write *assignment expressions* in
 Python 3.8 flavour then compile for compatibility later.
 
-**NB**: `walrus` currently can only support *assignment expressions* used in `if` statements.
-
 ## Installation
 
 > Note that `walrus` only supports Python versions __since 3.3__ 🐍
@@ -73,7 +71,7 @@ optional arguments:
 archive options:
   duplicate original files in case there's any issue
 
-  -n, --no-archive      do not archive original files
+  -na, --no-archive     do not archive original files
   -p PATH, --archive-path PATH
                         path to archive original files (${CWD}/archive)
 
@@ -87,6 +85,8 @@ convert options:
   -s SEP, --linesep SEP
                         line separator to process source files (${OS_LINESEP})
   -nl, --no-linting     do not lint converted codes
+  -t INDENT, --tabsize INDENT
+                        indentation tab size (4)
 ```
 
 &emsp; `walrus` will read then convert all *assignment expressions* syntax in every Python
@@ -108,6 +108,7 @@ such functions to check assignment expressions at runtime, if `-nl` not set.
 - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
+- `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
 
 ### APIs
 
@@ -128,6 +129,7 @@ Envs:
 - `WALRUS_VERSION`-- convert against Python version (same as `--python` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
+- `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
 
 Raises:
 
@@ -149,6 +151,7 @@ Envs:
 - `WALRUS_VERSION`-- convert against Python version (same as `--python` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
+- `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
 
 Returns:
 
@@ -167,7 +170,7 @@ class ConvertError(SyntaxError):
 
 ## Test
 
-&emsp; See [`test.py`](https://github.com/JarryShaw/walrus/blob/master/scripts/test.py).
+&emsp; See [`tests`](https://github.com/JarryShaw/walrus/blob/master/tests) folder.
 
 ## Contribution
 

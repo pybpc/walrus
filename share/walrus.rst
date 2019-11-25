@@ -6,8 +6,8 @@ walrus
 back-port compiler for Python 3.8 assignment expression
 -------------------------------------------------------
 
-:Version: v0.3.1
-:Date: October 24, 2019
+:Version: v0.1.0
+:Date: November 25, 2019
 :Manual section: 1
 :Author:
     Jarry Shaw, a newbie programmer, is the author, owner and maintainer
@@ -23,7 +23,13 @@ walrus [*options*] <*python source files and folders*> ...
 DESCRIPTION
 ===========
 
-
+Since PEP 572, Python introduced *assignment expressions* syntax in
+version __3.8__. For those who wish to use *assignment expressions*
+in their code, `walrus` provides an intelligent, yet imperfect,
+solution of a **backport compiler** by replacing *assignment expressions*
+syntax with old-fashioned assignment-then-conditional syntax, which
+guarantees you to always write *assignment expressions* in Python 3.8
+flavour then compile for compatibility later.
 
 OPTIONS
 =======
@@ -66,6 +72,9 @@ compatibility configuration for none-unicode files
 
 -nl, --no-linting     do not lint converted codes
 
+-t *INDENT*, --tabsize *INDENT*
+                      indentation tab size
+
 ENVIRONMENT
 ===========
 
@@ -76,6 +85,7 @@ ENVIRONMENT
 :WALRUS_VERSION:      convert against Python version
 :WALRUS_LINESEP:      line separator to process source files
 :WALRUS_LINTING:      lint converted codes
+:WALRUS_TABSIZE:      indentation tab size
 
 SEE ALSO
 ========

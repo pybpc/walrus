@@ -31,7 +31,7 @@ finally:    # alias and aftermath
     del multiprocessing
 
 # version string
-__version__ = '0.1.0.dev0'
+__version__ = '0.1.0'
 
 # from configparser
 BOOLEAN_STATES = {'1': True, '0': False,
@@ -194,6 +194,7 @@ class Context:
         Envs:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
          - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+         - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
         """
         if tabsize is None:
@@ -204,6 +205,7 @@ class Context:
             keyword = self.guess_keyword(node)
         if context is None:
             context = list()
+        self._linting = BOOLEAN_STATES.get(os.getenv('WALRUS_LINTING', '0').casefold(), False)
 
         self._root = node  # root node
         self._column = column  # current indentation
@@ -213,6 +215,7 @@ class Context:
         self._context = list(context)  # names in global statements
 
         self._prefix_or_suffix = True  # flag if buffer is now prefix
+        self._node_before_walrus = None  # node preceding node with walrus
 
         self._prefix = ''  # codes before insersion point
         self._suffix = ''  # codes after insersion point
@@ -246,10 +249,13 @@ class Context:
         """
         # process node
         if hasattr(node, 'children'):
+            last_node = None
             for child in node.children:
                 if self.has_walrus(child):
                     self._prefix_or_suffix = False
+                    self._node_before_walrus = last_node
                 self._process(child)
+                last_node = child
             return
 
         # process leaf
@@ -321,26 +327,6 @@ class Context:
          - `node` -- `parso.python.tree.PythonNode`, assignment expression node
 
         """
-        def get_whitespaces(node):
-            """Extract whitespaces."""
-            code = node.get_code()
-
-            # preceding whitespaces
-            prefix = ''
-            for char in code:
-                if char not in ' \t\n\r\f\v':
-                    break
-                prefix += char
-
-            # succeeding whitespaces
-            suffix = ''
-            for char in reversed(code):
-                if char not in ' \t\n\r\f\v':
-                    break
-                suffix += char
-
-            return prefix, suffix
-
         # split assignment expression
         node_name, _, node_expr = node.children
         name = node_name.value
@@ -356,7 +342,7 @@ class Context:
 
         # replacing codes
         code = CALL_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
-        prefix, suffix = get_whitespaces(node)
+        prefix, suffix = self.extract_whitespaces(node)
         self += prefix + code + suffix
 
         self._context.extend(ctx.global_stmt)
@@ -414,6 +400,9 @@ class Context:
                  + LCL_DICT_TEMPLATE % dict(cls=name.value) \
                  + self._linesep
 
+            if self._linting:
+                self += self._linesep * self.missing_whitespaces(node.get_code(), blank=2, direction=True)
+
         # <Keyword: class>
         # <Name: ...>
         # [<Operator: (>, PythonNode(arglist, [...]]), <Operator: )>]
@@ -428,6 +417,9 @@ class Context:
         if flag:
             indent = '\t'.expandtabs(self._column)
             tabsize = '\t'.expandtabs(self._tabsize)
+
+            if self._linting:
+                self += self._linesep * self.missing_whitespaces(node.get_code(), blank=2, direction=False)
 
             self += ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(tabsize=tabsize, cls=name.value) \
                  + self._linesep
@@ -634,28 +626,41 @@ class Context:
 
     def _concat(self):
         """Concatenate final string."""
+        flag = self.has_walrus(self._root)
+
         # strip suffix comments
         prefix, suffix = self._strip()
 
         # first, the prefix codes
         self._buffer += self._prefix + prefix
+        if self._linting:
+            if self._node_before_walrus is None:
+                blank = 0
+            elif self._node_before_walrus.type in ('funcdef', 'classdef'):
+                blank = 2
+            else:
+                blank = 1
+            self._buffer += self._linesep * self.missing_whitespaces(self._buffer, blank=blank, direction=False)
 
         # then, the variables and functions
         indent = '\t'.expandtabs(self._column)
         tabsize = '\t'.expandtabs(self._tabsize)
+        if self._linting:
+            linesep = self._linesep * (1 if self._column > 0 else 2)
+        else:
+            linesep = ''
         for var in sorted(set(self._vars)):
             self._buffer += '%(indent)s%(name)s = locals().get(%(name)r)%(linesep)s' % dict(
                 indent=indent, name=var, linesep=self._linesep,
             )
-        linesep = self._linesep * (1 if self._column > 0 else 2)
         for func in sorted(self._func, key=lambda func: func['name']):
             self._buffer += linesep + indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + linesep
+            ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + self._linesep
 
         # finally, the suffix codes
-        if self._buffer and not suffix.startswith(self._linesep):
-            self._buffer += self._linesep
+        if flag and self._linting:
+            self._buffer += self._linesep * self.missing_whitespaces(suffix, blank=2, direction=True)
         self._buffer += suffix
 
     def _strip(self):
@@ -809,6 +814,63 @@ class Context:
             return True
         return False
 
+    @staticmethod
+    def missing_whitespaces(code, blank, direction):
+        """Count missing preceding or succeeding blank lines.
+
+        Args:
+         - `code` -- `str`, source code
+         - `direction` -- `bool`, `True` for preceding; `False` for succeeding
+
+        Returns:
+         - `int` -- number of preceding blank lines
+
+        """
+        lines = code.splitlines()
+        if not direction:
+            lines = reversed(code.splitlines())
+
+        count = 0
+        for line in lines:
+            if line.strip():
+                break
+            count += 1
+
+        missing = blank - count
+        if missing > 0:
+            return missing
+        return 0
+
+    @staticmethod
+    def extract_whitespaces(node):
+        """Extract preceding and succeeding whitespaces.
+
+        Args:
+         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+
+        Returns:
+         - `str` -- preceding whitespaces
+         - `str` -- succeeding whitespaces
+
+        """
+        code = node.get_code()
+
+        # preceding whitespaces
+        prefix = ''
+        for char in code:
+            if char not in ' \t\n\r\f\v':
+                break
+            prefix += char
+
+        # succeeding whitespaces
+        suffix = ''
+        for char in reversed(code):
+            if char not in ' \t\n\r\f\v':
+                break
+            suffix += char
+
+        return prefix, suffix
+
 
 class ClassContext(Context):
     """Class (suite) conversion context."""
@@ -837,6 +899,7 @@ class ClassContext(Context):
         Envs:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
          - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+         - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
         """
         if cls_var is None:
@@ -896,26 +959,6 @@ class ClassContext(Context):
          - `node` -- `parso.python.tree.PythonNode`, assignment expression node
 
         """
-        def get_whitespaces(node):
-            """Extract whitespaces."""
-            code = node.get_code()
-
-            # preceding whitespaces
-            prefix = ''
-            for char in code:
-                if char not in ' \t\n\r\f\v':
-                    break
-                prefix += char
-
-            # succeeding whitespaces
-            suffix = ''
-            for char in reversed(code):
-                if char not in ' \t\n\r\f\v':
-                    break
-                suffix += char
-
-            return prefix, suffix
-
         # split assignment expression
         node_name, _, node_expr = node.children
         name = node_name.value
@@ -933,7 +976,7 @@ class ClassContext(Context):
 
         # replacing codes
         code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
-        prefix, suffix = get_whitespaces(node)
+        prefix, suffix = self.extract_whitespaces(node)
         self += prefix + code + suffix
 
         self._context.extend(ctx.global_stmt)
@@ -957,7 +1000,8 @@ class ClassContext(Context):
         name = node.value
 
         if name in self._cls_var:
-            self += LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=self._cls_var[name])
+            prefix, _ = self.extract_whitespaces(node)
+            self += prefix + LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=self._cls_var[name])
             return
 
         # normal processing
@@ -975,7 +1019,9 @@ class ClassContext(Context):
         indent = '\t'.expandtabs(self._column)
         tabsize = '\t'.expandtabs(self._tabsize)
         linesep = self._linesep
-        if self._vars:
+        if self.has_walrus(self._root):
+            if self._linting:
+                self._buffer += self._linesep * self.missing_whitespaces(self._buffer, blank=1, direction=False)
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(CLS_NAME_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx) + linesep
@@ -985,8 +1031,8 @@ class ClassContext(Context):
             ).join(CLS_FUNC_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx, **func) + linesep
 
         # finally, the suffix codes
-        if not suffix.startswith(self._linesep):
-            self._buffer += self._linesep
+        if self._linting:
+            self._buffer += self._linesep * self.missing_whitespaces(suffix, blank=1, direction=True)
         self._buffer += suffix
 
 
@@ -1000,6 +1046,7 @@ def convert(string, source='<unknown>'):
     Envs:
      - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
      - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+     - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
     Returns:
      - `str` -- converted string
@@ -1026,6 +1073,7 @@ def walrus(filename):
      - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
      - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
      - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+     - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
     """
     WALRUS_QUIET = BOOLEAN_STATES.get(os.getenv('WALRUS_QUIET', '0').casefold(), False)

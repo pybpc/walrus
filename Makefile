@@ -1,5 +1,7 @@
+export PIPENV_VERBOSITY=-1
+
 # get version string
-version  = $(shell cat poseur.py | grep "^__version__" | sed "s/__version__ = '\(.*\)'/\1/")
+version  = $(shell cat walrus.py | grep "^__version__" | sed "s/__version__ = '\(.*\)'/\1/")
 
 after: git-after
 clean: pypi-clean
@@ -25,8 +27,8 @@ formula: setup-formula
 	set -ae
 	cd Tap
 	git pull
-	git add Formula/poseur.rb
-	git commit -S -m "poseur: $(version)"
+	git add Formula/walrus.rb
+	git commit -S -m "walrus: $(version)"
 	git push
 
 test:
@@ -91,7 +93,7 @@ setup-formula: setup-version pipenv-update
 	pipenv run python scripts/setup-formula.py
 
 setup-manual: setup-version
-	pipenv run rst2man.py share/poseur.rst > share/poseur.1
+	pipenv run rst2man.py share/walrus.rst > share/walrus.1
 
 git-upload:
 	git pull
@@ -108,7 +110,7 @@ git-after:
 git-release:
 	go run github.com/aktau/github-release release \
 	    --user JarryShaw \
-	    --repo poseur \
+	    --repo walrus \
 	    --tag "v$(version)" \
-	    --name "poseur v$(version)" \
+	    --name "walrus v$(version)" \
 	    --description "$$(git log -1 --pretty=%B)"

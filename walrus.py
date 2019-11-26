@@ -31,7 +31,7 @@ finally:    # alias and aftermath
     del multiprocessing
 
 # version string
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 # from configparser
 BOOLEAN_STATES = {'1': True, '0': False,
@@ -92,12 +92,12 @@ def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 
 # special templates for ClassVar
 ## locals dict
-LCL_DICT_TEMPLATE = 'walrus_wrapper_%(cls)s_dict = dict()'
-LCL_NAME_TEMPLATE = 'walrus_wrapper_%(cls)s_dict[%(name)r]'
+LCL_DICT_TEMPLATE = '_walrus_wrapper_%(cls)s_dict = dict()'
+LCL_NAME_TEMPLATE = '_walrus_wrapper_%(cls)s_dict[%(name)r]'
 LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s(locals())'
 LCL_VARS_TEMPLATE = '''\
-[setattr(%(cls)s, k, v) for k, v in walrus_wrapper_%(cls)s_dict.items()]
-del walrus_wrapper_%(cls)s_dict
+[setattr(%(cls)s, k, v) for k, v in _walrus_wrapper_%(cls)s_dict.items()]
+del _walrus_wrapper_%(cls)s_dict
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 ## class clause
 CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set_%(name)s_%(uuid)s(%(expr)s)'
@@ -109,15 +109,15 @@ CLS_FUNC_TEMPLATE = '''\
 %(tabsize)s@staticmethod
 %(tabsize)sdef set_%(name)s_%(uuid)s(expr):
 %(tabsize)s%(tabsize)s"""Wrapper function for assignment expression."""
-%(tabsize)s%(tabsize)swalrus_wrapper_%(cls)s_dict[%(name)r] = expr
-%(tabsize)s%(tabsize)sreturn walrus_wrapper_%(cls)s_dict[%(name)r]
+%(tabsize)s%(tabsize)s_walrus_wrapper_%(cls)s_dict[%(name)r] = expr
+%(tabsize)s%(tabsize)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
 
 %(tabsize)s@staticmethod
 %(tabsize)sdef get_%(name)s_%(uuid)s(locals_=locals()):
 %(tabsize)s%(tabsize)s"""Wrapper function for assignment expression."""
 %(tabsize)s%(tabsize)s# get value from buffer dict
 %(tabsize)s%(tabsize)stry:
-%(tabsize)s%(tabsize)s%(tabsize)sreturn walrus_wrapper_%(cls)s_dict[%(name)r]
+%(tabsize)s%(tabsize)s%(tabsize)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
 %(tabsize)s%(tabsize)sexcept KeyError:
 %(tabsize)s%(tabsize)s%(tabsize)spass
 
@@ -393,17 +393,27 @@ class Context:
 
         """
         flag = self.has_walrus(node)
+        code = node.get_code()
 
         # <Name: ...>
         name = node.name
         if flag:
+            if self._linting:
+                buffer = self._prefix if self._prefix_or_suffix else self._suffix
+
+                self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix=code,
+                                                                 blank=1, linesep=self._linesep)
+
             self += '\t'.expandtabs(self._column) \
                  + LCL_DICT_TEMPLATE % dict(cls=name.value) \
                  + self._linesep
 
             if self._linting:
-                count = self.missing_whitespaces(node.get_code(), blank=2, direction=True)
-                self += self._linesep * count
+                blank = 2 if self._column == 0 else 1
+                buffer = self._prefix if self._prefix_or_suffix else self._suffix
+
+                self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix=code,
+                                                                 blank=1, linesep=self._linesep)
 
         # <Keyword: class>
         # <Name: ...>
@@ -421,14 +431,25 @@ class Context:
             tabsize = '\t'.expandtabs(self._tabsize)
 
             if self._linting:
-                self += self._linesep * self.missing_whitespaces(node.get_code(), blank=2, direction=False)
+                blank = 2 if self._column == 0 else 1
+                buffer = self._prefix if self._prefix_or_suffix else self._suffix
+                self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix='',
+                                                                 blank=blank, linesep=self._linesep)
 
             self += indent \
                  + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(tabsize=tabsize, cls=name.value) \
                  + self._linesep
 
             if self._linting:
-                self += self._linesep * self.missing_whitespaces(node.get_code(), blank=1, direction=True)
+                buffer = self._prefix if self._prefix_or_suffix else self._suffix
+
+                code = ''
+                leaf = node.get_next_leaf()
+                while leaf is not None:
+                    code += leaf.get_code()
+                    leaf = leaf.get_next_leaf()
+                self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix=code,
+                                                                 blank=1, linesep=self._linesep)
 
     def _process_funcdef(self, node):
         """Process function definition (``funcdef``).
@@ -639,14 +660,15 @@ class Context:
 
         # first, the prefix codes
         self._buffer += self._prefix + prefix
-        if self._linting:
-            if self._node_before_walrus is None:
-                blank = 0
-            elif self._node_before_walrus.type in ('funcdef', 'classdef'):
+        if flag and self._linting and self._vars:
+            if (self._node_before_walrus is not None \
+                    and self._node_before_walrus.type in ('funcdef', 'classdef') \
+                    and self._column == 0):
                 blank = 2
             else:
                 blank = 1
-            self._buffer += self._linesep * self.missing_whitespaces(self._buffer, blank=blank, direction=False)
+            self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix='',
+                                                                     blank=blank, linesep=self._linesep)
 
         # then, the variables and functions
         indent = '\t'.expandtabs(self._column)
@@ -665,8 +687,10 @@ class Context:
             ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + self._linesep
 
         # finally, the suffix codes
-        if flag and self._linting:
-            self._buffer += self._linesep * self.missing_whitespaces(suffix, blank=2, direction=True)
+        if flag and self._linting and self._vars:
+            blank = 2 if self._column == 0 else 1
+            self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=suffix,
+                                                                     blank=blank, linesep=self._linesep)
         self._buffer += suffix
 
     def _strip(self):
@@ -821,28 +845,35 @@ class Context:
         return False
 
     @staticmethod
-    def missing_whitespaces(code, blank, direction):
+    def missing_whitespaces(prefix, suffix, blank, linesep):
         """Count missing preceding or succeeding blank lines.
 
         Args:
-         - `code` -- `str`, source code
-         - `direction` -- `bool`, `True` for preceding; `False` for succeeding
+         - `prefix` -- `str`, preceding source code
+         - `suffix` -- `str`, succeeding source code
+         - `blank` -- `int`, number of expecting blank lines
+         - `linesep` -- `str`, line seperator
 
         Returns:
          - `int` -- number of preceding blank lines
 
         """
-        lines = code.splitlines()
-        if not direction:
-            lines = reversed(code.splitlines())
+        count = -1  # keep trailing newline in `prefix`
+        if prefix:
+            for line in reversed(prefix.split(linesep)):
+                if line.strip():
+                    break
+                count += 1
+        if suffix:
+            for line in suffix.split(linesep):
+                if line.strip():
+                    break
+                count += 1
 
-        count = 0
-        for line in lines:
-            if line.strip():
-                break
-            count += 1
-
+        if count < 0:
+            count = 0
         missing = blank - count
+
         if missing > 0:
             return missing
         return 0
@@ -1051,6 +1082,8 @@ class ClassContext(Context):
 
     def _concat(self):
         """Concatenate final string."""
+        flag = self.has_walrus(self._root)
+
         # strip suffix comments
         prefix, suffix = self._strip()
 
@@ -1061,9 +1094,16 @@ class ClassContext(Context):
         indent = '\t'.expandtabs(self._column)
         tabsize = '\t'.expandtabs(self._tabsize)
         linesep = self._linesep
-        if self.has_walrus(self._root):
+        if flag:
             if self._linting:
-                self._buffer += self._linesep * self.missing_whitespaces(self._buffer, blank=1, direction=False)
+                if (self._node_before_walrus is not None
+                        and self._node_before_walrus.type in ('funcdef', 'classdef')
+                        and self._column == 0):
+                    blank = 2
+                else:
+                    blank = 1
+                self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix='',
+                                                                         blank=blank, linesep=self._linesep)
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(CLS_NAME_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx) + linesep
@@ -1073,8 +1113,10 @@ class ClassContext(Context):
             ).join(CLS_FUNC_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx, **func) + linesep
 
         # finally, the suffix codes
-        if self._linting:
-            self._buffer += self._linesep * self.missing_whitespaces(suffix, blank=1, direction=True)
+        if flag and self._linting:
+            blank = 2 if self._column == 0 else 1
+            self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=suffix,
+                                                                     blank=blank, linesep=self._linesep)
         self._buffer += suffix
 
 

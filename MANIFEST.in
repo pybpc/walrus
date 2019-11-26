@@ -9,3 +9,5 @@ prune .vscode
 
 prune scripts
 prune share
+prune tests
+prune Tap

@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+"""Unittest cases."""
+
 import os
 import shutil
 import subprocess
@@ -7,6 +10,7 @@ import unittest
 
 from walrus import get_parser
 from walrus import main as main_func
+from walrus import walrus as core_func
 
 # root path
 ROOT = os.path.dirname(os.path.realpath(__file__))
@@ -18,11 +22,14 @@ os.environ['WALRUS_LINESEP'] = 'LF'
 
 
 def read_text_file(filename, encoding='utf-8'):
+    """Read text file."""
     with open(filename, 'r', encoding=encoding) as file:
         return file.read()
 
 
 class TestWalrus(unittest.TestCase):
+    """Test case."""
+
     def test_get_parser(self):
         """Test the argument parser."""
         parser = get_parser()
@@ -52,6 +59,23 @@ class TestWalrus(unittest.TestCase):
                 shutil.copy(os.path.join(ROOT, 'sample', test_case + '.py'), tmpdir)
 
             main_func([tmpdir])
+
+            for test_case in all_test_cases:
+                with self.subTest(test_case=test_case):
+                    original_output = read_text_file(os.path.join(ROOT, 'sample', test_case + '.out'))
+                    converted_output = subprocess.check_output([sys.executable, os.path.join(tmpdir, test_case + '.py')], universal_newlines=True)  # pylint: disable=line-too-long
+                    self.assertEqual(original_output, converted_output)
+
+    def test_core(self):
+        """Test the core function."""
+        with tempfile.TemporaryDirectory(prefix='walrus-test') as tmpdir:
+            all_test_cases = [fn[:-3] for fn in os.listdir(os.path.join(ROOT, 'sample')) if fn.endswith('.py')]
+
+            for test_case in all_test_cases:
+                shutil.copy(os.path.join(ROOT, 'sample', test_case + '.py'), tmpdir)
+
+            for entry in os.scandir(tmpdir):
+                core_func(entry.path)
 
             for test_case in all_test_cases:
                 with self.subTest(test_case=test_case):

@@ -78,6 +78,43 @@ def predicate(filename):  # pragma: no cover
 tbtrim.set_trim_rule(predicate, strict=True, target=(ConvertError, ContextError))
 
 ###############################################################################
+# UUID 4 generator wrapper
+
+
+class UUID4Generator:
+    """UUID 4 generator wrapper to prevent UUID collisions."""
+
+    def __init__(self, dash=True):
+        """Constructor of UUID 4 generator wrapper.
+
+        Args:
+         - `dash` -- `bool`, whether the generated UUID string has dashes or not
+
+        """
+        self.used_uuids = set()
+        self.dash = dash
+
+    def gen(self):
+        """Generate a new UUID 4 string that is guaranteed not to collide with used UUIDs.
+
+        Returns:
+         - `str` -- a new UUID 4 string
+
+        """
+        while True:
+            nuid = uuid.uuid4()
+            nuid = str(nuid) if self.dash else nuid.hex
+            if nuid not in self.used_uuids:
+                break
+        self.used_uuids.add(nuid)
+        return nuid
+
+
+# Initialise a UUID4Generator for filename UUIDs.
+# In the conversion process, this will be replaced by a new UUID4Generator for identifier UUIDs.
+uuid_gen = UUID4Generator(dash=True)
+
+###############################################################################
 # Main convertion implementation
 
 # walrus wrapper template
@@ -331,7 +368,7 @@ class Context:
         # split assignment expression
         node_name, _, node_expr = node.children
         name = node_name.value
-        nuid = uuid.uuid4().hex
+        nuid = uuid_gen.gen()
 
         # calculate expression string
         ctx = Context(node=node_expr, context=self._context,
@@ -999,7 +1036,7 @@ class ClassContext(Context):
         # split assignment expression
         node_name, _, node_expr = node.children
         name = node_name.value
-        nuid = uuid.uuid4().hex
+        nuid = uuid_gen.gen()
 
         # calculate expression string
         ctx = ClassContext(cls_ctx=self._cls_ctx, cls_var=self._cls_var,
@@ -1035,7 +1072,7 @@ class ClassContext(Context):
 
         """
         name = node.value
-        nuid = uuid.uuid4().hex
+        nuid = uuid_gen.gen()
 
         prefix, _ = self.extract_whitespaces(node)
         self += prefix + LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name)
@@ -1164,6 +1201,10 @@ def walrus(filename):
     if not WALRUS_QUIET:  # pragma: no cover
         print('Now converting %r...' % filename)
 
+    # Initialise new UUID4Generator for identifier UUIDs
+    global uuid_gen
+    uuid_gen = UUID4Generator(dash=False)
+
     # fetch encoding
     encoding = os.getenv('WALRUS_ENCODING', LOCALE_ENCODING)
 
@@ -1265,7 +1306,7 @@ def rename(path, root):
 
     """
     stem, ext = os.path.splitext(path)
-    name = '%s-%s%s' % (stem, uuid.uuid4(), ext)
+    name = '%s-%s%s' % (stem, uuid_gen.gen(), ext)
     return os.path.join(root, name)
 
 

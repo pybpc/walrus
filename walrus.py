@@ -93,7 +93,8 @@ def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 # special templates for ClassVar
 ## locals dict
 LCL_DICT_TEMPLATE = 'walrus_wrapper_%(cls)s_dict = dict()'
-LCL_NAME_TEMPLATE = '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s(locals())'
+LCL_NAME_TEMPLATE = 'walrus_wrapper_%(cls)s_dict[%(name)r]'
+LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s(locals())'
 LCL_VARS_TEMPLATE = '''\
 [setattr(%(cls)s, k, v) for k, v in walrus_wrapper_%(cls)s_dict.items()]
 del walrus_wrapper_%(cls)s_dict
@@ -119,6 +120,7 @@ CLS_FUNC_TEMPLATE = '''\
 %(tabsize)s%(tabsize)s%(tabsize)sreturn walrus_wrapper_%(cls)s_dict[%(name)r]
 %(tabsize)s%(tabsize)sexcept KeyError:
 %(tabsize)s%(tabsize)s%(tabsize)spass
+
 %(tabsize)s%(tabsize)s# get value from locals dict
 %(tabsize)s%(tabsize)stry:
 %(tabsize)s%(tabsize)s%(tabsize)sreturn locals_[%(name)r]
@@ -400,7 +402,8 @@ class Context:
                  + self._linesep
 
             if self._linting:
-                self += self._linesep * self.missing_whitespaces(node.get_code(), blank=2, direction=True)
+                count = self.missing_whitespaces(node.get_code(), blank=2, direction=True)
+                self += self._linesep * count
 
         # <Keyword: class>
         # <Name: ...>
@@ -420,8 +423,12 @@ class Context:
             if self._linting:
                 self += self._linesep * self.missing_whitespaces(node.get_code(), blank=2, direction=False)
 
-            self += ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(tabsize=tabsize, cls=name.value) \
+            self += indent \
+                 + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(tabsize=tabsize, cls=name.value) \
                  + self._linesep
+
+            if self._linting:
+                self += self._linesep * self.missing_whitespaces(node.get_code(), blank=1, direction=True)
 
     def _process_funcdef(self, node):
         """Process function definition (``funcdef``).
@@ -989,6 +996,42 @@ class ClassContext(Context):
         self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
         self._cls_var[name] = nuid
 
+    def _process_defined_name(self, node):
+        """Process defined name (`name`).
+
+        Args:
+         - `node` -- `parso.python.tree.Name`, defined name node
+
+        """
+        name = node.value
+        nuid = uuid.uuid4().hex
+
+        prefix, _ = self.extract_whitespaces(node)
+        self += prefix + LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name)
+
+        self._vars.append(name)
+        self._func.append(dict(name=name, uuid=nuid, keyword=self._keyword))
+        self._cls_var[name] = nuid
+
+    def _process_expr_stmt(self, node):
+        """Process variable name (`expr_stmt`).
+
+        Args:
+         - `node` -- `parso.python.tree.ExprStmt`, expression statement
+
+        """
+        # right hand side expression
+        rhs = node.get_rhs()
+
+        for child in node.children:
+            if child == rhs:
+                self._process(child)
+                continue
+            if child.type == 'name':
+                self._process_defined_name(child)
+                continue
+            self += child.get_code()
+
     def _process_name(self, node):
         """Process variable name (`name`).
 
@@ -1000,7 +1043,7 @@ class ClassContext(Context):
 
         if name in self._cls_var:
             prefix, _ = self.extract_whitespaces(node)
-            self += prefix + LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=self._cls_var[name])
+            self += prefix + LCL_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=self._cls_var[name])
             return
 
         # normal processing

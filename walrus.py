@@ -1173,6 +1173,10 @@ def convert(string, source='<unknown>'):
      - `str` -- converted string
 
     """
+    # Initialise new UUID4Generator for identifier UUIDs
+    global uuid_gen
+    uuid_gen = UUID4Generator(dash=False)
+
     # parse source string
     module = parse(string, source)
 
@@ -1200,10 +1204,6 @@ def walrus(filename):
     WALRUS_QUIET = BOOLEAN_STATES.get(os.getenv('WALRUS_QUIET', '0').casefold(), False)
     if not WALRUS_QUIET:  # pragma: no cover
         print('Now converting %r...' % filename)
-
-    # Initialise new UUID4Generator for identifier UUIDs
-    global uuid_gen
-    uuid_gen = UUID4Generator(dash=False)
 
     # fetch encoding
     encoding = os.getenv('WALRUS_ENCODING', LOCALE_ENCODING)

@@ -3,6 +3,13 @@ Got 2 bytes b'\xde\xad'
 Got 2 bytes b'\xbe\xef'
 Got 2 bytes b'\xca\xfe'
 Got 2 bytes b'\xba\xbe'
+You entered: help
+You entered: list
 [3628800, 13168189440000, 47784725839872000000]
 3628800
 [20, 100]
+First comment: # Shout it out loud!
+First non-blank line: s = "hello world"
+Extremely long line: # AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Partial Sums: [0, 1, 3, 6, 10, 15, 21, 28, 36, 45]
+Total: 45

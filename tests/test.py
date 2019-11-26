@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 
-from walrus import convert, get_parser
+from walrus import ConvertError, convert, get_parser
 from walrus import main as main_func
 from walrus import walrus as core_func
 
@@ -98,6 +98,38 @@ class TestWalrus(unittest.TestCase):
                     write_text_file(converted_filename, converted_code)
                     converted_output = subprocess.check_output([sys.executable, converted_filename], universal_newlines=True)  # pylint: disable=line-too-long
                     self.assertEqual(original_output, converted_output)
+
+    def test_invalid(self):
+        """Test converting invalid code."""
+
+        pep572_invalid_codes = [
+            'y := 1',
+            'y0 = y1 := 2',
+            'dict(x = z := 3)',
+            'def foo(answer = p := 42): pass',
+            'def bar(answer: q := 24 = 5): pass',
+            '(lambda: x := 1)',
+            '[i := i+1 for i in range(5)]',
+            '[[(j := j) for i in range(5)] for j in range(5)]',
+            '[i := 0 for i, j in range(5)]',
+            '[i+1 for i in (i := range(5))]',
+            '[False and (i := 0) for i, j in range(5)]',
+            '[i for i, j in range(5) if True or (j := 1)]',
+            '[i+1 for i in (j := range(5))]',
+            '[i+1 for i in range(2) for j in (k := range(5))]',
+            '[i+1 for i in [j for j in (k := range(5))]]',
+            '[i+1 for i in (lambda: (j := range(5)))()]',
+            'class Example:\n    [(j := i) for i in range(5)]',
+            '(a[i] := x)',
+            '(a.b := c)',
+            '(p: int := 1)',
+            '(a, b, *c := (1, 2, 3))'
+        ]
+
+        for code in pep572_invalid_codes:
+            with self.subTest(test_case=code):
+                with self.assertRaises(ConvertError):
+                    convert(code)
 
 
 if __name__ == '__main__':

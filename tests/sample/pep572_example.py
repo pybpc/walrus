@@ -50,7 +50,9 @@ else:
     print('First non-blank line:', nonblank)
 
 if any(len(longline := line) >= 100 for line in lines):
-    print("Extremely long line:", longline)
+    print('Extremely long line:', longline)
+else:
+    print('No long lines.')
 
 # Compute partial sums in a list comprehension
 total = 0

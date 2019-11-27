@@ -51,6 +51,8 @@ print(info := (13, 14, *data))
 print(info)
 
 try:
-    print(px, py, pz := (31, 32, 33))
+    (px, py, pz := (31, 32, 33))
 except NameError:
     print('NameError')
+else:
+    print(px, py, pz)

@@ -715,7 +715,7 @@ class Context:
         else:
             linesep = ''
         for var in sorted(set(self._vars)):
-            self._buffer += '%(indent)s%(name)s = locals().get(%(name)r)%(linesep)s' % dict(
+            self._buffer += '%(indent)sif False: %(name)s = None%(linesep)s' % dict(
                 indent=indent, name=var, linesep=self._linesep,
             )
         for func in sorted(self._func, key=lambda func: func['name']):

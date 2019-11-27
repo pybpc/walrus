@@ -1,5 +1,8 @@
 # Change Log
 
+## [v0.1.1](https://github.com/JarryShaw/walrus/tree/v0.1.1) (2019-11-26)
+[Full Changelog](https://github.com/JarryShaw/walrus/compare/v0.1.0...v0.1.1)
+
 ## [v0.1.0](https://github.com/JarryShaw/walrus/tree/v0.1.0) (2019-11-25)
 **Fixed bugs:**
 

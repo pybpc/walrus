@@ -37,6 +37,9 @@ class TestWalrus(unittest.TestCase):
     """Test case."""
     all_test_cases = [fn[:-3] for fn in os.listdir(os.path.join(ROOT, 'sample')) if fn.endswith('.py')]
 
+    if sys.version_info[:2] < (3, 6):
+        all_test_cases.remove('pep572_exceptional_fstring')  # skip f-string test case on Python < 3.6
+
     def test_get_parser(self):
         """Test the argument parser."""
         parser = get_parser()

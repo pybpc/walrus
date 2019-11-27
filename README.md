@@ -10,7 +10,7 @@
 ![License](https://img.shields.io/github/license/jarryshaw/walrus.svg)
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 
- > Write *assignment expressions* in Python 3.8 flavour, and let `walrus` worry about back-port issues :beer:
+> Write *assignment expressions* in Python 3.8 flavour, and let `walrus` worry about back-port issues :beer:
 
 &emsp; Since [PEP 572](https://www.python.org/dev/peps/pep-0572/), Python introduced *assignment expressions*
 syntax in version __3.8__. For those who wish to use *assignment expressions* in their code, `walrus` provides an
@@ -53,7 +53,7 @@ git pull
 
 &emsp; It is fairly straightforward to use `walrus`:
 
- > context in `${...}` changes dynamically according to runtime environment
+> context in `${...}` changes dynamically according to runtime environment
 
 ```man
 usage: walrus [options] <python source files and folders...>
@@ -133,7 +133,7 @@ Envs:
 
 Raises:
 
-- `ConvertError `-- when `parso.ParserSyntaxError` raised
+- `ConvertError` -- when `parso.ParserSyntaxError` raised
 
 #### `convert` -- the main conversion process
 
@@ -148,7 +148,7 @@ Args:
 
 Envs:
 
-- `WALRUS_VERSION`-- convert against Python version (same as `--python` option in CLI)
+- `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
@@ -159,7 +159,7 @@ Returns:
 
 Raises:
 
-- `ConvertError `-- when `parso.ParserSyntaxError` raised
+- `ConvertError` -- when `parso.ParserSyntaxError` raised
 
 #### Internal exceptions
 

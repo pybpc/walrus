@@ -182,6 +182,15 @@ class EnvironError(EnvironmentError):
 
 &emsp; See [`tests`](https://github.com/JarryShaw/walrus/blob/master/tests) folder.
 
+## Known issues
+
+&emsp; Since `walrus` is currently based on [`parso`](https://github.com/davidhalter/parso) project,
+it had encountered several compatibility and parsing issues.
+
+* Parsing f-strings with `:=` formatter produces incorrect SyntaxError ([#89](https://github.com/davidhalter/parso/issues/89))
+
+* Parsing invalid use cases of assignment expressions do not raise SyntaxError ([#89](https://github.com/davidhalter/parso/issues/89))
+
 ## Contribution
 
 &emsp; Contributions are very welcome, especially fixing bugs and providing test cases.

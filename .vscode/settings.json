@@ -18,6 +18,7 @@
         "getcwd",
         "ispy",
         "namedexpr",
+        "nocond",
         "nuid",
         "parso",
         "sched",

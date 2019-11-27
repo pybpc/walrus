@@ -131,6 +131,14 @@ def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 %(tabsize)sreturn %(name)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
+# special template for lambda
+LAMBDA_CALL_TEMPLATE = '__walrus_wrapper_lambda_%(uuid)s(%(param)s)'
+LAMBDA_FUNC_TEMPLATE = '''\
+def __walrus_wrapper_lambda_%(uuid)s(%(param)s):
+%(tabsize)s"""Wrapper function for lambda definitions."""
+%(tabsize)s%(suite)s
+'''.splitlines()  # `str.splitlines` will remove trailing newline
+
 # special templates for ClassVar
 ## locals dict
 LCL_DICT_TEMPLATE = '_walrus_wrapper_%(cls)s_dict = dict()'
@@ -197,6 +205,10 @@ class Context:
         return self._buffer
 
     @property
+    def lambdef(self):
+        return self._lamb
+
+    @property
     def variables(self):
         return self._vars
 
@@ -256,6 +268,7 @@ class Context:
         self._buffer = ''  # final result
 
         self._vars = list()  # variable initialisation
+        self._lamb = list()  # converted lambda definitions ({param, suite, uuid})
         self._func = list()  # wrapper functions ({name, uuid, keyword})
 
         self._walk(node)  # traverse children
@@ -351,8 +364,8 @@ class Context:
                                column=indent, tabsize=self._tabsize,
                                linesep=self._linesep, keyword=keyword)
 
-        self += ctx.string.lstrip()
         self._context.extend(ctx.global_stmt)
+        self += ctx.string.lstrip()
 
     def _process_namedexpr_test(self, node):
         """Process assignment expression (`namedexpr_test`).
@@ -504,6 +517,23 @@ class Context:
         self._process(func_op)
         # suite
         self._process_suite_node(func_suite, func=True)
+
+    def _process_lambdef(self, node):
+        """Process lambda definition (``lambdef``).
+
+        Args:
+         - `node` -- `parso.python.tree.Lambda`, lambda node
+
+        """
+        if not self.has_walrus(node):
+            self += node.get_code()
+            return
+
+        ctx = LambdaContext(node=node, column=self._column,
+                            tabsize=self._tabsize, linesep=self._linesep,
+                            keyword=self._keyword, context=self._context)
+        self._lamb.extend(ctx.lambdef)
+        self += ctx.string.lstrip()
 
     def _process_if_stmt(self, node):
         """Process if statement (``if_stmt``).
@@ -719,6 +749,10 @@ class Context:
             self._buffer += linesep + indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + self._linesep
+        for lamb in self._lamb:
+            self._buffer += linesep + indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(LAMBDA_FUNC_TEMPLATE) % dict(tabsize=tabsize, **lamb) + self._linesep
 
         # finally, the suffix codes
         if flag and self._linting and self._vars:
@@ -942,6 +976,43 @@ class Context:
             suffix += char
 
         return prefix, suffix
+
+
+class LambdaContext(Context):
+    """Lambda (lambdef) conversion context."""
+
+    def _process_lambdef(self, node):
+        """Process lambda definition (``lambdef``).
+
+        Args:
+         - `node` -- `parso.python.tree.Lambda`, lambda node
+
+        """
+        children = iter(node.children)
+
+        # <Keyword: lambda>
+        next(children)
+
+        # vararglist
+        para_list = list()
+        for child in children:
+            if child.type == 'operator' and child.value == ':':
+                break
+            para_list.append(child)
+        param = ''.join(map(lambda n: n.get_code(), para_list))
+
+        # test_nocond | test
+        # test_node = parso.python.tree.ExprStmt([parso.python.tree.Name('lambdef', (0, 0)),
+        #                                         parso.python.tree.Operator('=', (0, 0)),
+        #                                         next(children)])
+        # suite = self._process_suite_node(next(children), func=True, buffer=True)
+
+        # keep record
+        nuid = uuid_gen.gen()
+        # self._lamb.append(dict(param=param, suite=suite, uuid=nuid))
+
+        # replacing lambda
+        self += LAMBDA_CALL_TEMPLATE % dict(param=param, uuid=nuid)
 
 
 class ClassContext(Context):

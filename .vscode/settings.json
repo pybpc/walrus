@@ -6,6 +6,7 @@
         "CWORD",
         "Envs",
         "NPROCESSORS",
+        "UUIDs",
         "aktau",
         "bufpre",
         "bufsuf",

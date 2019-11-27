@@ -118,6 +118,10 @@ uuid_gen = UUID4Generator(dash=True)
 # Main convertion implementation
 
 # walrus wrapper template
+NAME_TEMPLATE = '''\
+if False:
+%(tabsize)s%(name_list)s = NotImplemented
+'''.splitlines()  # `str.splitlines` will remove trailing newline
 CALL_TEMPLATE = '__walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
 FUNC_TEMPLATE = '''\
 def __walrus_wrapper_%(name)s_%(uuid)s(expr):
@@ -131,7 +135,7 @@ def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 ## locals dict
 LCL_DICT_TEMPLATE = '_walrus_wrapper_%(cls)s_dict = dict()'
 LCL_NAME_TEMPLATE = '_walrus_wrapper_%(cls)s_dict[%(name)r]'
-LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s(locals())'
+LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s()'
 LCL_VARS_TEMPLATE = '''\
 [setattr(%(cls)s, k, v) for k, v in _walrus_wrapper_%(cls)s_dict.items()]
 del _walrus_wrapper_%(cls)s_dict
@@ -150,19 +154,11 @@ CLS_FUNC_TEMPLATE = '''\
 %(tabsize)s%(tabsize)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
 
 %(tabsize)s@staticmethod
-%(tabsize)sdef get_%(name)s_%(uuid)s(locals_=locals()):
+%(tabsize)sdef get_%(name)s_%(uuid)s():
 %(tabsize)s%(tabsize)s"""Wrapper function for assignment expression."""
-%(tabsize)s%(tabsize)s# get value from buffer dict
-%(tabsize)s%(tabsize)stry:
+%(tabsize)s%(tabsize)sif %(name)r in _walrus_wrapper_%(cls)s_dict:
 %(tabsize)s%(tabsize)s%(tabsize)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
-%(tabsize)s%(tabsize)sexcept KeyError:
-%(tabsize)s%(tabsize)s%(tabsize)spass
-
-%(tabsize)s%(tabsize)s# get value from locals dict
-%(tabsize)s%(tabsize)stry:
-%(tabsize)s%(tabsize)s%(tabsize)sreturn locals_[%(name)r]
-%(tabsize)s%(tabsize)sexcept KeyError as error:
-%(tabsize)s%(tabsize)s%(tabsize)sraise NameError('name %%r is not defined' %% %(name)r).with_traceback(error.__traceback__)
+%(tabsize)s%(tabsize)sraise NameError('name %%r is not defined' %% %(name)r)
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 
@@ -697,7 +693,7 @@ class Context:
 
         # first, the prefix codes
         self._buffer += self._prefix + prefix
-        if flag and self._linting and self._vars:
+        if flag and self._linting and self._vars and self._buffer:
             if (self._node_before_walrus is not None \
                     and self._node_before_walrus.type in ('funcdef', 'classdef') \
                     and self._column == 0):
@@ -714,10 +710,11 @@ class Context:
             linesep = self._linesep * (1 if self._column > 0 else 2)
         else:
             linesep = ''
-        for var in sorted(set(self._vars)):
-            self._buffer += '%(indent)s%(name)s = locals().get(%(name)r)%(linesep)s' % dict(
-                indent=indent, name=var, linesep=self._linesep,
-            )
+        if self._vars:
+            name_list = ' = '.join(sorted(set(self._vars)))
+            self._buffer += indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(NAME_TEMPLATE) % dict(tabsize=tabsize, name_list=name_list) + self._linesep
         for func in sorted(self._func, key=lambda func: func['name']):
             self._buffer += linesep + indent + (
                 '%s%s' % (self._linesep, indent)
@@ -895,12 +892,14 @@ class Context:
          - `int` -- number of preceding blank lines
 
         """
-        count = -1  # keep trailing newline in `prefix`
+        count = 0
         if prefix:
             for line in reversed(prefix.split(linesep)):
                 if line.strip():
                     break
                 count += 1
+            if count > 0:  # keep trailing newline in `prefix`
+                count -= 1
         if suffix:
             for line in suffix.split(linesep):
                 if line.strip():
@@ -910,7 +909,6 @@ class Context:
         if count < 0:
             count = 0
         missing = blank - count
-
         if missing > 0:
             return missing
         return 0

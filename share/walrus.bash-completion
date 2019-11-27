@@ -43,13 +43,13 @@ _walrus() {
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
   opts="--help --version --no-archive --dismiss --no-linting"
-  cmds="--archive-path --encoding --python --linesep"
+  cmds="--archive-path --encoding --python --linesep --tabsize"
 
   if [[ ${prev} =~ "--help|--version|--no-archive" ]]
   then
     __walrus_comp_null
     return
-  elif [[ ${prev} =~ "--archive-path|--encoding|--linesep" ]]
+  elif [[ ${prev} =~ "--archive-path|--encoding|--linesep|--tabsize" ]]
   then
     __walrus_comp_null
     return

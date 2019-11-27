@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
+"""Back-port compiler for Python 3.8 assignment expressions."""
 
 import argparse
 import glob
+import io
 import locale
 import os
 import re
@@ -31,7 +33,7 @@ finally:    # alias and aftermath
     del multiprocessing
 
 # version string
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 
 # from configparser
 BOOLEAN_STATES = {'1': True, '0': False,
@@ -132,7 +134,7 @@ def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 # special template for lambda
-LAMBDA_CALL_TEMPLATE = '__walrus_wrapper_lambda_%(uuid)s(%(param)s)'
+LAMBDA_CALL_TEMPLATE = '__walrus_wrapper_lambda_%(uuid)s'
 LAMBDA_FUNC_TEMPLATE = '''\
 def __walrus_wrapper_lambda_%(uuid)s(%(param)s):
 %(tabsize)s"""Wrapper function for lambda definitions."""
@@ -332,12 +334,13 @@ class Context:
         # leaf node
         self += node.get_code()
 
-    def _process_suite_node(self, node, func=False, cls_ctx=None):
+    def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
         """Process indented suite (`suite` or ...).
 
         Args:
          - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, suite node
          - `func` -- `bool`, if the suite is of function definition
+         - `raw` -- `bool`, raw processing flag
          - `cls_ctx` -- `Optional[str]`, class name when suite if of class contextion
 
         """
@@ -357,15 +360,20 @@ class Context:
         if cls_ctx is None:
             ctx = Context(node=node, context=self._context,
                           column=indent, tabsize=self._tabsize,
-                          linesep=self._linesep, keyword=keyword)
+                          linesep=self._linesep, keyword=keyword, raw=raw)
         else:
             ctx = ClassContext(cls_ctx=cls_ctx,
                                node=node, context=self._context,
                                column=indent, tabsize=self._tabsize,
-                               linesep=self._linesep, keyword=keyword)
-
-        self._context.extend(ctx.global_stmt)
+                               linesep=self._linesep, keyword=keyword, raw=raw)
         self += ctx.string.lstrip()
+
+        # keep records
+        if raw:
+            self._lamb.extend(ctx.lambdef)
+            self._vars.extend(ctx.variables)
+            self._func.extend(ctx.functions)
+        self._context.extend(ctx.global_stmt)
 
     def _process_namedexpr_test(self, node):
         """Process assignment expression (`namedexpr_test`).
@@ -529,11 +537,32 @@ class Context:
             self += node.get_code()
             return
 
-        ctx = LambdaContext(node=node, column=self._column,
-                            tabsize=self._tabsize, linesep=self._linesep,
-                            keyword=self._keyword, context=self._context)
-        self._lamb.extend(ctx.lambdef)
-        self += ctx.string.lstrip()
+        children = iter(node.children)
+
+        # <Keyword: lambda>
+        next(children)
+
+        # vararglist
+        para_list = list()
+        for child in children:
+            if child.type == 'operator' and child.value == ':':
+                break
+            para_list.append(child)
+        param = ''.join(map(lambda n: n.get_code(), para_list))
+
+        # test_nocond | test
+        indent = self._column + self._tabsize
+        ctx = LambdaContext(node=next(children), context=self._context,
+                            column=indent, tabsize=self._tabsize,
+                            linesep=self._linesep, keyword='nonlocal')
+        suite = ctx.string.strip()
+
+        # keep record
+        nuid = uuid_gen.gen()
+        self._lamb.append(dict(param=param, suite=suite, uuid=nuid))
+
+        # replacing lambda
+        self += LAMBDA_CALL_TEMPLATE % dict(uuid=nuid)
 
     def _process_if_stmt(self, node):
         """Process if statement (``if_stmt``).
@@ -723,7 +752,7 @@ class Context:
 
         # first, the prefix codes
         self._buffer += self._prefix + prefix
-        if flag and self._linting and self._vars and self._buffer:
+        if flag and self._linting and self._buffer:
             if (self._node_before_walrus is not None \
                     and self._node_before_walrus.type in ('funcdef', 'classdef') \
                     and self._column == 0):
@@ -746,26 +775,27 @@ class Context:
                 '%s%s' % (self._linesep, indent)
             ).join(NAME_TEMPLATE) % dict(tabsize=tabsize, name_list=name_list) + self._linesep
         for func in sorted(self._func, key=lambda func: func['name']):
-            self._buffer += linesep + indent + (
+            if self._buffer:
+                self._buffer += linesep
+            self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + self._linesep
         for lamb in self._lamb:
-            self._buffer += linesep + indent + (
+            if self._buffer:
+                self._buffer += linesep
+            self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(LAMBDA_FUNC_TEMPLATE) % dict(tabsize=tabsize, **lamb) + self._linesep
 
         # finally, the suffix codes
-        if flag and self._linting and self._vars:
+        if flag and self._linting:
             blank = 2 if self._column == 0 else 1
             self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=suffix,
                                                                      blank=blank, linesep=self._linesep)
         self._buffer += suffix
 
     def _strip(self):
-        """Strip comments from string.
-
-        Args:
-         - `string` -- `str`, buffer string
+        """Strip comments from suffix buffer.
 
         Returns:
          - `str` -- prefix comments
@@ -775,7 +805,7 @@ class Context:
         prefix = ''
         suffix = ''
 
-        lines = iter(self._suffix.splitlines(True))
+        lines = io.StringIO(self._suffix, newline=self._linesep)
         for line in lines:
             if line.strip().startswith('#'):
                 prefix += line
@@ -979,40 +1009,46 @@ class Context:
 
 
 class LambdaContext(Context):
-    """Lambda (lambdef) conversion context."""
+    """Lambda (suite) conversion context."""
 
-    def _process_lambdef(self, node):
-        """Process lambda definition (``lambdef``).
+    def _concat(self):
+        """Concatenate final string."""
+        flag = self.has_walrus(self._root)
 
-        Args:
-         - `node` -- `parso.python.tree.Lambda`, lambda node
+        # first, the variables and functions
+        indent = '\t'.expandtabs(self._column)
+        tabsize = '\t'.expandtabs(self._tabsize)
+        if self._linting:
+            linesep = self._linesep * (1 if self._column > 0 else 2)
+        else:
+            linesep = ''
+        if self._vars:
+            name_list = ' = '.join(sorted(set(self._vars)))
+            self._buffer += indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(NAME_TEMPLATE) % dict(tabsize=tabsize, name_list=name_list) + self._linesep
+        for func in sorted(self._func, key=lambda func: func['name']):
+            if self._buffer:
+                self._buffer += linesep
+            self._buffer += indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + self._linesep
+        for lamb in self._lamb:
+            if self._buffer:
+                self._buffer += linesep
+            self._buffer += indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(LAMBDA_FUNC_TEMPLATE) % dict(tabsize=tabsize, **lamb) + self._linesep
+        if flag and self._linting:
+            blank = 2 if self._column == 0 else 1
+            self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=self._prefix,
+                                                                     blank=blank, linesep=self._linesep)
 
-        """
-        children = iter(node.children)
+        # then, the `return` statement
+        self._buffer += indent + 'return'
 
-        # <Keyword: lambda>
-        next(children)
-
-        # vararglist
-        para_list = list()
-        for child in children:
-            if child.type == 'operator' and child.value == ':':
-                break
-            para_list.append(child)
-        param = ''.join(map(lambda n: n.get_code(), para_list))
-
-        # test_nocond | test
-        # test_node = parso.python.tree.ExprStmt([parso.python.tree.Name('lambdef', (0, 0)),
-        #                                         parso.python.tree.Operator('=', (0, 0)),
-        #                                         next(children)])
-        # suite = self._process_suite_node(next(children), func=True, buffer=True)
-
-        # keep record
-        nuid = uuid_gen.gen()
-        # self._lamb.append(dict(param=param, suite=suite, uuid=nuid))
-
-        # replacing lambda
-        self += LAMBDA_CALL_TEMPLATE % dict(param=param, uuid=nuid)
+        # finally, the source codes
+        self._buffer += self._prefix + self._suffix
 
 
 class ClassContext(Context):
@@ -1022,22 +1058,23 @@ class ClassContext(Context):
     def cls_var(self):
         return self._cls_var
 
-    def __init__(self, cls_ctx, node,
+    def __init__(self, node,
+                 cls_ctx, cls_var=None,
                  column=0, tabsize=None,
                  linesep=None, keyword=None,
-                 context=None, raw=False, cls_var=None):
+                 context=None, raw=False):
         """Conversion context.
 
         Args:
-         - `cls_ctx` -- `str`, class context name
          - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `cls_ctx` -- `str`, class context name
+         - `cls_var` -- `Dict[str, str]`, mapping for assignment variable and its UUID
          - `column` -- `int`, current indentation level
          - `tabsize` -- `Optional[int]`, indentation tab size
          - `linesep` -- `Optional[str]`, line seperator
          - `keyword` -- `Optional[str]`, keyword for wrapper function
          - `context` -- `Optional[List[str]]`, global context
          - `raw` -- `bool`, raw context processing flag
-         - `cls_var` -- `Dict[str, str]`, mapping for assignment variable and its UUID
 
         Envs:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
@@ -1056,12 +1093,13 @@ class ClassContext(Context):
                          column=column, tabsize=tabsize,
                          linesep=linesep, keyword=keyword, raw=raw)
 
-    def _process_suite_node(self, node, func=False, cls_ctx=None):
+    def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
         """Process indented suite (`suite` or ...).
 
         Args:
          - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, suite node
          - `func` -- `bool`, if the suite is of function definition
+         - `raw` -- `bool`, raw context processing flag
          - `cls_ctx` -- `Optional[str]`, class name when suite if of class contextion
 
         """
@@ -1091,8 +1129,14 @@ class ClassContext(Context):
                                node=node, context=self._context,
                                column=indent, tabsize=self._tabsize,
                                linesep=self._linesep, keyword=keyword)
-
         self += ctx.string.lstrip()
+
+        # keep record
+        if raw:
+            self._lamb.extend(ctx.lambdef)
+            self._vars.extend(ctx.variables)
+            self._func.extend(ctx.functions)
+            self._cls_var.update(ctx.cls_var)
         self._context.extend(ctx.global_stmt)
 
     def _process_namedexpr_test(self, node):
@@ -1113,6 +1157,7 @@ class ClassContext(Context):
                            column=self._column, tabsize=self._tabsize,
                            linesep=self._linesep, keyword=self._keyword, raw=True)
         expr = ctx.string.strip()
+        self._lamb.extend(ctx.lambdef)
         self._vars.extend(ctx.variables)
         self._func.extend(ctx.functions)
         self._cls_var.update(ctx.cls_var)
@@ -1214,7 +1259,9 @@ class ClassContext(Context):
                 '%s%s' % (self._linesep, indent)
             ).join(CLS_NAME_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx) + linesep
         for func in sorted(self._func, key=lambda func: func['name']):
-            self._buffer += linesep + indent + (
+            if self._buffer:
+                self._buffer += linesep
+            self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(CLS_FUNC_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx, **func) + linesep
 

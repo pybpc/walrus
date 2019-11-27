@@ -161,11 +161,21 @@ Raises:
 
 - `ConvertError `-- when `parso.ParserSyntaxError` raised
 
-#### `ConvertError` -- `walrus` internal exception
+#### Internal exceptions
 
 ```python
 class ConvertError(SyntaxError):
-    pass
+    """Parso syntax error."""
+```
+
+```python
+class ContextError(RuntimeError):
+    """Missing conversion context."""
+```
+
+```python
+class EnvironError(EnvironmentError):
+    """Invalid environment."""
 ```
 
 ## Test

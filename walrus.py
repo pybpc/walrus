@@ -1209,14 +1209,14 @@ def walrus(filename):
     encoding = os.getenv('WALRUS_ENCODING', LOCALE_ENCODING)
 
     # file content
-    with open(filename, 'r', encoding=encoding) as file:
+    with open(filename, 'r', encoding=encoding, newline='') as file:
         text = file.read()
 
     # do the dirty things
     text = convert(text, filename)
 
     # dump back to the file
-    with open(filename, 'w', encoding=encoding) as file:
+    with open(filename, 'w', encoding=encoding, newline='') as file:
         file.write(text)
 
 

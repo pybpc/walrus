@@ -133,7 +133,7 @@ Envs:
 
 Raises:
 
-- `ConvertError` -- when `parso.ParserSyntaxError` raised
+- `ConvertError` -- when source code contains syntax errors
 
 #### `convert` -- the main conversion process
 
@@ -159,7 +159,7 @@ Returns:
 
 Raises:
 
-- `ConvertError` -- when `parso.ParserSyntaxError` raised
+- `ConvertError` -- when source code contains syntax errors
 
 #### Internal exceptions
 

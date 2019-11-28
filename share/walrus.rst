@@ -6,8 +6,8 @@ walrus
 back-port compiler for Python 3.8 assignment expression
 -------------------------------------------------------
 
-:Version: v0.1.2
-:Date: November 27, 2019
+:Version: v0.1.2.post1
+:Date: November 28, 2019
 :Manual section: 1
 :Author:
     Jarry Shaw, a newbie programmer, is the author, owner and maintainer

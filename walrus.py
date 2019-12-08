@@ -1375,24 +1375,24 @@ def get_parser():
     archive_group.add_argument('-na', '--no-archive', action='store_false', dest='archive',
                                help='do not archive original files')
     archive_group.add_argument('-p', '--archive-path', action='store', default=__archive__, metavar='PATH',
-                               help='path to archive original files (%s)' % __archive__)
+                               help='path to archive original files (%(default)s)')
 
     convert_group = parser.add_argument_group(title='convert options',
-                                              description='compatibility configuration for none-unicode files')
+                                              description='compatibility configuration for non-unicode files')
     convert_group.add_argument('-c', '--encoding', action='store', default=__walrus_encoding__, metavar='CODING',
-                               help='encoding to open source files (%s)' % __walrus_encoding__)
+                               help='encoding to open source files (%(default)s)')
     convert_group.add_argument('-v', '--python', action='store', metavar='VERSION',
                                default=__walrus_version__, choices=WALRUS_VERSION,
-                               help='convert against Python version (%s)' % __walrus_version__)
+                               help='convert against Python version (%(default)s)')
     convert_group.add_argument('-s', '--linesep', action='store', default=__walrus_linesep__, metavar='SEP',
-                               help='line separator to process source files (%r)' % __walrus_linesep__)
+                               help='line separator to process source files (%(default)r)')
     convert_group.add_argument('-nl', '--no-linting', action='store_false', dest='linting',
                                help='do not lint converted codes')
     convert_group.add_argument('-t', '--tabsize', action='store', default=__walrus_tabsize__, metavar='INDENT',
-                               help='indentation tab size (%s)' % __walrus_tabsize__, type=int)
+                               help='indentation tab size (%(default)s)', type=int)
 
     parser.add_argument('file', nargs='+', metavar='SOURCE', default=__cwd__,
-                        help='python source files and folders to be converted (%s)' % __cwd__)
+                        help='python source files and folders to be converted (%(default)s)')
 
     return parser
 

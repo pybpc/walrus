@@ -125,6 +125,8 @@ class TestWalrus(unittest.TestCase):
             'class Example:\n    [(j := i) for i in range(5)]',
             '(a[i] := x)',
             '(a.b := c)',
+            '(a(b) := c)',
+            '(await a := x)',
             '(p: int := 1)',
             '(a, b, *c := (1, 2, 3))'
         ]

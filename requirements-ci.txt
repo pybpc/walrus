@@ -1,0 +1,12 @@
+tbtrim
+parso~=0.5.2
+-e .
+autopep8
+codecov
+coverage
+doc8
+homebrew-pypi-poet
+pylint
+requests
+sphinx
+ipython

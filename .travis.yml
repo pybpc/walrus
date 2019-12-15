@@ -6,13 +6,10 @@ python:
   - "3.6"
   - "3.7"
   - "3.8"
-env:
-  - PIPENV_SKIP_LOCK=1
 
 # command to install dependencies
 install:
-  - pip install pipenv
-  - pipenv install --dev
+  - pip install -r requirements-ci.txt
 
 # command to run tests
 script:

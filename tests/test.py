@@ -131,6 +131,10 @@ class TestWalrus(unittest.TestCase):
             '({a, b} := {1, 2})',
             '({a: b} := {1: 2})',
             '(a + b := 1)',
+            '(True := 1)',
+            '(False := 1)',
+            '(None := 1)',
+            '(__debug__ := 1)',
             '(await a := x)',
             '(p: int := 1)',
             '(a, b, *c := (1, 2, 3))'

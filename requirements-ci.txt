@@ -1,5 +1,6 @@
 tbtrim
 parso~=0.5.2
+bpc-utils
 -e .
 autopep8
 codecov

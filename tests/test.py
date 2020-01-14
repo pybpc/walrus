@@ -8,12 +8,13 @@ import sys
 import tempfile
 import unittest
 
+# root path
+ROOT = os.path.dirname(os.path.realpath(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(ROOT, '..')))
 from walrus import ConvertError, convert, get_parser
 from walrus import main as main_func
 from walrus import walrus as core_func
-
-# root path
-ROOT = os.path.dirname(os.path.realpath(__file__))
+sys.path.pop(0)
 
 # environs
 os.environ['WALRUS_QUIET'] = 'true'
@@ -66,7 +67,7 @@ class TestWalrus(unittest.TestCase):
             for test_case in TestWalrus.all_test_cases:
                 shutil.copy(os.path.join(ROOT, 'sample', test_case + '.py'), tmpdir)
 
-            main_func([tmpdir])
+            main_func(['-na', tmpdir])
 
             for test_case in TestWalrus.all_test_cases:
                 with self.subTest(test_case=test_case):

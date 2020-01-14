@@ -4,45 +4,18 @@
 import argparse
 import glob
 import io
-import locale
 import os
 import re
-import shutil
 import sys
-import uuid
 
 import parso
 import tbtrim
+from bpc_utils import BOOLEAN_STATES, CPU_CNT, LOCALE_ENCODING, UUID4Generator, archive_files, detect_files, mp
 
 __all__ = ['walrus', 'convert']
 
-# multiprocessing may not be supported
-try:        # try first
-    import multiprocessing
-except ImportError:  # pragma: no cover
-    multiprocessing = None
-else:       # CPU number if multiprocessing supported
-    if os.name == 'posix' and 'SC_NPROCESSORS_CONF' in os.sysconf_names:  # pragma: no cover
-        CPU_CNT = os.sysconf('SC_NPROCESSORS_CONF')
-    elif hasattr(os, 'sched_getaffinity'):  # pragma: no cover
-        CPU_CNT = len(os.sched_getaffinity(0))  # pylint: disable=E1101
-    else:  # pragma: no cover
-        CPU_CNT = os.cpu_count() or 1
-finally:    # alias and aftermath
-    mp = multiprocessing
-    del multiprocessing
-
 # version string
 __version__ = '0.1.3'
-
-# from configparser
-BOOLEAN_STATES = {'1': True, '0': False,
-                  'yes': True, 'no': False,
-                  'true': True, 'false': False,
-                  'on': True, 'off': False}
-
-# environs
-LOCALE_ENCODING = locale.getpreferredencoding(False)
 
 # macros
 grammar_regex = re.compile(r"grammar(\d)(\d)\.txt")
@@ -50,6 +23,9 @@ WALRUS_VERSION = sorted(filter(lambda version: version >= '3.8',  # when Python 
                                map(lambda path: '%s.%s' % grammar_regex.match(os.path.split(path)[1]).groups(),
                                    glob.glob(os.path.join(parso.__path__[0], 'python', 'grammar??.txt')))))
 del grammar_regex
+
+# will be set in every call to `convert()`
+uuid_gen = None
 
 
 class ConvertError(SyntaxError):
@@ -78,43 +54,6 @@ def predicate(filename):  # pragma: no cover
 
 
 tbtrim.set_trim_rule(predicate, strict=True, target=(ConvertError, ContextError))
-
-###############################################################################
-# UUID 4 generator wrapper
-
-
-class UUID4Generator:
-    """UUID 4 generator wrapper to prevent UUID collisions."""
-
-    def __init__(self, dash=True):
-        """Constructor of UUID 4 generator wrapper.
-
-        Args:
-         - `dash` -- `bool`, whether the generated UUID string has dashes or not
-
-        """
-        self.used_uuids = set()
-        self.dash = dash
-
-    def gen(self):
-        """Generate a new UUID 4 string that is guaranteed not to collide with used UUIDs.
-
-        Returns:
-         - `str` -- a new UUID 4 string
-
-        """
-        while True:
-            nuid = uuid.uuid4()
-            nuid = str(nuid) if self.dash else nuid.hex
-            if nuid not in self.used_uuids:
-                break
-        self.used_uuids.add(nuid)
-        return nuid
-
-
-# Initialise a UUID4Generator for filename UUIDs.
-# In the conversion process, this will be replaced by a new UUID4Generator for identifier UUIDs.
-uuid_gen = UUID4Generator(dash=True)
 
 ###############################################################################
 # Main convertion implementation
@@ -1360,8 +1299,7 @@ def get_parser():
                                      usage='walrus [options] <python source files and folders...>',
                                      description='Back-port compiler for Python 3.8 assignment expressions.')
     parser.add_argument('-V', '--version', action='version', version=__version__)
-    parser.add_argument('-q', '--quiet', action='store_true',
-                        help='run in quiet mode')
+    parser.add_argument('-q', '--quiet', action='store_true', help='run in quiet mode')
 
     archive_group = parser.add_argument_group(title='archive options',
                                               description="duplicate original files in case there's any issue")
@@ -1388,43 +1326,6 @@ def get_parser():
                         help='python source files and folders to be converted (%(default)s)')
 
     return parser
-
-
-def find(root):  # pragma: no cover
-    """Recursively find all files under root.
-
-    Args:
-     - `root` -- `os.PathLike`, root path to search
-
-    Returns:
-     - `Generator[str, None, None]` -- yield all files under the root path
-
-    """
-    file_list = list()
-    for entry in os.scandir(root):
-        if entry.is_dir():
-            file_list.extend(find(entry.path))
-        elif entry.is_file():
-            file_list.append(entry.path)
-        elif entry.is_symlink():  # exclude symbolic links
-            continue
-    yield from file_list
-
-
-def rename(path, root):
-    """Rename file for archiving.
-
-    Args:
-     - `path` -- `os.PathLike`, file to rename
-     - `root` -- `os.PathLike`, archive path
-
-    Returns:
-     - `str` -- the archiving path
-
-    """
-    stem, ext = os.path.splitext(path)
-    name = '%s-%s%s' % (stem, uuid_gen.gen(), ext)
-    return os.path.join(root, name)
 
 
 def main(argv=None):
@@ -1467,31 +1368,15 @@ def main(argv=None):
     else:
         raise EnvironError('invalid line separator %r' % args.linesep)
 
-    # make archive directory
-    if args.archive:  # pragma: no cover
-        os.makedirs(ARCHIVE, exist_ok=True)
-
-    # fetch file list
-    filelist = list()
-    for path in args.file:
-        if os.path.isfile(path):
-            if args.archive:  # pragma: no cover
-                dest = rename(path, root=ARCHIVE)
-                os.makedirs(os.path.dirname(dest), exist_ok=True)
-                shutil.copy(path, dest)
-            filelist.append(path)
-        if os.path.isdir(path):  # pragma: no cover
-            if args.archive:
-                shutil.copytree(path, rename(path, root=ARCHIVE))
-            filelist.extend(find(path))
-
-    # check if file is Python source code
-    ispy = lambda file: (os.path.isfile(file) and (os.path.splitext(file)[1] in ('.py', '.pyw')))
-    filelist = sorted(filter(ispy, filelist))
+    filelist = sorted(detect_files(args.file))
 
     # if no file supplied
     if not filelist:  # pragma: no cover
-        parser.error('argument PATH: no valid source file found')
+        parser.error('no valid source file found')
+
+    # make archive
+    if args.archive:
+        archive_files(filelist, ARCHIVE)
 
     # process files
     if mp is None or CPU_CNT <= 1:

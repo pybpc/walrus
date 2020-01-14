@@ -28,6 +28,7 @@ ipython = "*"
 [packages]
 tbtrim = "*"
 parso = "~=0.5.2"
+bpc-utils = "*"
 
 [requires]
 python_version = "3.8"

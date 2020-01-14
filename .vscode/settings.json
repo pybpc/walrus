@@ -16,8 +16,10 @@
         "funcdef",
         "gaocegege",
         "getcwd",
+        "initialisation",
         "ispy",
         "namedexpr",
+        "nargs",
         "nocond",
         "nuid",
         "parso",
@@ -31,6 +33,7 @@
         "ssetattr",
         "stry",
         "swalrus",
-        "sysconf"
+        "sysconf",
+        "tbtrim"
     ]
 }

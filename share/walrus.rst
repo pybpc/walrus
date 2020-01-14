@@ -90,4 +90,4 @@ ENVIRONMENT
 SEE ALSO
 ========
 
-babel(1), f2format(1), poseur(1), vermin(1)
+pybpc(1), f2format(1), poseur(1), vermin(1)

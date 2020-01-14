@@ -5,9 +5,9 @@
 [![PyPI - Format](https://img.shields.io/pypi/format/python-walrus.svg)](https://pypi.org/project/python-walrus)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/python-walrus.svg)](https://pypi.org/project/python-walrus)
 
-[![Travis CI - Status](https://img.shields.io/travis/JarryShaw/walrus.svg)](https://travis-ci.org/JarryShaw/walrus)
-[![Codecov - Coverage](https://codecov.io/gh/JarryShaw/walrus/branch/master/graph/badge.svg)](https://codecov.io/gh/JarryShaw/walrus)
-![License](https://img.shields.io/github/license/jarryshaw/walrus.svg)
+[![Travis CI - Status](https://img.shields.io/travis/pybpc/walrus.svg)](https://travis-ci.org/pybpc/walrus)
+[![Codecov - Coverage](https://codecov.io/gh/pybpc/walrus/branch/master/graph/badge.svg)](https://codecov.io/gh/pybpc/walrus)
+![License](https://img.shields.io/github/license/pybpc/walrus.svg)
 [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
 
 > Write *assignment expressions* in Python 3.8 flavour, and let `walrus` worry about back-port issues :beer:
@@ -180,7 +180,7 @@ class EnvironError(EnvironmentError):
 
 ## Test
 
-&emsp; See [`tests`](https://github.com/JarryShaw/walrus/blob/master/tests) folder.
+&emsp; See [`tests`](https://github.com/pybpc/walrus/blob/master/tests) folder.
 
 ## Known issues
 
@@ -200,7 +200,7 @@ Note that code must remain valid and reasonable.
 
 ## See Also
 
-- [`babel`](https://github.com/jarryshaw/babel)
-- [`f2format`](https://github.com/jarryshaw/f2format)
-- [`poseur`](https://github.com/jarryshaw/poseur)
+- [`pybpc`](https://github.com/pybpc/bpc) (formerly known as `python-babel`)
+- [`f2format`](https://github.com/pybpc/f2format)
+- [`poseur`](https://github.com/pybpc/poseur)
 - [`vermin`](https://github.com/netromdk/vermin)

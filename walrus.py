@@ -914,7 +914,7 @@ class Context:
         if pool[sort[0]] > pool[sort[1]]:
             return sort[0]
 
-        env = os.getenv('POSEUR_LINESEP', os.linesep)
+        env = os.getenv('WALRUS_LINESEP', os.linesep)
         env_name = env.upper()
         if env_name == 'CR':
             return '\r'
@@ -924,7 +924,7 @@ class Context:
             return '\n'
         if env in ['\r', '\r\n', '\n']:
             return env
-        raise EnvironError('invlid line separator %r' % env)
+        raise EnvironError('invalid line separator %r' % env)
 
     @staticmethod
     def is_walrus(node):
@@ -1457,13 +1457,13 @@ def main(argv=None):
 
     linesep = args.linesep.upper()
     if linesep == 'CR':
-        os.environ['POSEUR_LINESEP'] = '\r'
+        os.environ['WALRUS_LINESEP'] = '\r'
     elif linesep == 'CRLF':
-        os.environ['POSEUR_LINESEP'] = '\r\n'
+        os.environ['WALRUS_LINESEP'] = '\r\n'
     elif linesep == 'LF':
-        os.environ['POSEUR_LINESEP'] = '\n'
+        os.environ['WALRUS_LINESEP'] = '\n'
     elif args.linesep in ['\r', '\r\n', '\n']:
-        os.environ['POSEUR_LINESEP'] = args.linesep
+        os.environ['WALRUS_LINESEP'] = args.linesep
     else:
         raise EnvironError('invalid line separator %r' % args.linesep)
 

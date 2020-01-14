@@ -40,7 +40,7 @@ pip install python-walrus
 &emsp; Or install the latest version from the git repository:
 
 ```sh
-git clone https://github.com/JarryShaw/walrus.git
+git clone https://github.com/pybpc/walrus.git
 cd walrus
 pip install -e .
 # and to update at any time

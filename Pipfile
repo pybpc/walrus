@@ -27,7 +27,7 @@ ipython = "*"
 
 [packages]
 tbtrim = "*"
-parso = "~=0.5.2"
+parso = ">=0.6.0"
 bpc-utils = "*"
 
 [requires]

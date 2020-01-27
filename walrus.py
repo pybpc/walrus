@@ -1368,6 +1368,7 @@ def main(argv=None):
     else:
         raise EnvironError('invalid line separator %r' % args.linesep)
 
+    # fetch file list
     filelist = sorted(detect_files(args.file))
 
     # if no file supplied

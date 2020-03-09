@@ -6,7 +6,7 @@ walrus
 back-port compiler for Python 3.8 assignment expression
 -------------------------------------------------------
 
-:Version: v0.1.3
+:Version: v0.1.4
 :Date: March 09, 2020
 :Manual section: 1
 :Author:

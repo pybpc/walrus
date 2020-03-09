@@ -15,7 +15,7 @@ from bpc_utils import BOOLEAN_STATES, CPU_CNT, LOCALE_ENCODING, UUID4Generator, 
 __all__ = ['walrus', 'convert']
 
 # version string
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 # macros
 grammar_regex = re.compile(r"grammar(\d)(\d)\.txt")

@@ -17,7 +17,7 @@ from bpc_utils import (
 __all__ = ['main', 'walrus', 'convert']
 
 # version string
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 
 # get supported source versions
 WALRUS_VERSIONS = get_parso_grammar_versions(minimum='3.8')
@@ -550,19 +550,10 @@ class Context:
          - `node` -- `parso.python.tree.Function`, function node
 
         """
-        # 'def' NAME '(' PARAM ')' ':' SUITE
-        func_def, func_name, func_param, func_op, func_suite = node.children
-
-        # <Keyword: def>
-        self._process(func_def)
-        # <Name: ...>
-        self._process(func_name)
-        # PythonNode(parameters, [...])
-        self._process(func_param)
-        # <Operator: :>
-        self._process(func_op)
-        # suite
-        self._process_suite_node(func_suite, func=True)
+        # 'def' NAME '(' PARAM ')' [ '->' NAME ] ':' SUITE
+        for child in node.children[:-1]:
+            self._process(child)
+        self._process_suite_node(node.children[-1], func=True)
 
     def _process_lambdef(self, node):
         """Process lambda definition (``lambdef``).

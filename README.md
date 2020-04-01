@@ -20,7 +20,7 @@ Python 3.8 flavour then compile for compatibility later.
 
 ## Installation
 
-> Note that `walrus` only supports Python versions __since 3.3__ 🐍
+> Note that `walrus` only supports Python versions __since 3.4__ 🐍
 
 &emsp; For macOS users, `walrus` is now available through [Homebrew](https://brew.sh):
 
@@ -168,19 +168,9 @@ class ConvertError(SyntaxError):
     """Parso syntax error."""
 ```
 
-```python
-class ContextError(RuntimeError):
-    """Missing conversion context."""
-```
-
-```python
-class EnvironError(EnvironmentError):
-    """Invalid environment."""
-```
-
 ## Test
 
-&emsp; See [`tests`](https://github.com/pybpc/walrus/blob/master/tests) folder.
+&emsp; See [`tests`](https://github.com/pybpc/walrus/blob/master/tests) directory.
 
 ## Known issues
 

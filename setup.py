@@ -29,12 +29,12 @@ setup(
     description='Back-port compiler for Python 3.8 assignment expressions.',
     long_description=long_desc,
     long_description_content_type='text/markdown; charset=UTF-8',
-    python_requires='>=3.3',
+    python_requires='>=3.4',
     zip_safe=True,
     install_requires=[
-        'parso>=0.6.0',     # universal AST support
-        'tbtrim>=0.2.1',    # traceback trim support
-        'bpc-utils',        # utility library
+        'parso>=0.6.0',      # universal AST support
+        'tbtrim>=0.2.1',     # traceback trim support
+        'bpc-utils>=0.3.1',  # utility library
     ],
     py_modules=['walrus'],
     entry_points={
@@ -57,7 +57,6 @@ setup(
         'Natural Language :: English',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',

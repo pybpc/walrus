@@ -2,42 +2,166 @@
 """Back-port compiler for Python 3.8 assignment expressions."""
 
 import argparse
-import glob
+import functools
 import io
 import os
-import re
 import sys
 
 import parso
 import tbtrim
-from bpc_utils import BOOLEAN_STATES, CPU_CNT, LOCALE_ENCODING, UUID4Generator, archive_files, detect_files, mp
+from bpc_utils import (
+    CPU_CNT, BPCSyntaxError, UUID4Generator, archive_files, detect_encoding, detect_files,
+    detect_indentation, detect_linesep, get_parso_grammar_versions, mp, parse_boolean_state,
+    parse_indentation, parse_linesep, parso_parse)
 
-__all__ = ['walrus', 'convert']
+__all__ = ['main', 'walrus', 'convert']
 
 # version string
 __version__ = '0.1.3'
 
-# macros
-grammar_regex = re.compile(r"grammar(\d)(\d)\.txt")
-WALRUS_VERSION = sorted(filter(lambda version: version >= '3.8',  # when Python starts to have walrus operator
-                               map(lambda path: '%s.%s' % grammar_regex.match(os.path.split(path)[1]).groups(),
-                                   glob.glob(os.path.join(parso.__path__[0], 'python', 'grammar??.txt')))))
-del grammar_regex
+# get supported source versions
+WALRUS_VERSIONS = get_parso_grammar_versions(minimum='3.8')
 
 # will be set in every call to `convert()`
-uuid_gen = None
+uuid_gen = None  # TODO: will be refactored into the Context class
+
+# option default values
+_default_quiet = False
+_default_do_archive = True
+_default_archive_path = 'archive'
+_default_source_version = WALRUS_VERSIONS[-1]
+_default_linesep = None  # auto detect
+_default_indentation = None  # auto detect
+_default_pep8 = True
+
+# option getter utility functions
+# option value precedence is: explicit value (CLI/API arguments) > environment variable > default value
 
 
-class ConvertError(SyntaxError):
-    """Parso syntax error."""
+def _get_quiet_option(explicit=None):
+    """Get the value for the 'quiet' option.
+
+    Args:
+     - `explicit` -- `Optional[bool]`, the value explicitly specified by user, `None` if not specified
+
+    Envs:
+     - `WALRUS_QUIET` -- the value in environment variable
+
+    """
+    if explicit is not None:
+        return explicit
+    env_value = parse_boolean_state(os.getenv('WALRUS_QUIET'))
+    if env_value is not None:
+        return env_value
+    return _default_quiet
 
 
-class ContextError(RuntimeError):
-    """Missing conversion context."""
+def _get_do_archive_option(explicit=None):
+    """Get the value for the 'do_archive' option.
+
+    Args:
+     - `explicit` -- `Optional[bool]`, the value explicitly specified by user, `None` if not specified
+
+    Envs:
+     - `WALRUS_DO_ARCHIVE` -- the value in environment variable
+
+    """
+    if explicit is not None:
+        return explicit
+    env_value = parse_boolean_state(os.getenv('WALRUS_DO_ARCHIVE'))
+    if env_value is not None:
+        return env_value
+    return _default_do_archive
 
 
-class EnvironError(EnvironmentError):
-    """Invalid environment."""
+def _get_archive_path_option(explicit=None):
+    """Get the value for the 'archive_path' option.
+
+    Args:
+     - `explicit` -- `Optional[str]`, the value explicitly specified by user, `None` if not specified
+
+    Envs:
+     - `WALRUS_ARCHIVE_PATH` -- the value in environment variable
+
+    """
+    if explicit:
+        return explicit
+    env_value = os.getenv('WALRUS_ARCHIVE_PATH')
+    if env_value:
+        return env_value
+    return _default_archive_path
+
+
+def _get_source_version_option(explicit=None):
+    """Get the value for the 'source_version' option.
+
+    Args:
+     - `explicit` -- `Optional[str]`, the value explicitly specified by user, `None` if not specified
+
+    Envs:
+     - `WALRUS_SOURCE_VERSION` -- the value in environment variable
+
+    """
+    if explicit:
+        return explicit
+    env_value = os.getenv('WALRUS_SOURCE_VERSION')
+    if env_value:
+        return env_value
+    return _default_source_version
+
+
+def _get_linesep_option(explicit=None):
+    """Get the value for the 'linesep' option.
+
+    Args:
+     - `explicit` -- `Optional[str]`, the value explicitly specified by user, `None` if not specified
+
+    Envs:
+     - `WALRUS_LINESEP` -- the value in environment variable
+
+    """
+    if explicit:
+        return explicit
+    env_value = parse_linesep(os.getenv('WALRUS_LINESEP'))
+    if env_value:
+        return env_value
+    return _default_linesep
+
+
+def _get_indentation_option(explicit=None):
+    """Get the value for the 'indentation' option.
+
+    Args:
+     - `explicit` -- `Optional[str]`, the value explicitly specified by user, `None` if not specified
+
+    Envs:
+     - `WALRUS_INDENTATION` -- the value in environment variable
+
+    """
+    if explicit:
+        return explicit
+    env_value = parse_indentation(os.getenv('WALRUS_INDENTATION'))
+    if env_value:
+        return env_value
+    return _default_indentation
+
+
+def _get_pep8_option(explicit=None):
+    """Get the value for the 'pep8' option.
+
+    Args:
+     - `explicit` -- `Optional[bool]`, the value explicitly specified by user, `None` if not specified
+
+    Envs:
+     - `WALRUS_PEP8` -- the value in environment variable
+
+    """
+    if explicit is not None:
+        return explicit
+    env_value = parse_boolean_state(os.getenv('WALRUS_PEP8'))
+    if env_value is not None:
+        return env_value
+    return _default_pep8
 
 
 ###############################################################################
@@ -53,7 +177,7 @@ def predicate(filename):  # pragma: no cover
     return ROOT in os.path.realpath(filename)
 
 
-tbtrim.set_trim_rule(predicate, strict=True, target=(ConvertError, ContextError))
+tbtrim.set_trim_rule(predicate, strict=True, target=BPCSyntaxError)
 
 ###############################################################################
 # Main convertion implementation
@@ -61,23 +185,23 @@ tbtrim.set_trim_rule(predicate, strict=True, target=(ConvertError, ContextError)
 # walrus wrapper template
 NAME_TEMPLATE = '''\
 if False:
-%(tabsize)s%(name_list)s = NotImplemented
+%(indentation)s%(name_list)s = NotImplemented
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 CALL_TEMPLATE = '__walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
 FUNC_TEMPLATE = '''\
 def __walrus_wrapper_%(name)s_%(uuid)s(expr):
-%(tabsize)s"""Wrapper function for assignment expression."""
-%(tabsize)s%(keyword)s %(name)s
-%(tabsize)s%(name)s = expr
-%(tabsize)sreturn %(name)s
+%(indentation)s"""Wrapper function for assignment expression."""
+%(indentation)s%(keyword)s %(name)s
+%(indentation)s%(name)s = expr
+%(indentation)sreturn %(name)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 # special template for lambda
 LAMBDA_CALL_TEMPLATE = '__walrus_wrapper_lambda_%(uuid)s'
 LAMBDA_FUNC_TEMPLATE = '''\
 def __walrus_wrapper_lambda_%(uuid)s(%(param)s):
-%(tabsize)s"""Wrapper function for lambda definitions."""
-%(tabsize)s%(suite)s
+%(indentation)s"""Wrapper function for lambda definitions."""
+%(indentation)s%(suite)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 # special templates for ClassVar
@@ -93,50 +217,22 @@ del _walrus_wrapper_%(cls)s_dict
 CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set_%(name)s_%(uuid)s(%(expr)s)'
 CLS_NAME_TEMPLATE = '''\
 class __WalrusWrapper%(cls)s:
-%(tabsize)s"""Wrapper class for assignment expression."""
+%(indentation)s"""Wrapper class for assignment expression."""
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 CLS_FUNC_TEMPLATE = '''\
-%(tabsize)s@staticmethod
-%(tabsize)sdef set_%(name)s_%(uuid)s(expr):
-%(tabsize)s%(tabsize)s"""Wrapper function for assignment expression."""
-%(tabsize)s%(tabsize)s_walrus_wrapper_%(cls)s_dict[%(name)r] = expr
-%(tabsize)s%(tabsize)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
+%(indentation)s@staticmethod
+%(indentation)sdef set_%(name)s_%(uuid)s(expr):
+%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
+%(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[%(name)r] = expr
+%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
 
-%(tabsize)s@staticmethod
-%(tabsize)sdef get_%(name)s_%(uuid)s():
-%(tabsize)s%(tabsize)s"""Wrapper function for assignment expression."""
-%(tabsize)s%(tabsize)sif %(name)r in _walrus_wrapper_%(cls)s_dict:
-%(tabsize)s%(tabsize)s%(tabsize)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
-%(tabsize)s%(tabsize)sraise NameError('name %%r is not defined' %% %(name)r)
+%(indentation)s@staticmethod
+%(indentation)sdef get_%(name)s_%(uuid)s():
+%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
+%(indentation)s%(indentation)sif %(name)r in _walrus_wrapper_%(cls)s_dict:
+%(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
+%(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% %(name)r)
 '''.splitlines()  # `str.splitlines` will remove trailing newline
-
-
-def parse(string, source):
-    """Parse source string.
-
-    Args:
-     - `string` -- `str`, context to be converted
-     - `source` -- `str`, source of the context
-
-    Envs:
-     - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
-
-    Returns:
-     - `parso.python.tree.Module` -- parso AST
-
-    Raises:
-     - `ConvertError` -- when source code contains syntax errors
-
-    """
-    grammar = parso.load_grammar(version=os.getenv('WALRUS_VERSION', WALRUS_VERSION[-1]))
-    module = grammar.parse(string, error_recovery=True)
-    errors = grammar.iter_errors(module)
-
-    if errors:
-        error_messages = '\n'.join('[L%dC%d] %s' % (*error.start_pos, error.message) for error in errors)
-        raise ConvertError('source file %r contains following syntax errors:\n' % source + error_messages)
-
-    return module
 
 
 class Context:
@@ -165,15 +261,15 @@ class Context:
         return self._context
 
     def __init__(self, node,
-                 column=0, tabsize=None,
+                 column=0, indentation=None,
                  linesep=None, keyword=None,
                  context=None, raw=False):
         """Conversion context.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
          - `column` -- `int`, current indentation level
-         - `tabsize` -- `Optional[int]`, indentation tab size
+         - `indentation` -- `Optional[int]`, indentation
          - `linesep` -- `Optional[str]`, line seperator
          - `keyword` -- `Optional[str]`, keyword for wrapper function
          - `context` -- `Optional[List[str]]`, global context
@@ -181,23 +277,25 @@ class Context:
 
         Envs:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-         - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+         - `WALRUS_INDENTATION` -- indentation tab size (same as `--tabsize` option in CLI)
          - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
         """
-        if tabsize is None:
-            tabsize = self.guess_tabsize(node)
+        if indentation is None:
+            indentation = self.guess_tabsize(node)  # TODO: all "tabsize" renamed to "indentation"
         if linesep is None:
             linesep = self.guess_linesep(node)
         if keyword is None:
             keyword = self.guess_keyword(node)
         if context is None:
             context = list()
+        # TODO: all options will be stored as attributes, no need to write about env vars in method docstrings
+        # TODO: refactor "linting" stuffs, renamed to "pep8"
         self._linting = BOOLEAN_STATES.get(os.getenv('WALRUS_LINTING', '0').casefold(), False)
 
         self._root = node  # root node
         self._column = column  # current indentation
-        self._tabsize = tabsize  # indentation size
+        self._tabsize = indentation  # indentation size  # TODO: refactor "tabsize"
         self._linesep = linesep  # line seperator
         self._keyword = keyword  # global / nonlocal keyword
         self._context = list(context)  # names in global statements
@@ -233,7 +331,7 @@ class Context:
         """Start traversing the AST module.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
 
         """
         # process node
@@ -254,7 +352,7 @@ class Context:
         """Walk parso AST.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
 
         """
         # 'funcdef', 'classdef', 'if_stmt', 'while_stmt', 'for_stmt', 'with_stmt', 'try_stmt'
@@ -278,7 +376,7 @@ class Context:
         """Process indented suite (`suite` or ...).
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, suite node
+         - `node` -- `parso.tree.NodeOrLeaf`, suite node
          - `func` -- `bool`, if the suite is of function definition
          - `raw` -- `bool`, raw processing flag
          - `cls_ctx` -- `Optional[str]`, class name when suite if of class contextion
@@ -762,7 +860,7 @@ class Context:
         """Check if node has assignment expression. (`namedexpr_test`)
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
 
         Returns:
          - `bool` -- if node has assignment expression
@@ -781,7 +879,7 @@ class Context:
         """Guess keyword based on node position.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
 
         Returns:
          - `str` -- keyword
@@ -802,10 +900,10 @@ class Context:
         """Check indentation tab size.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
 
         Env:
-         - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+         - `WALRUS_INDENTATION` -- indentation tab size (same as `--tabsize` option in CLI)
 
         Returns:
          - `int` -- indentation tab size
@@ -817,14 +915,14 @@ class Context:
                     return cls.guess_tabsize(child)
                 continue
             return child.children[1].get_first_leaf().column
-        return int(os.getenv('WALRUS_TABSIZE', __walrus_tabsize__))
+        return int(os.getenv('WALRUS_INDENTATION', __walrus_tabsize__))
 
     @staticmethod
     def guess_linesep(node):
         """Guess line separator based on source code.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
 
         Envs:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
@@ -870,7 +968,7 @@ class Context:
         """Check if node is assignment expression.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
 
         Returns:
          - `bool` -- if node is assignment expression
@@ -922,7 +1020,7 @@ class Context:
         """Extract preceding and succeeding whitespaces.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
 
         Returns:
          - `str` -- preceding whitespaces
@@ -1006,7 +1104,7 @@ class ClassContext(Context):
         """Conversion context.
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, parso AST
+         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
          - `cls_ctx` -- `str`, class context name
          - `cls_var` -- `Dict[str, str]`, mapping for assignment variable and its UUID
          - `column` -- `int`, current indentation level
@@ -1018,7 +1116,7 @@ class ClassContext(Context):
 
         Envs:
          - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-         - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+         - `WALRUS_INDENTATION` -- indentation tab size (same as `--tabsize` option in CLI)
          - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
         """
@@ -1037,7 +1135,7 @@ class ClassContext(Context):
         """Process indented suite (`suite` or ...).
 
         Args:
-         - `node` -- `Union[parso.python.tree.PythonNode, parso.python.tree.PythonLeaf]`, suite node
+         - `node` -- `parso.tree.NodeOrLeaf`, suite node
          - `func` -- `bool`, if the suite is of function definition
          - `raw` -- `bool`, raw context processing flag
          - `cls_ctx` -- `Optional[str]`, class name when suite if of class contextion
@@ -1213,63 +1311,99 @@ class ClassContext(Context):
         self._buffer += suffix
 
 
-def convert(string, source='<unknown>'):
-    """The main conversion process.
+def convert(code, filename=None, *, source_version=None, linesep=None, indentation=None, pep8=None):
+    """Convert the given source code string.
 
     Args:
-     - `string` -- `str`, context to be converted
-     - `source` -- `str`, source of the context
+     - `code` -- `Union[str, bytes]`, the source code to be converted
+     - `filename` -- `Optional[str]`, an optional source file name to provide a context in case of error
+     - `source_version` -- `Optional[str]`, parse the code as this version (uses the latest version by default)
+     - `linesep` -- `Optional[str]`, line separator of code (LF, CRLF, CR) (auto detect by default)
+     - `indentation` -- `Optional[Union[int, str]]`, code indentation style, specify an integer for the number of spaces,
+        or 't'/'tab' for tabs (auto detect by default)
+     - `pep8` -- `Optional[bool]`, whether to make code insertion PEP 8 compliant
 
     Envs:
-     - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
-     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-     - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
+     - `WALRUS_SOURCE_VERSION` -- same as the `source_version` argument and `--source-version` option in CLI
+     - `WALRUS_LINESEP` -- same as the `linesep` argument and `--linesep` option in CLI
+     - `WALRUS_INDENTATION` -- same as the `indentation` argument and `--indentation` option in CLI
+     - `WALRUS_PEP8` -- same as the `pep8` argument and `--no-pep8` option in CLI (logical negation)
 
     Returns:
-     - `str` -- converted string
+     - `str` -- converted source code
 
     """
+    # TODO: define UUID generator in the Context class, avoid using a global variable
     # Initialise new UUID4Generator for identifier UUIDs
     global uuid_gen
     uuid_gen = UUID4Generator(dash=False)
 
     # parse source string
-    module = parse(string, source)
+    source_version = _get_source_version_option(source_version)
+    module = parso_parse(code, filename=filename, version=source_version)
+
+    # get linesep, indentation and pep8 options
+    linesep = _get_linesep_option(linesep)
+    indentation = _get_indentation_option(indentation)
+    if linesep is None:
+        linesep = detect_linesep(code)
+    if indentation is None:
+        indentation = detect_indentation(code)
+    pep8 = _get_pep8_option(pep8)
 
     # convert source string
-    string = Context(module).string
+    # TODO: pass linesep, indentation and pep8 options to the Context object
+    result = Context(module).string
 
     # return converted string
-    return string
+    return result
 
 
-def walrus(filename):
-    """Wrapper works for conversion.
+def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep8=None, quiet=None):
+    """Convert the given Python source code file. The file will be overwritten.
 
     Args:
-     - `filename` -- `str`, file to be converted
+     - `code` -- `Union[str, bytes]`, the source code to be converted
+     - `filename` -- `Optional[str]`, an optional source file name to provide a context in case of error
+     - `source_version` -- `Optional[str]`, parse the code as this version (uses the latest version by default)
+     - `linesep` -- `Optional[str]`, line separator of code (LF, CRLF, CR) (auto detect by default)
+     - `indentation` -- `Optional[Union[int, str]]`, code indentation style, specify an integer for the number of spaces,
+        or 't'/'tab' for tabs (auto detect by default)
+     - `pep8` -- `Optional[bool]`, whether to make code insertion PEP 8 compliant
+     - `quiet` -- `Optional[bool]`, whether to run in quiet mode
 
     Envs:
-     - `WALRUS_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
-     - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
-     - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
-     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-     - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
+     - `WALRUS_SOURCE_VERSION` -- same as the `source_version` argument and `--source-version` option in CLI
+     - `WALRUS_LINESEP` -- same as the `linesep` argument and `--linesep` option in CLI
+     - `WALRUS_INDENTATION` -- same as the `indentation` argument and `--indentation` option in CLI
+     - `WALRUS_PEP8` -- same as the `pep8` argument and `--no-pep8` option in CLI (logical negation)
+     - `WALRUS_QUIET` -- same as the `quiet` argument and `--quiet` option in CLI
 
     """
-    WALRUS_QUIET = BOOLEAN_STATES.get(os.getenv('WALRUS_QUIET', '0').casefold(), False)
-    if not WALRUS_QUIET:  # pragma: no cover
+    quiet = _get_quiet_option(quiet)
+    if not quiet:  # pragma: no cover
         print('Now converting %r...' % filename)
 
-    # fetch encoding
-    encoding = os.getenv('WALRUS_ENCODING', LOCALE_ENCODING)
+    # read file content
+    with open(filename, 'rb') as file:
+        content = file.read()
 
-    # file content
-    with open(filename, 'r', encoding=encoding, newline='') as file:
-        text = file.read()
+    # detect source code encoding
+    encoding = detect_encoding(content)
+
+    # get linesep and indentation
+    linesep = _get_linesep_option(linesep)
+    indentation = _get_indentation_option(indentation)
+    if linesep is None or indentation is None:
+        with open(filename, 'r', encoding=encoding) as file:
+            if linesep is None:
+                linesep = detect_linesep(file)
+            if indentation is None:
+                indentation = detect_indentation(file)
 
     # do the dirty things
-    text = convert(text, filename)
+    text = convert(content, filename=filename, source_version=source_version, linesep=linesep,
+                   indentation=indentation, pep8=pep8)
 
     # dump back to the file
     with open(filename, 'w', encoding=encoding, newline='') as file:
@@ -1281,11 +1415,10 @@ def walrus(filename):
 
 # default values
 __cwd__ = os.getcwd()
-__archive__ = os.path.join(__cwd__, 'archive')
-__walrus_version__ = os.getenv('WALRUS_VERSION', WALRUS_VERSION[-1])
-__walrus_encoding__ = os.getenv('WALRUS_ENCODING', LOCALE_ENCODING)
-__walrus_linesep__ = os.getenv('WALRUS_LINESEP', os.linesep)
-__walrus_tabsize__ = os.getenv('WALRUS_TABSIZE', '4')
+__walrus_archive_path__ = os.path.join(__cwd__, _get_archive_path_option())
+__walrus_source_version__ = _get_source_version_option()
+__walrus_linesep__ = _get_linesep_option() or 'auto detect'
+__walrus_indentation__ = _get_indentation_option() or 'auto detect'
 
 
 def get_parser():
@@ -1296,34 +1429,33 @@ def get_parser():
 
     """
     parser = argparse.ArgumentParser(prog='walrus',
-                                     usage='walrus [options] <python source files and folders...>',
+                                     usage='walrus [options] <Python source files and directories...>',
                                      description='Back-port compiler for Python 3.8 assignment expressions.')
     parser.add_argument('-V', '--version', action='version', version=__version__)
     parser.add_argument('-q', '--quiet', action='store_true', help='run in quiet mode')
 
     archive_group = parser.add_argument_group(title='archive options',
-                                              description="duplicate original files in case there's any issue")
-    archive_group.add_argument('-na', '--no-archive', action='store_false', dest='archive',
+                                              description="backup original files in case there're any issues")
+    archive_group.add_argument('-na', '--no-archive', action='store_false', dest='do_archive',
                                help='do not archive original files')
-    archive_group.add_argument('-p', '--archive-path', action='store', default=__archive__, metavar='PATH',
+    archive_group.add_argument('-p', '--archive-path', action='store', default=__walrus_archive_path__, metavar='PATH',
                                help='path to archive original files (%(default)s)')
 
     convert_group = parser.add_argument_group(title='convert options',
-                                              description='compatibility configuration for non-unicode files')
-    convert_group.add_argument('-c', '--encoding', action='store', default=__walrus_encoding__, metavar='CODING',
-                               help='encoding to open source files (%(default)s)')
-    convert_group.add_argument('-v', '--python', action='store', metavar='VERSION',
-                               default=__walrus_version__, choices=WALRUS_VERSION,
-                               help='convert against Python version (%(default)s)')
+                                              description='compatibility configuration for non-unicode files')  # TODO: revise this description
+    convert_group.add_argument('-sv', '-fv', '--source-version', '--from-version', action='store', metavar='VERSION',
+                               default=__walrus_source_version__, choices=WALRUS_VERSIONS,
+                               help='parse source code as Python version (%(default)s)')
     convert_group.add_argument('-s', '--linesep', action='store', default=__walrus_linesep__, metavar='SEP',
-                               help='line separator to process source files (%(default)r)')
-    convert_group.add_argument('-nl', '--no-linting', action='store_false', dest='linting',
-                               help='do not lint converted codes')
-    convert_group.add_argument('-t', '--tabsize', action='store', default=__walrus_tabsize__, metavar='INDENT',
-                               help='indentation tab size (%(default)s)', type=int)
+                               help='line separator (LF, CRLF, CR) to read source files (%(default)r)')
+    convert_group.add_argument('-t', '--indentation', action='store', default=__walrus_indentation__, metavar='INDENT',
+                               help='code indentation style, specify an integer for the number of spaces, '
+                                    "or 't'/'tab' for tabs (%(default)s)")
+    convert_group.add_argument('-n8', '--no-pep8', action='store_false', dest='pep8',
+                               help='do not make code insertion PEP 8 compliant')
 
-    parser.add_argument('file', nargs='+', metavar='SOURCE', default=__cwd__,
-                        help='python source files and folders to be converted (%(default)s)')
+    parser.add_argument('file', nargs='*', metavar='SOURCE', default=[__cwd__],
+                        help='Python source files and directories to be converted (%(default)r)')
 
     return parser
 
@@ -1332,41 +1464,25 @@ def main(argv=None):
     """Entry point for walrus.
 
     Args:
-     - `argv` -- `List[str]`, CLI arguments (default: None)
+     - `argv` -- `Optional[List[str]]`, CLI arguments (default: None)
 
     Envs:
-     - `WALRUS_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
-     - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
-     - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
-     - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-     - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
-     - `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+     - `WALRUS_QUIET` -- same as the `--quiet` option in CLI
+     - `WALRUS_DO_ARCHIVE` -- same as the `--no-archive` option in CLI (logical negation)
+     - `WALRUS_ARCHIVE_PATH` -- same as the `--archive-path` option in CLI
+     - `WALRUS_SOURCE_VERSION` -- same as the `--source-version` option in CLI
+     - `WALRUS_LINESEP` -- same as the `--linesep` option in CLI
+     - `WALRUS_INDENTATION` -- same as the `--indentation` option in CLI
+     - `WALRUS_PEP8` -- same as the `--no-pep8` option in CLI (logical negation)
 
     """
     parser = get_parser()
     args = parser.parse_args(argv)
 
-    # set up variables
-    ARCHIVE = args.archive_path
-    os.environ['WALRUS_VERSION'] = args.python
-    os.environ['WALRUS_ENCODING'] = args.encoding
-    os.environ['WALRUS_TABSIZE'] = str(args.tabsize)
-    WALRUS_QUIET = os.getenv('WALRUS_QUIET')
-    os.environ['WALRUS_QUIET'] = '1' if args.quiet else ('0' if WALRUS_QUIET is None else WALRUS_QUIET)
-    WALRUS_LINTING = os.getenv('WALRUS_LINTING')
-    os.environ['WALRUS_LINTING'] = '1' if args.linting else ('0' if WALRUS_LINTING is None else WALRUS_LINTING)
-
-    linesep = args.linesep.upper()
-    if linesep == 'CR':
-        os.environ['WALRUS_LINESEP'] = '\r'
-    elif linesep == 'CRLF':
-        os.environ['WALRUS_LINESEP'] = '\r\n'
-    elif linesep == 'LF':
-        os.environ['WALRUS_LINESEP'] = '\n'
-    elif args.linesep in ['\r', '\r\n', '\n']:
-        os.environ['WALRUS_LINESEP'] = args.linesep
-    else:
-        raise EnvironError('invalid line separator %r' % args.linesep)
+    # get options
+    quiet = _get_quiet_option(args.quiet)
+    do_archive = _get_do_archive_option(args.do_archive)
+    archive_path = _get_archive_path_option(args.archive_path)
 
     # fetch file list
     filelist = sorted(detect_files(args.file))
@@ -1376,15 +1492,18 @@ def main(argv=None):
         parser.error('no valid source file found')
 
     # make archive
-    if args.archive:
-        archive_files(filelist, ARCHIVE)
+    if do_archive:
+        archive_files(filelist, archive_path)
 
     # process files
+    do_walrus = functools.partial(walrus, source_version=args.source_version, linesep=args.linesep,
+                                  indentation=args.indentation, pep8=args.pep8, quiet=quiet)
     if mp is None or CPU_CNT <= 1:
-        [walrus(filename) for filename in filelist]  # pylint: disable=expression-not-assigned # pragma: no cover
+        for filename in filelist:  # pragma: no cover
+            do_walrus(filename)
     else:
         with mp.Pool(processes=CPU_CNT) as pool:
-            pool.map(walrus, filelist)
+            pool.map(do_walrus, filelist)
 
 
 if __name__ == '__main__':

@@ -72,8 +72,8 @@ compatibility configuration for non-unicode files
 
 -nl, --no-linting     do not lint converted codes
 
--t *INDENT*, --tabsize *INDENT*
-                      indentation tab size
+-t *INDENT*, --indentation *INDENT*
+                      indentation style
 
 ENVIRONMENT
 ===========
@@ -85,7 +85,7 @@ ENVIRONMENT
 :WALRUS_VERSION:      convert against Python version
 :WALRUS_LINESEP:      line separator to process source files
 :WALRUS_LINTING:      lint converted codes
-:WALRUS_TABSIZE:      indentation tab size
+:WALRUS_INDENTATION:  indentation style
 
 SEE ALSO
 ========

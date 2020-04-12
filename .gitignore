@@ -2,6 +2,8 @@
 temp
 Tap
 
+.vscode
+Pipfile.lock
 
 # Created by https://www.gitignore.io/api/python,macos,linux,windows,visualstudiocode
 # Edit at https://www.gitignore.io/?templates=python,macos,linux,windows,visualstudiocode

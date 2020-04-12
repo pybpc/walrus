@@ -1,14 +1,15 @@
 # walrus
 
-[![PyPI - Downloads](https://pepy.tech/badge/python-walrus)](https://pepy.tech/count/python-walrus)
-[![PyPI - Version](https://img.shields.io/pypi/v/python-walrus.svg)](https://pypi.org/project/python-walrus)
-[![PyPI - Format](https://img.shields.io/pypi/format/python-walrus.svg)](https://pypi.org/project/python-walrus)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/python-walrus.svg)](https://pypi.org/project/python-walrus)
+<!-- [![PyPI - Downloads](https://pepy.tech/badge/python-walrus)](https://pepy.tech/count/python-walrus) -->
+<!-- [![PyPI - Version](https://img.shields.io/pypi/v/python-walrus.svg)](https://pypi.org/project/python-walrus) -->
+<!-- [![PyPI - Format](https://img.shields.io/pypi/format/python-walrus.svg)](https://pypi.org/project/python-walrus) -->
+<!-- [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/python-walrus.svg)](https://pypi.org/project/python-walrus) -->
 
 [![Travis CI - Status](https://img.shields.io/travis/pybpc/walrus.svg)](https://travis-ci.org/pybpc/walrus)
 [![Codecov - Coverage](https://codecov.io/gh/pybpc/walrus/branch/master/graph/badge.svg)](https://codecov.io/gh/pybpc/walrus)
-![License](https://img.shields.io/github/license/pybpc/walrus.svg)
-[![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE)
+<!-- ![License](https://img.shields.io/github/license/pybpc/walrus.svg) -->
+<!-- [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE) -->
+[![Documentation Status](https://readthedocs.org/projects/bpc-walrus/badge/?version=latest)](https://bpc-walrus.readthedocs.io/en/latest/?badge=latest)
 
 > Write *assignment expressions* in Python 3.8 flavour, and let `walrus` worry about back-port issues :beer:
 
@@ -85,8 +86,8 @@ convert options:
   -s SEP, --linesep SEP
                         line separator to process source files (${OS_LINESEP})
   -nl, --no-linting     do not lint converted codes
-  -t INDENT, --tabsize INDENT
-                        indentation tab size (4)
+  -t INDENT, --indentation INDENT
+                        indentation style (${INDENTATION})
 ```
 
 &emsp; `walrus` will read then convert all *assignment expressions* syntax in every Python
@@ -108,7 +109,7 @@ such functions to check assignment expressions at runtime, if `-nl` not set.
 - `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
-- `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+- `WALRUS_INDENTATION` -- indentation style (same as `--indentation` option in CLI)
 
 ### APIs
 
@@ -129,7 +130,7 @@ Envs:
 - `WALRUS_VERSION`-- convert against Python version (same as `--python` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
-- `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+- `WALRUS_INDENTATION` -- indentation style (same as `--indentation` option in CLI)
 
 Raises:
 
@@ -151,7 +152,7 @@ Envs:
 - `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
 - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
 - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
-- `WALRUS_TABSIZE` -- indentation tab size (same as `--tabsize` option in CLI)
+- `WALRUS_INDENTATION` -- indentation style (same as `--indentation` option in CLI)
 
 Returns:
 

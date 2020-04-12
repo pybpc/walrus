@@ -269,58 +269,86 @@ CLS_FUNC_TEMPLATE = '''\
 
 
 class Context:
-    """Conversion context."""
+    """General conversion context.
+
+    Args:
+        node (parso.tree.NodeOrLeaf): parso AST
+        config (Config): convertion configurations
+
+    Keyword Args:
+        column (int): current indentation level
+        keyword (Optional[Union[Literal['global'], Literal['nonlocal']]]): keyword for wrapper function
+        context (Optional[List[str]]): global context
+        raw (bool): raw processing flag
+
+    :Environment Variables:
+        - :envvar:`WALRUS_LINESEP` -- line separator to process source files (same as ``--linesep`` option in CLI)
+        - :envvar:`WALRUS_INDENTATION` -- indentation tab size (same as ``--tabsize`` option in CLI)
+        - :envvar:`WALRUS_LINTING` -- lint converted codes (same as ``--linting`` option in CLI)
+
+    """
 
     @property
     def string(self):
+        """Conversion buffer (:attr:`self._buffer <walrus.Context._buffer>`).
+
+        :rtype: str
+
+        """
         return self._buffer
 
     @property
     def lambdef(self):
+        """Lambda definitions (:attr:`self._lamb <walrus.Context._lamb>`).
+
+        :rtype: List[Lambda]
+
+        """
         return self._lamb
 
     @property
     def variables(self):
+        """Assignment expression variable records (:attr:`self._vars <walrus.Context._vars>`).
+
+        The variables are the *left-hand-side* variable name of the assignment expressions.
+
+        :rtype: List[str]
+
+        """
         return self._vars
 
     @property
     def functions(self):
+        """Assignment expression wrapper function records.
+
+        :rtype: List[Function]
+
+        """
         return self._func
 
     @property
     def global_stmt(self):
+        """List of variables declared in the ``global`` statements.
+
+        If current root node (:attr:`self._root <walrus.Context._root>`) is a function definition
+        (:class:`parso.python.tree.Function`), then returns an empty list; else returns
+        :attr:`self._context <walrus.Context._context>`.
+
+        :rtype: List[str]
+
+        """
         if self._root.type == 'funcdef':
             return list()
         return self._context
 
-    def __init__(self, node, config, *,
-                 column=0, keyword=None,
-                 context=None, raw=False):
-        """Conversion context.
-
-        Args:
-            node (parso.tree.NodeOrLeaf): parso AST
-            config (bpc_utils.Config): convertion configurations
-
-        Keyword Args:
-            column (int): current indentation level
-            keyword (Optional[Union[Literal['global'], Literal['nonlocal']]]): keyword for wrapper function
-            context (Optional[List[str]]): global context
-            raw (bool): raw processing flag
-
-        :Environment Variables:
-         - :envvar:`WALRUS_LINESEP` -- line separator to process source files (same as ``--linesep`` option in CLI)
-         - :envvar:`WALRUS_INDENTATION` -- indentation tab size (same as ``--tabsize`` option in CLI)
-         - :envvar:`WALRUS_LINTING` -- lint converted codes (same as ``--linting`` option in CLI)
-
-        """
+    def __init__(self, node, config, *, column=0, keyword=None, context=None, raw=False):
         if keyword is None:
             keyword = self.guess_keyword(node)
         if context is None:
             context = list()
 
         self.config = config
-        self._indentation = config.indentation  # indentation style
+        self._indentation = config.indentation  # indentation sequence
         self._linesep = config.linesep  # line seperator
 
         # TODO: all options will be stored as attributes, no need to write about env vars in method docstrings
@@ -357,9 +385,6 @@ class Context:
 
         Args:
             code (str): code string
-
-        Returns:
-            Context: the object itself
 
         """
         if self._prefix_or_suffix:
@@ -1067,7 +1092,7 @@ class ClassContext(Context):
 
         Args:
             node (parso.tree.NodeOrLeaf): parso AST
-            config (bpc_utils.Config): convertion configurations
+            config (Config): convertion configurations
 
         Keyword Args:
             cls_ctx (str): class context name

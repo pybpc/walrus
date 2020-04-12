@@ -36,13 +36,21 @@ release = '0.1.4'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx.ext.intersphinx',
     'sphinx.ext.autodoc', 'sphinx.ext.autodoc.typehints',
-    'sphinxcontrib.napoleon'
+    'sphinxcontrib.napoleon',
+    'sphinxemoji.sphinxemoji',
 ]
 
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'bpc_utils': ('https://bpc-utils.readthedocs.io/en/latest/', None),
+    'parso': ('https://parso.readthedocs.io/en/latest/', None),
+}
+
 autodoc_typehints = 'description'
-# autodoc_member_order = 'bysource'
-autodoc_member_order = 'alphabetic'
+autodoc_member_order = 'bysource'
+# autodoc_member_order = 'alphabetic'
 
 # Napoleon settings
 napoleon_google_docstring = True

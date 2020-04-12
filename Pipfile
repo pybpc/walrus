@@ -24,6 +24,7 @@ pylint = "*"
 requests = "*"
 sphinx = "*"
 sphinxcontrib-napoleon = "*"
+sphinxemoji = "*"
 rstcheck = "*"
 
 [packages]

@@ -1,3 +1,5 @@
+.PHONY: docs
+
 export PIPENV_VERBOSITY=-1
 
 # get version string
@@ -12,6 +14,9 @@ dist: pipenv test pypi setup github formula maintainer after
 github: git-upload git-release
 pypi: pypi-dist pypi-upload
 setup: setup-version setup-manual
+
+docs:
+	pipenv run $(MAKE) -C docs html
 
 coverage:
 	pipenv run coverage run tests/test.py

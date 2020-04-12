@@ -9,15 +9,18 @@ import sys
 
 import parso
 import tbtrim
-from bpc_utils import (
-    CPU_CNT, BPCSyntaxError, UUID4Generator, archive_files, detect_encoding, detect_files,
-    detect_indentation, detect_linesep, get_parso_grammar_versions, mp, parse_boolean_state,
-    parse_indentation, parse_linesep, parso_parse)
+from bpc_utils import (CPU_CNT, BPCSyntaxError, Config, UUID4Generator, archive_files,
+                       detect_encoding, detect_files, detect_indentation, detect_linesep,
+                       get_parso_grammar_versions, mp, parse_boolean_state, parse_indentation,
+                       parse_linesep, parso_parse)
 
 __all__ = ['main', 'walrus', 'convert']
 
 # version string
 __version__ = '0.1.4'
+
+###############################################################################
+# Auxiliaries
 
 # get supported source versions
 WALRUS_VERSIONS = get_parso_grammar_versions(minimum='3.8')
@@ -39,13 +42,17 @@ _default_pep8 = True
 
 
 def _get_quiet_option(explicit=None):
-    """Get the value for the 'quiet' option.
+    """Get the value for the ``quiet`` option.
 
     Args:
-     - `explicit` -- `Optional[bool]`, the value explicitly specified by user, `None` if not specified
+        explicit (Optional[bool]): the value explicitly specified by user,
+            ``None`` if not specified
 
-    Envs:
-     - `WALRUS_QUIET` -- the value in environment variable
+    Returns:
+        bool: the value for the ``quiet`` option
+
+    :Environment Variables:
+     - :envvar:`WALRUS_QUIET` -- the value in environment variable
 
     """
     if explicit is not None:
@@ -57,13 +64,17 @@ def _get_quiet_option(explicit=None):
 
 
 def _get_do_archive_option(explicit=None):
-    """Get the value for the 'do_archive' option.
+    """Get the value for the ``do_archive`` option.
 
     Args:
-     - `explicit` -- `Optional[bool]`, the value explicitly specified by user, `None` if not specified
+        explicit (Optional[bool]): the value explicitly specified by user,
+            ``None`` if not specified
 
-    Envs:
-     - `WALRUS_DO_ARCHIVE` -- the value in environment variable
+    Returns:
+        bool: the value for the ``do_archive`` option
+
+    :Environment Variables:
+     - :envvar:`WALRUS_DO_ARCHIVE` -- the value in environment variable
 
     """
     if explicit is not None:
@@ -75,13 +86,17 @@ def _get_do_archive_option(explicit=None):
 
 
 def _get_archive_path_option(explicit=None):
-    """Get the value for the 'archive_path' option.
+    """Get the value for the ``archive_path`` option.
 
     Args:
-     - `explicit` -- `Optional[str]`, the value explicitly specified by user, `None` if not specified
+        explicit (Optional[str]): the value explicitly specified by user,
+            ``None`` if not specified
 
-    Envs:
-     - `WALRUS_ARCHIVE_PATH` -- the value in environment variable
+    Returns:
+        str: the value for the ``archive_path`` option
+
+    :Environment Variables:
+     - :envvar:`WALRUS_ARCHIVE_PATH` -- the value in environment variable
 
     """
     if explicit:
@@ -93,13 +108,17 @@ def _get_archive_path_option(explicit=None):
 
 
 def _get_source_version_option(explicit=None):
-    """Get the value for the 'source_version' option.
+    """Get the value for the ``source_version`` option.
 
     Args:
-     - `explicit` -- `Optional[str]`, the value explicitly specified by user, `None` if not specified
+        explicit (Optional[str]): the value explicitly specified by user,
+            ``None`` if not specified
 
-    Envs:
-     - `WALRUS_SOURCE_VERSION` -- the value in environment variable
+    Returns:
+        str: the value for the ``source_version`` option
+
+    :Environment Variables:
+     - :envvar:`WALRUS_SOURCE_VERSION` -- the value in environment variable
 
     """
     if explicit:
@@ -111,13 +130,18 @@ def _get_source_version_option(explicit=None):
 
 
 def _get_linesep_option(explicit=None):
-    """Get the value for the 'linesep' option.
+    r"""Get the value for the ``linesep`` option.
 
     Args:
-     - `explicit` -- `Optional[str]`, the value explicitly specified by user, `None` if not specified
+        explicit (Optional[str]): the value explicitly specified by user,
+            ``None`` if not specified
 
-    Envs:
-     - `WALRUS_LINESEP` -- the value in environment variable
+    Returns:
+        Optional[Literal['\\n', '\\r\\n', '\\r']]: the value for the ``linesep`` option;
+        ``None`` means *auto detection* at runtime
+
+    :Environment Variables:
+     - :envvar:`WALRUS_LINESEP` -- the value in environment variable
 
     """
     if explicit:
@@ -129,13 +153,18 @@ def _get_linesep_option(explicit=None):
 
 
 def _get_indentation_option(explicit=None):
-    """Get the value for the 'indentation' option.
+    """Get the value for the ``indentation`` option.
 
     Args:
-     - `explicit` -- `Optional[str]`, the value explicitly specified by user, `None` if not specified
+        explicit (Optional[str]): the value explicitly specified by user,
+            ``None`` if not specified
 
-    Envs:
-     - `WALRUS_INDENTATION` -- the value in environment variable
+    Returns:
+        Optional[str]: the value for the ``indentation`` option;
+        ``None`` means *auto detection* at runtime
+
+    :Environment Variables:
+     - :envvar:`WALRUS_INDENTATION` -- the value in environment variable
 
     """
     if explicit:
@@ -147,13 +176,17 @@ def _get_indentation_option(explicit=None):
 
 
 def _get_pep8_option(explicit=None):
-    """Get the value for the 'pep8' option.
+    """Get the value for the ``pep8`` option.
 
     Args:
-     - `explicit` -- `Optional[bool]`, the value explicitly specified by user, `None` if not specified
+        explicit (Optional[str]): the value explicitly specified by user,
+            ``None`` if not specified
 
-    Envs:
-     - `WALRUS_PEP8` -- the value in environment variable
+    Returns:
+        bool: the value for the ``pep8`` option
+
+    :Environment Variables:
+     - :envvar:`WALRUS_PEP8` -- the value in environment variable
 
     """
     if explicit is not None:
@@ -260,43 +293,41 @@ class Context:
             return list()
         return self._context
 
-    def __init__(self, node,
-                 column=0, indentation=None,
-                 linesep=None, keyword=None,
+    def __init__(self, node, config, *,
+                 column=0, keyword=None,
                  context=None, raw=False):
         """Conversion context.
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
-         - `column` -- `int`, current indentation level
-         - `indentation` -- `Optional[int]`, indentation
-         - `linesep` -- `Optional[str]`, line seperator
-         - `keyword` -- `Optional[str]`, keyword for wrapper function
-         - `context` -- `Optional[List[str]]`, global context
-         - `raw` -- `bool`, raw processing flag
+            node (parso.tree.NodeOrLeaf): parso AST
+            config (bpc_utils.Config): convertion configurations
 
-        Envs:
-         - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-         - `WALRUS_INDENTATION` -- indentation tab size (same as `--tabsize` option in CLI)
-         - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
+        Keyword Args:
+            column (int): current indentation level
+            keyword (Optional[Union[Literal['global'], Literal['nonlocal']]]): keyword for wrapper function
+            context (Optional[List[str]]): global context
+            raw (bool): raw processing flag
+
+        :Environment Variables:
+         - :envvar:`WALRUS_LINESEP` -- line separator to process source files (same as ``--linesep`` option in CLI)
+         - :envvar:`WALRUS_INDENTATION` -- indentation tab size (same as ``--tabsize`` option in CLI)
+         - :envvar:`WALRUS_LINTING` -- lint converted codes (same as ``--linting`` option in CLI)
 
         """
-        if indentation is None:
-            indentation = self.guess_tabsize(node)  # TODO: all "tabsize" renamed to "indentation"
-        if linesep is None:
-            linesep = self.guess_linesep(node)
         if keyword is None:
             keyword = self.guess_keyword(node)
         if context is None:
             context = list()
+
+        self.config = config
+        self._indentation = config.indentation  # indentation style
+        self._linesep = config.linesep  # line seperator
+
         # TODO: all options will be stored as attributes, no need to write about env vars in method docstrings
-        # TODO: refactor "linting" stuffs, renamed to "pep8"
-        self._linting = BOOLEAN_STATES.get(os.getenv('WALRUS_LINTING', '0').casefold(), False)
+        self._pep8 = config.pep8
 
         self._root = node  # root node
         self._column = column  # current indentation
-        self._tabsize = indentation  # indentation size  # TODO: refactor "tabsize"
-        self._linesep = linesep  # line seperator
         self._keyword = keyword  # global / nonlocal keyword
         self._context = list(context)  # names in global statements
 
@@ -318,6 +349,19 @@ class Context:
             self._concat()  # generate final result
 
     def __iadd__(self, code):
+        """Support of ``+=`` operator.
+
+        If :attr:`self._prefix_or_suffix <walrus.Context._prefix_or_suffix>` is ``True``, then
+        the ``code`` will be appended to :attr:`self._prefix <walrus.Context._prefix>`; else
+        it will be appended to :attr:`self._suffix <walrus.Context._suffix>`.
+
+        Args:
+            code (str): code string
+
+        Returns:
+            Context: the object itself
+
+        """
         if self._prefix_or_suffix:
             self._prefix += code
         else:
@@ -325,13 +369,14 @@ class Context:
         return self
 
     def __str__(self):
+        """Returns :attr:`self._buffer <walrus.Context._buffer>`."""
         return self._buffer.strip()
 
     def _walk(self, node):
         """Start traversing the AST module.
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
+            node (parso.tree.NodeOrLeaf): parso AST
 
         """
         # process node
@@ -352,7 +397,7 @@ class Context:
         """Walk parso AST.
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
+            node (parso.tree.NodeOrLeaf): parso AST
 
         """
         # 'funcdef', 'classdef', 'if_stmt', 'while_stmt', 'for_stmt', 'with_stmt', 'try_stmt'
@@ -376,18 +421,18 @@ class Context:
         """Process indented suite (`suite` or ...).
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, suite node
-         - `func` -- `bool`, if the suite is of function definition
-         - `raw` -- `bool`, raw processing flag
-         - `cls_ctx` -- `Optional[str]`, class name when suite if of class contextion
+            node (parso.tree.NodeOrLeaf): suite node
+            func (bool): if the suite is of function definition
+            raw (bool): raw processing flag
+            cls_ctx (Optional[str]): class name when suite if of class contextion
 
         """
         if not self.has_walrus(node):
             self += node.get_code()
             return
 
-        indent = self._column + self._tabsize
-        self += self._linesep + '\t'.expandtabs(indent)
+        indent = self._column + 1
+        self += self._linesep + self._indentation * indent
 
         if func:
             keyword = 'nonlocal'
@@ -396,14 +441,14 @@ class Context:
 
         # process suite
         if cls_ctx is None:
-            ctx = Context(node=node, context=self._context,
-                          column=indent, tabsize=self._tabsize,
-                          linesep=self._linesep, keyword=keyword, raw=raw)
+            ctx = Context(node=node, config=self.config,
+                          context=self._context, column=indent,
+                          keyword=keyword, raw=raw)
         else:
             ctx = ClassContext(cls_ctx=cls_ctx,
-                               node=node, context=self._context,
-                               column=indent, tabsize=self._tabsize,
-                               linesep=self._linesep, keyword=keyword, raw=raw)
+                               node=node, config=self.config,
+                               context=self._context, column=indent,
+                               keyword=keyword, raw=raw)
         self += ctx.string.lstrip()
 
         # keep records
@@ -414,10 +459,10 @@ class Context:
         self._context.extend(ctx.global_stmt)
 
     def _process_namedexpr_test(self, node):
-        """Process assignment expression (`namedexpr_test`).
+        """Process assignment expression (``namedexpr_test``).
 
         Args:
-         - `node` -- `parso.python.tree.PythonNode`, assignment expression node
+            node (parso.python.tree.PythonNode): assignment expression node
 
         """
         # split assignment expression
@@ -426,9 +471,9 @@ class Context:
         nuid = uuid_gen.gen()
 
         # calculate expression string
-        ctx = Context(node=node_expr, context=self._context,
-                      column=self._column, tabsize=self._tabsize,
-                      linesep=self._linesep, keyword=self._keyword, raw=True)
+        ctx = Context(node=node_expr, config=self.config,
+                      context=self._context, column=self._column,
+                      keyword=self._keyword, raw=True)
         expr = ctx.string.strip()
         self._vars.extend(ctx.variables)
         self._func.extend(ctx.functions)
@@ -452,7 +497,7 @@ class Context:
         """Process function definition (``global_stmt``).
 
         Args:
-         - `node` -- `parso.python.tree.GlobalStmt`, global statement node
+            node (parso.python.tree.GlobalStmt): global statement node
 
         """
         children = iter(node.children)
@@ -481,7 +526,7 @@ class Context:
         """Process class definition (``classdef``).
 
         Args:
-         - `node` -- `parso.python.tree.Class`, class node
+            node (parso.python.tree.Class): class node
 
         """
         flag = self.has_walrus(node)
@@ -490,17 +535,17 @@ class Context:
         # <Name: ...>
         name = node.name
         if flag:
-            if self._linting:
+            if self._pep8:
                 buffer = self._prefix if self._prefix_or_suffix else self._suffix
 
                 self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix=code,
                                                                  blank=1, linesep=self._linesep)
 
-            self += '\t'.expandtabs(self._column) \
+            self += self._indentation * self._column \
                  + LCL_DICT_TEMPLATE % dict(cls=name.value) \
                  + self._linesep
 
-            if self._linting:
+            if self._pep8:
                 blank = 2 if self._column == 0 else 1
                 buffer = self._prefix if self._prefix_or_suffix else self._suffix
 
@@ -519,20 +564,19 @@ class Context:
         self._process_suite_node(suite, cls_ctx=name.value)
 
         if flag:
-            indent = '\t'.expandtabs(self._column)
-            tabsize = '\t'.expandtabs(self._tabsize)
+            indent = self._indentation * self._column
 
-            if self._linting:
+            if self._pep8:
                 blank = 2 if self._column == 0 else 1
                 buffer = self._prefix if self._prefix_or_suffix else self._suffix
                 self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix='',
                                                                  blank=blank, linesep=self._linesep)
 
             self += indent \
-                 + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(tabsize=tabsize, cls=name.value) \
+                 + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(indentation=self._indentation, cls=name.value) \
                  + self._linesep
 
-            if self._linting:
+            if self._pep8:
                 buffer = self._prefix if self._prefix_or_suffix else self._suffix
 
                 code = ''
@@ -547,7 +591,7 @@ class Context:
         """Process function definition (``funcdef``).
 
         Args:
-         - `node` -- `parso.python.tree.Function`, function node
+            node (parso.python.tree.Function): function node
 
         """
         # 'def' NAME '(' PARAM ')' [ '->' NAME ] ':' SUITE
@@ -559,7 +603,7 @@ class Context:
         """Process lambda definition (``lambdef``).
 
         Args:
-         - `node` -- `parso.python.tree.Lambda`, lambda node
+            node (parso.python.tree.Lambda): lambda node
 
         """
         if not self.has_walrus(node):
@@ -580,10 +624,10 @@ class Context:
         param = ''.join(map(lambda n: n.get_code(), para_list))
 
         # test_nocond | test
-        indent = self._column + self._tabsize
-        ctx = LambdaContext(node=next(children), context=self._context,
-                            column=indent, tabsize=self._tabsize,
-                            linesep=self._linesep, keyword='nonlocal')
+        indent = self._column + 1
+        ctx = LambdaContext(node=next(children), config=self.config,
+                            context=self._context, column=indent,
+                            keyword='nonlocal')
         suite = ctx.string.strip()
 
         # keep record
@@ -597,7 +641,7 @@ class Context:
         """Process if statement (``if_stmt``).
 
         Args:
-         - `node` -- `parso.python.tree.IfStmt`, if node
+            node (parso.python.tree.IfStmt): if node
 
         """
         children = iter(node.children)
@@ -638,7 +682,7 @@ class Context:
         """Process while statement (``while_stmt``).
 
         Args:
-         - `node` -- `parso.python.tree.WhileStmt`, if node
+            node (parso.python.tree.WhileStmt): while node
 
         """
         children = iter(node.children)
@@ -668,7 +712,7 @@ class Context:
         """Process for statement (``for_stmt``).
 
         Args:
-         - `node` -- `parso.python.tree.ForStmt`, for node
+            node (parso.python.tree.ForStmt): for node
 
         """
         children = iter(node.children)
@@ -702,7 +746,7 @@ class Context:
         """Process with statement (``with_stmt``).
 
         Args:
-         - `node` -- `parso.python.tree.WithStmt`, with node
+            node (parso.python.tree.WithStmt): with node
 
         """
         children = iter(node.children)
@@ -726,7 +770,7 @@ class Context:
         """Process try statement (``try_stmt``).
 
         Args:
-         - `node` -- `parso.python.tree.TryStmt`, try node
+            node (parso.python.tree.TryStmt): try node
 
         """
         children = iter(node.children)
@@ -745,10 +789,10 @@ class Context:
             self._process_suite_node(next(children))
 
     def _process_argument(self, node):
-        """Process function argument (`argument`).
+        """Process function argument (``argument``).
 
         Args:
-         - `node` -- `parso.python.tree.PythonNode`, argument node
+            node (parso.python.tree.PythonNode): argument node
 
         """
         children = iter(node.children)
@@ -781,7 +825,7 @@ class Context:
 
         # first, the prefix codes
         self._buffer += self._prefix + prefix
-        if flag and self._linting and self._buffer:
+        if flag and self._pep8 and self._buffer:
             if (self._node_before_walrus is not None \
                     and self._node_before_walrus.type in ('funcdef', 'classdef') \
                     and self._column == 0):
@@ -792,9 +836,8 @@ class Context:
                                                                      blank=blank, linesep=self._linesep)
 
         # then, the variables and functions
-        indent = '\t'.expandtabs(self._column)
-        tabsize = '\t'.expandtabs(self._tabsize)
-        if self._linting:
+        indent = self._indentation * self._column
+        if self._pep8:
             linesep = self._linesep * (1 if self._column > 0 else 2)
         else:
             linesep = ''
@@ -802,22 +845,22 @@ class Context:
             name_list = ' = '.join(sorted(set(self._vars)))
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(NAME_TEMPLATE) % dict(tabsize=tabsize, name_list=name_list) + self._linesep
+            ).join(NAME_TEMPLATE) % dict(indentation=self._indentation, name_list=name_list) + self._linesep
         for func in sorted(self._func, key=lambda func: func['name']):
             if self._buffer:
                 self._buffer += linesep
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + self._linesep
+            ).join(FUNC_TEMPLATE) % dict(indentation=self._indentation, **func) + self._linesep
         for lamb in self._lamb:
             if self._buffer:
                 self._buffer += linesep
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(LAMBDA_FUNC_TEMPLATE) % dict(tabsize=tabsize, **lamb) + self._linesep
+            ).join(LAMBDA_FUNC_TEMPLATE) % dict(indentation=self._indentation, **lamb) + self._linesep
 
         # finally, the suffix codes
-        if flag and self._linting:
+        if flag and self._pep8:
             blank = 2 if self._column == 0 else 1
             self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=suffix,
                                                                      blank=blank, linesep=self._linesep)
@@ -827,8 +870,7 @@ class Context:
         """Strip comments from suffix buffer.
 
         Returns:
-         - `str` -- prefix comments
-         - `str` -- suffix strings
+            Tuple[str, str]: a tuple of *prefix comments* and *suffix strings*
 
         """
         prefix = ''
@@ -848,13 +890,13 @@ class Context:
 
     @classmethod
     def has_walrus(cls, node):
-        """Check if node has assignment expression. (`namedexpr_test`)
+        """Check if node has assignment expression. (``namedexpr_test``)
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
+            node (parso.tree.NodeOrLeaf): parso AST
 
         Returns:
-         - `bool` -- if node has assignment expression
+            bool: if ``node`` has assignment expression
 
         """
         if cls.is_walrus(node):
@@ -870,10 +912,10 @@ class Context:
         """Guess keyword based on node position.
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
+            node (parso.tree.NodeOrLeaf): parso AST
 
         Returns:
-         - `str` -- keyword
+            Union[Literal['global'], Literal['nonlocal']]: keyword
 
         """
         if isinstance(node, parso.python.tree.Module):
@@ -886,83 +928,15 @@ class Context:
             return 'nonlocal'
         return cls.guess_keyword(parent)
 
-    @classmethod
-    def guess_tabsize(cls, node):
-        """Check indentation tab size.
-
-        Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
-
-        Env:
-         - `WALRUS_INDENTATION` -- indentation tab size (same as `--tabsize` option in CLI)
-
-        Returns:
-         - `int` -- indentation tab size
-
-        """
-        for child in node.children:
-            if child.type != 'suite':
-                if hasattr(child, 'children'):
-                    return cls.guess_tabsize(child)
-                continue
-            return child.children[1].get_first_leaf().column
-        return int(os.getenv('WALRUS_INDENTATION', __walrus_tabsize__))
-
-    @staticmethod
-    def guess_linesep(node):
-        """Guess line separator based on source code.
-
-        Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
-
-        Envs:
-         - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-
-        Returns:
-         - `str` -- line separator
-
-        """
-        root = node.get_root_node()
-        code = root.get_code()
-
-        pool = {
-            '\r': 0,
-            '\r\n': 0,
-            '\n': 0,
-        }
-        for line in code.splitlines(True):
-            if line.endswith('\r'):
-                pool['\r'] += 1
-            elif line.endswith('\r\n'):
-                pool['\r\n'] += 1
-            else:
-                pool['\n'] += 1
-
-        sort = sorted(pool, key=lambda k: pool[k])
-        if pool[sort[0]] > pool[sort[1]]:
-            return sort[0]
-
-        env = os.getenv('WALRUS_LINESEP', os.linesep)
-        env_name = env.upper()
-        if env_name == 'CR':
-            return '\r'
-        if env_name == 'CRLF':
-            return '\r\n'
-        if env_name == 'LF':
-            return '\n'
-        if env in ['\r', '\r\n', '\n']:
-            return env
-        raise EnvironError('invalid line separator %r' % env)
-
     @staticmethod
     def is_walrus(node):
         """Check if node is assignment expression.
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
+            node (parso.tree.NodeOrLeaf): parso AST
 
         Returns:
-         - `bool` -- if node is assignment expression
+            bool: if ``node`` is assignment expression
 
         """
         if node.type == 'namedexpr_test':
@@ -976,13 +950,13 @@ class Context:
         """Count missing preceding or succeeding blank lines.
 
         Args:
-         - `prefix` -- `str`, preceding source code
-         - `suffix` -- `str`, succeeding source code
-         - `blank` -- `int`, number of expecting blank lines
-         - `linesep` -- `str`, line seperator
+            prefix (str): preceding source code
+            suffix (str): succeeding source code
+            blank (int): number of expecting blank lines
+            linesep (str): line seperator
 
         Returns:
-         - `int` -- number of preceding blank lines
+            int: number of preceding blank lines
 
         """
         count = 0
@@ -1011,11 +985,10 @@ class Context:
         """Extract preceding and succeeding whitespaces.
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
+            node (parso.tree.NodeOrLeaf) parso AST
 
         Returns:
-         - `str` -- preceding whitespaces
-         - `str` -- succeeding whitespaces
+            Tuple[str, str]: a tuple of *preceding* and *succeeding* whitespaces
 
         """
         code = node.get_code()
@@ -1045,9 +1018,8 @@ class LambdaContext(Context):
         flag = self.has_walrus(self._root)
 
         # first, the variables and functions
-        indent = '\t'.expandtabs(self._column)
-        tabsize = '\t'.expandtabs(self._tabsize)
-        if self._linting:
+        indent = self._indentation * self._column
+        if self._pep8:
             linesep = self._linesep * (1 if self._column > 0 else 2)
         else:
             linesep = ''
@@ -1055,20 +1027,20 @@ class LambdaContext(Context):
             name_list = ' = '.join(sorted(set(self._vars)))
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(NAME_TEMPLATE) % dict(tabsize=tabsize, name_list=name_list) + self._linesep
+            ).join(NAME_TEMPLATE) % dict(indentation=self._indentation, name_list=name_list) + self._linesep
         for func in sorted(self._func, key=lambda func: func['name']):
             if self._buffer:
                 self._buffer += linesep
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(FUNC_TEMPLATE) % dict(tabsize=tabsize, **func) + self._linesep
+            ).join(FUNC_TEMPLATE) % dict(indentation=self._indentation, **func) + self._linesep
         for lamb in self._lamb:
             if self._buffer:
                 self._buffer += linesep
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(LAMBDA_FUNC_TEMPLATE) % dict(tabsize=tabsize, **lamb) + self._linesep
-        if flag and self._linting:
+            ).join(LAMBDA_FUNC_TEMPLATE) % dict(indentation=self._indentation, **lamb) + self._linesep
+        if flag and self._pep8:
             blank = 2 if self._column == 0 else 1
             self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=self._prefix,
                                                                      blank=blank, linesep=self._linesep)
@@ -1087,28 +1059,28 @@ class ClassContext(Context):
     def cls_var(self):
         return self._cls_var
 
-    def __init__(self, node,
+    def __init__(self, node, config, *,
                  cls_ctx, cls_var=None,
-                 column=0, tabsize=None,
-                 linesep=None, keyword=None,
+                 column=0, keyword=None,
                  context=None, raw=False):
         """Conversion context.
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, parso AST
-         - `cls_ctx` -- `str`, class context name
-         - `cls_var` -- `Dict[str, str]`, mapping for assignment variable and its UUID
-         - `column` -- `int`, current indentation level
-         - `tabsize` -- `Optional[int]`, indentation tab size
-         - `linesep` -- `Optional[str]`, line seperator
-         - `keyword` -- `Optional[str]`, keyword for wrapper function
-         - `context` -- `Optional[List[str]]`, global context
-         - `raw` -- `bool`, raw context processing flag
+            node (parso.tree.NodeOrLeaf): parso AST
+            config (bpc_utils.Config): convertion configurations
 
-        Envs:
-         - `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-         - `WALRUS_INDENTATION` -- indentation tab size (same as `--tabsize` option in CLI)
-         - `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
+        Keyword Args:
+            cls_ctx (str): class context name
+            cls_var (Dict[str, str]): mapping for assignment variable and its UUID
+            column (int): current indentation level
+            keyword (Optional[str]): keyword for wrapper function
+            context (Optional[List[str]]): global context
+            raw (bool): raw context processing flag
+
+        :Environment Variables:
+         - :envvar:`WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
+         - :envvar:`WALRUS_INDENTATION` -- indentation tab size (same as `--tabsize` option in CLI)
+         - :envvar:`WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
 
         """
         if cls_var is None:
@@ -1118,26 +1090,25 @@ class ClassContext(Context):
         self._cls_var = cls_var
         self._cls_ctx = cls_ctx
 
-        super().__init__(node=node, context=context,
-                         column=column, tabsize=tabsize,
-                         linesep=linesep, keyword=keyword, raw=raw)
+        super().__init__(node=node, config=config, context=context,
+                         column=column, keyword=keyword, raw=raw)
 
     def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
-        """Process indented suite (`suite` or ...).
+        """Process indented suite (``suite`` or else).
 
         Args:
-         - `node` -- `parso.tree.NodeOrLeaf`, suite node
-         - `func` -- `bool`, if the suite is of function definition
-         - `raw` -- `bool`, raw context processing flag
-         - `cls_ctx` -- `Optional[str]`, class name when suite if of class contextion
+            node (parso.tree.NodeOrLeaf): suite node
+            func (bool): if the suite is of function definition
+            raw (bool): raw context processing flag
+            cls_ctx (Optional[str]): class name when suite if of class contextion
 
         """
         if not self.has_walrus(node):
             self += node.get_code()
             return
 
-        indent = self._column + self._tabsize
-        self += self._linesep + '\t'.expandtabs(indent)
+        indent = self._column + 1
+        self += self._linesep + self._indentation * indent
 
         if cls_ctx is None:
             cls_ctx = self._cls_ctx
@@ -1147,17 +1118,17 @@ class ClassContext(Context):
             keyword = 'nonlocal'
 
             # process suite
-            ctx = Context(node=node, context=self._context,
-                          column=indent, tabsize=self._tabsize,
-                          linesep=self._linesep, keyword=keyword)
+            ctx = Context(node=node, config=self.config,
+                          context=self._context, column=indent,
+                          keyword=keyword)
         else:
             keyword = self._keyword
 
             # process suite
-            ctx = ClassContext(cls_ctx=cls_ctx, cls_var=cls_var,
-                               node=node, context=self._context,
-                               column=indent, tabsize=self._tabsize,
-                               linesep=self._linesep, keyword=keyword)
+            ctx = ClassContext(node=node, config=self.config,
+                               cls_ctx=cls_ctx, cls_var=cls_var,
+                               context=self._context, column=indent,
+                               keyword=keyword)
         self += ctx.string.lstrip()
 
         # keep record
@@ -1169,10 +1140,10 @@ class ClassContext(Context):
         self._context.extend(ctx.global_stmt)
 
     def _process_namedexpr_test(self, node):
-        """Process assignment expression (`namedexpr_test`).
+        """Process assignment expression (``namedexpr_test``).
 
         Args:
-         - `node` -- `parso.python.tree.PythonNode`, assignment expression node
+            node (parso.python.tree.PythonNode): assignment expression node
 
         """
         # split assignment expression
@@ -1181,10 +1152,10 @@ class ClassContext(Context):
         nuid = uuid_gen.gen()
 
         # calculate expression string
-        ctx = ClassContext(cls_ctx=self._cls_ctx, cls_var=self._cls_var,
-                           node=node_expr, context=self._context,
-                           column=self._column, tabsize=self._tabsize,
-                           linesep=self._linesep, keyword=self._keyword, raw=True)
+        ctx = ClassContext(node=node_expr, config=self.config,
+                           cls_ctx=self._cls_ctx, cls_var=self._cls_var,
+                           context=self._context, column=self._column,
+                           keyword=self._keyword, raw=True)
         expr = ctx.string.strip()
         self._lamb.extend(ctx.lambdef)
         self._vars.extend(ctx.variables)
@@ -1208,10 +1179,10 @@ class ClassContext(Context):
         self._cls_var[name] = nuid
 
     def _process_defined_name(self, node):
-        """Process defined name (`name`).
+        """Process defined name (``name``).
 
         Args:
-         - `node` -- `parso.python.tree.Name`, defined name node
+            node (parso.python.tree.Name): defined name node
 
         """
         name = node.value
@@ -1225,10 +1196,10 @@ class ClassContext(Context):
         self._cls_var[name] = nuid
 
     def _process_expr_stmt(self, node):
-        """Process variable name (`expr_stmt`).
+        """Process variable name (``expr_stmt``).
 
         Args:
-         - `node` -- `parso.python.tree.ExprStmt`, expression statement
+            node (parso.python.tree.ExprStmt): expression statement
 
         """
         # right hand side expression
@@ -1244,10 +1215,10 @@ class ClassContext(Context):
             self += child.get_code()
 
     def _process_name(self, node):
-        """Process variable name (`name`).
+        """Process variable name (``name``).
 
         Args:
-         - `node` -- `parso.python.tree.Name`, variable name
+            node (parso.python.tree.Name): variable name
 
         """
         name = node.value
@@ -1271,11 +1242,10 @@ class ClassContext(Context):
         self._buffer += self._prefix + prefix
 
         # then, the class and functions
-        indent = '\t'.expandtabs(self._column)
-        tabsize = '\t'.expandtabs(self._tabsize)
+        indent = self._indentation * self._column
         linesep = self._linesep
         if flag:
-            if self._linting:
+            if self._pep8:
                 if (self._node_before_walrus is not None
                         and self._node_before_walrus.type in ('funcdef', 'classdef')
                         and self._column == 0):
@@ -1286,16 +1256,16 @@ class ClassContext(Context):
                                                                          blank=blank, linesep=self._linesep)
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(CLS_NAME_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx) + linesep
+            ).join(CLS_NAME_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
         for func in sorted(self._func, key=lambda func: func['name']):
             if self._buffer:
                 self._buffer += linesep
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(CLS_FUNC_TEMPLATE) % dict(tabsize=tabsize, cls=self._cls_ctx, **func) + linesep
+            ).join(CLS_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
 
         # finally, the suffix codes
-        if flag and self._linting:
+        if flag and self._pep8:
             blank = 2 if self._column == 0 else 1
             self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=suffix,
                                                                      blank=blank, linesep=self._linesep)
@@ -1306,22 +1276,24 @@ def convert(code, filename=None, *, source_version=None, linesep=None, indentati
     """Convert the given source code string.
 
     Args:
-     - `code` -- `Union[str, bytes]`, the source code to be converted
-     - `filename` -- `Optional[str]`, an optional source file name to provide a context in case of error
-     - `source_version` -- `Optional[str]`, parse the code as this version (uses the latest version by default)
-     - `linesep` -- `Optional[str]`, line separator of code (LF, CRLF, CR) (auto detect by default)
-     - `indentation` -- `Optional[Union[int, str]]`, code indentation style, specify an integer for the number of spaces,
-        or 't'/'tab' for tabs (auto detect by default)
-     - `pep8` -- `Optional[bool]`, whether to make code insertion PEP 8 compliant
+        code (Union[str, bytes]): the source code to be converted
+        filename (Optional[str]): an optional source file name to provide a context in case of error
 
-    Envs:
-     - `WALRUS_SOURCE_VERSION` -- same as the `source_version` argument and `--source-version` option in CLI
-     - `WALRUS_LINESEP` -- same as the `linesep` argument and `--linesep` option in CLI
-     - `WALRUS_INDENTATION` -- same as the `indentation` argument and `--indentation` option in CLI
-     - `WALRUS_PEP8` -- same as the `pep8` argument and `--no-pep8` option in CLI (logical negation)
+    Keyword Args:
+        source_version (Optional[str]): parse the code as this version (uses the latest version by default)
+        linesep (Optional[str]): line separator of code (``LF``, CR``LF, ``CR``) (auto detect by default)
+        indentation (Optional[Union[int, str]]): code indentation style, specify an integer for the number of spaces,
+            or ``'t'``/``'tab'`` for tabs (auto detect by default)
+        pep8 (Optional[bool]): whether to make code insertion :pep:`8` compliant
+
+    :Environment Variables:
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source_version`` argument and ``--source-version`` option in CLI
+     - :envvar:`WALRUS_LINESEP` -- same as the `linesep` `argument` and ``--linesep`` option in CLI
+     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and ``--indentation`` option in CLI
+     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and ``--no-pep8`` option in CLI (logical negation)
 
     Returns:
-     - `str` -- converted source code
+        str: converted source code
 
     """
     # TODO: define UUID generator in the Context class, avoid using a global variable
@@ -1342,9 +1314,11 @@ def convert(code, filename=None, *, source_version=None, linesep=None, indentati
         indentation = detect_indentation(code)
     pep8 = _get_pep8_option(pep8)
 
+    # convertion configuration
+    config = Config(linesep=linesep, indentation=indentation, pep8=pep8)
+
     # convert source string
-    # TODO: pass linesep, indentation and pep8 options to the Context object
-    result = Context(module).string
+    result = Context(module, config).string
 
     # return converted string
     return result
@@ -1354,21 +1328,22 @@ def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep
     """Convert the given Python source code file. The file will be overwritten.
 
     Args:
-     - `code` -- `Union[str, bytes]`, the source code to be converted
-     - `filename` -- `Optional[str]`, an optional source file name to provide a context in case of error
-     - `source_version` -- `Optional[str]`, parse the code as this version (uses the latest version by default)
-     - `linesep` -- `Optional[str]`, line separator of code (LF, CRLF, CR) (auto detect by default)
-     - `indentation` -- `Optional[Union[int, str]]`, code indentation style, specify an integer for the number of spaces,
-        or 't'/'tab' for tabs (auto detect by default)
-     - `pep8` -- `Optional[bool]`, whether to make code insertion PEP 8 compliant
-     - `quiet` -- `Optional[bool]`, whether to run in quiet mode
+        filename (Optional[str]): an optional source file name to provide a context in case of error
 
-    Envs:
-     - `WALRUS_SOURCE_VERSION` -- same as the `source_version` argument and `--source-version` option in CLI
-     - `WALRUS_LINESEP` -- same as the `linesep` argument and `--linesep` option in CLI
-     - `WALRUS_INDENTATION` -- same as the `indentation` argument and `--indentation` option in CLI
-     - `WALRUS_PEP8` -- same as the `pep8` argument and `--no-pep8` option in CLI (logical negation)
-     - `WALRUS_QUIET` -- same as the `quiet` argument and `--quiet` option in CLI
+    Keyword Args:
+        source_version (Optional[str]): parse the code as this version (uses the latest version by default)
+        linesep (Optional[str]): line separator of code (``LF``, ``CRLF``, ``CR``) (auto detect by default)
+        indentation (Optional[Union[int, str]]): code indentation style, specify an integer for the number of spaces,
+            or ``'t'``/``'tab'`` for tabs (auto detect by default)
+        pep8 (Optional[bool]): whether to make code insertion :pep:`8` compliant
+        quiet (Optional[bool]): whether to run in quiet mode
+
+    :Environment Variables:
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source_version`` argument and ``--source-version`` option in CLI
+     - :envvar:`WALRUS_LINESEP` -- same as the ``linesep`` argument and ``--linesep`` option in CLI
+     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and ``--indentation`` option in CLI
+     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and ``--no-pep8`` option in CLI (logical negation)
+     - :envvar:`WALRUS_QUIET` -- same as the ``quiet`` argument and ``--quiet`` option in CLI
 
     """
     quiet = _get_quiet_option(quiet)
@@ -1393,8 +1368,8 @@ def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep
                 indentation = detect_indentation(file)
 
     # do the dirty things
-    text = convert(content, filename=filename, source_version=source_version, linesep=linesep,
-                   indentation=indentation, pep8=pep8)
+    text = convert(content, filename=filename, source_version=source_version,
+                   linesep=linesep, indentation=indentation, pep8=pep8)
 
     # dump back to the file
     with open(filename, 'w', encoding=encoding, newline='') as file:
@@ -1416,7 +1391,7 @@ def get_parser():
     """Generate CLI parser.
 
     Returns:
-     - `argparse.ArgumentParser` -- CLI parser for walrus
+        argparse.ArgumentParser: CLI parser for walrus
 
     """
     parser = argparse.ArgumentParser(prog='walrus',
@@ -1455,16 +1430,16 @@ def main(argv=None):
     """Entry point for walrus.
 
     Args:
-     - `argv` -- `Optional[List[str]]`, CLI arguments (default: None)
+        argv (Optional[List[str]]): CLI arguments
 
-    Envs:
-     - `WALRUS_QUIET` -- same as the `--quiet` option in CLI
-     - `WALRUS_DO_ARCHIVE` -- same as the `--no-archive` option in CLI (logical negation)
-     - `WALRUS_ARCHIVE_PATH` -- same as the `--archive-path` option in CLI
-     - `WALRUS_SOURCE_VERSION` -- same as the `--source-version` option in CLI
-     - `WALRUS_LINESEP` -- same as the `--linesep` option in CLI
-     - `WALRUS_INDENTATION` -- same as the `--indentation` option in CLI
-     - `WALRUS_PEP8` -- same as the `--no-pep8` option in CLI (logical negation)
+    :Environment Variables:
+     - :envvar:`WALRUS_QUIET` -- same as the ``--quiet`` option in CLI
+     - :envvar:`WALRUS_DO_ARCHIVE` -- same as the ``--no-archive`` option in CLI (logical negation)
+     - :envvar:`WALRUS_ARCHIVE_PATH` -- same as the ``--archive-path`` option in CLI
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``--source-version`` option in CLI
+     - :envvar:`WALRUS_LINESEP` -- same as the ``--linesep`` option in CLI
+     - :envvar:`WALRUS_INDENTATION` -- same as the ``--indentation`` option in CLI
+     - :envvar:`WALRUS_PEP8` -- same as the ``--no-pep8`` option in CLI (logical negation)
 
     """
     parser = get_parser()

@@ -8,13 +8,22 @@ import sys
 import tempfile
 import unittest
 
+from bpc_utils import BPCSyntaxError as ConvertError
+
 # root path
 ROOT = os.path.dirname(os.path.realpath(__file__))
+
+###############################################################################
+# modify import path
+# pylint: disable=wrong-import-position
 sys.path.insert(0, os.path.abspath(os.path.join(ROOT, '..')))
-from walrus import ConvertError, convert, get_parser
+
+from walrus import convert, get_parser
 from walrus import main as main_func
 from walrus import walrus as core_func
+
 sys.path.pop(0)
+###############################################################################
 
 # environs
 os.environ['WALRUS_QUIET'] = 'true'

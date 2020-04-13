@@ -286,6 +286,13 @@ class Context:
         - :envvar:`WALRUS_INDENTATION` -- indentation tab size (same as ``--tabsize`` option in CLI)
         - :envvar:`WALRUS_LINTING` -- lint converted codes (same as ``--linting`` option in CLI)
 
+    Important:
+        ``raw`` should be :data:`True` if only the ``node`` is in the clause of another *context*,
+        where the converted wrapper functions should be inserted.
+
+        Typically, if only ``node`` is an assignment expression (``namedexpr_test``) node,
+        ``raw`` will be set as :data:`True`, in consideration of nesting assignment expressions.
+
     """
 
     @property
@@ -379,7 +386,7 @@ class Context:
     def __iadd__(self, code):
         """Support of ``+=`` operator.
 
-        If :attr:`self._prefix_or_suffix <walrus.Context._prefix_or_suffix>` is ``True``, then
+        If :attr:`self._prefix_or_suffix <walrus.Context._prefix_or_suffix>` is :data:`True`, then
         the ``code`` will be appended to :attr:`self._prefix <walrus.Context._prefix>`; else
         it will be appended to :attr:`self._suffix <walrus.Context._suffix>`.
 
@@ -394,7 +401,7 @@ class Context:
         return self
 
     def __str__(self):
-        """Returns :attr:`self._buffer <walrus.Context._buffer>`."""
+        """Returns *stripped* :attr:`self._buffer <walrus.Context._buffer>`."""
         return self._buffer.strip()
 
     def _walk(self, node):
@@ -402,6 +409,13 @@ class Context:
 
         Args:
             node (parso.tree.NodeOrLeaf): parso AST
+
+        The method traverses through all *children* of ``node``. It first checks
+        if such child has assignment expression. If so, it will toggle
+        :attr:`self._prefix_or_suffix <walrus.Context._prefix_or_suffix>` as
+        :data:`False` and save the last previous child as
+        :attr:`self._node_before_walrus <walrus.Context._node_before_walrus>`.
+        Then it processes the child with :meth:`self._process <walrus.Context._process>`.
 
         """
         # process node
@@ -424,6 +438,25 @@ class Context:
         Args:
             node (parso.tree.NodeOrLeaf): parso AST
 
+        All processing methods for a specific ``node`` type are defined as
+        ``_process_{type}``. This method first checks if such processing
+        method exists. If so, it will call such method on the ``node``;
+        else it will traverse through all *children* of ``node``, and perform
+        the same logic on each child.
+
+        See Also:
+            * :meth:`Context._process_namedexpr_test`
+            * :meth:`Context._process_global_stmt`
+            * :meth:`Context._process_classdef`
+            * :meth:`Context._process_funcdef`
+            * :meth:`Context._process_lambdef`
+            * :meth:`Context._process_if_stmt`
+            * :meth:`Context._process_while`
+            * :meth:`Context._process_for_stmt`
+            * :meth:`Context._process_with_stmt`
+            * :meth:`Context._process_try_stmt`
+            * :meth:`Context._process_argument`
+
         """
         # 'funcdef', 'classdef', 'if_stmt', 'while_stmt', 'for_stmt', 'with_stmt', 'try_stmt'
         func_name = '_process_%s' % node.type
@@ -443,13 +476,42 @@ class Context:
         self += node.get_code()
 
     def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
-        """Process indented suite (`suite` or ...).
+        """Process indented suite (``suite`` or others).
 
         Args:
             node (parso.tree.NodeOrLeaf): suite node
-            func (bool): if the suite is of function definition
+            func (bool): if ``node`` is suite from function definition
             raw (bool): raw processing flag
-            cls_ctx (Optional[str]): class name when suite if of class contextion
+            cls_ctx (Optional[str]): class name if ``node`` is in class context
+
+        This method first checks if ``node`` contains assignment expression.
+        If not, it will not perform any processing, rather just append the
+        original source code to context buffer.
+
+        If ``node`` contains assignment expression, then it will initiate another
+        :class:`Context` instance to perform the conversion process on such
+        ``node``; whilst if ``cls_ctx`` is provided, then it will initiate a
+        :class:`ClassContext` instance instead.
+
+        Note:
+            If ``func`` is True, when initiating the :class:`Context` instance,
+            ``keyword`` will be set as ``'nonlocal'``, as in the wrapper function
+            it will refer the original *left-hand-side* variable from the outer
+            function scope rather than global namespace.
+
+        The method will keep *global* statements (:meth:`Context.global_stmt`)
+        from the temporary :class:`Context` (or :class:`ClassContext`) instance in the
+        current instance.
+
+        And if ``raw`` is set as :data:`True`, the method will keep records of converted wrapper
+        functions (:meth:`Context.functions`), converted *lambda* statements (:meth:`Context.lambdef`)
+        and variable declration blocks (:meth:`Context.variables`) into current instance as well.
+
+        Important:
+            ``raw`` should be :data:`True` if only the ``node`` is in the clause of another *context*,
+            where the converted wrapper functions should be inserted.
+
+            However, it seems useless in current implementation.
 
         """
         if not self.has_walrus(node):
@@ -489,6 +551,16 @@ class Context:
         Args:
             node (parso.python.tree.PythonNode): assignment expression node
 
+        This method converts the assignment expression into wrapper function
+        and extracts related records for inserting converted codes.
+
+        * The *left-hand-side* variable name will be recorded in
+          :attr:`self._vars <walrus.Context._vars>`.
+        * The *right-hand-side* expression will be converted using another
+          :class:`Context` instance and replaced with a wrapper function call
+          rendered from :data:`CALL_TEMPLATE`; information described as
+          :class:`Function` will be recorded into :attr:`self._func <walrus.Context._func>`.
+
         """
         # split assignment expression
         node_name, _, node_expr = node.children
@@ -524,6 +596,9 @@ class Context:
         Args:
             node (parso.python.tree.GlobalStmt): global statement node
 
+        This method records all variables declared in a *global* statement
+        into :attr:`self._context <walrus.Context._context>`.
+
         """
         children = iter(node.children)
 
@@ -552,6 +627,13 @@ class Context:
 
         Args:
             node (parso.python.tree.Class): class node
+
+        This method inserts the local namespace dictionary rendered from
+        :data:`LCL_DICT_TEMPLATE` before the class definition. Then it
+        converts the whole class suite context with :meth:`~Context._process_suite_node`.
+        Later, it appends the reassignment code block rendered from
+        :data:`LCL_VARS_TEMPLATE` to put back the attributes from the temporary
+        local namespace dictionary.
 
         """
         flag = self.has_walrus(node)
@@ -618,6 +700,9 @@ class Context:
         Args:
             node (parso.python.tree.Function): function node
 
+        This method converts the function suite with
+        :meth:`~Context._process_suite_node`.
+
         """
         # 'def' NAME '(' PARAM ')' [ '->' NAME ] ':' SUITE
         for child in node.children[:-1]:
@@ -629,6 +714,19 @@ class Context:
 
         Args:
             node (parso.python.tree.Lambda): lambda node
+
+        This method first checks if ``node`` contains assignment expressions.
+        If not, it will append the original source code directly to the buffer.
+
+        For *lambda* statements with assignment expressions, this method
+        will extract the parameter list and initiate a :class:`LambdaContext`
+        instance to convert the lambda suite. Such information will be recorded
+        as :class:`Lambda` in :attr:`self._lamb <Context._lamb>`.
+
+        .. note:: For :class:`LambdaContext`, ``keyword`` should always be ``'nonlocal'``.
+
+        Then it will replace the original lambda statement with a wrapper function
+        call rendered from :data:`LAMBDA_CALL_TEMPLATE`.
 
         """
         if not self.has_walrus(node):
@@ -703,7 +801,7 @@ class Context:
                 self._process_suite_node(next(children))
                 continue
 
-    def _process_while(self, node):
+    def _process_while_stmt(self, node):
         """Process while statement (``while_stmt``).
 
         Args:

@@ -81,6 +81,11 @@ the conversion.
       Scope manipulation keyword. If :attr:`name` is declared in *global*
       namespace, then it will be ``'global'``, else ``'nonlocal'``.
 
+      .. note::
+         If the *left-hand-side* variable name is recorded in the global context
+         (:attr:`Context.global_stmt`), then the converted function should use
+         ``'global'`` as keyword.
+
 The :class:`Lambda` represents an assignment expression declared in *lambda*
 statements. It will be provided to :data:`~walrus.LAMBDA_FUNC_TEMPLATE` to render
 the wrapper function for the conversion.
@@ -382,7 +387,7 @@ Conversion Contexts
    .. attribute:: _vars
       :type: List[str]
 
-      Variable declaration blocks rendered from :data:`~walrus.NAME_TEMPLATE`.
+      Original *left-hand-side* variable names in assignment expressions.
 
    .. attribute:: _func
       :type: List[Function]

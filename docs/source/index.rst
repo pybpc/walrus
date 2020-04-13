@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to walrus's documentation!
-==================================
+:mod:`walrus` - Backport Compiler for Assignment Expressions
+============================================================
 
 Write *assignment expressions* in Python 3.8 flavour, and let :mod:`walrus` worry about back-port issues |:beer:|
 

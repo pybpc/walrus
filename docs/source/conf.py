@@ -37,6 +37,7 @@ release = '0.1.4'
 # ones.
 extensions = [
     'sphinx.ext.intersphinx',
+    'sphinx.ext.viewcode',
     'sphinx.ext.autodoc', 'sphinx.ext.autodoc.typehints',
     'sphinxcontrib.napoleon',
     'sphinxemoji.sphinxemoji',

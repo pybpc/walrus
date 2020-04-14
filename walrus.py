@@ -22,19 +22,28 @@ __version__ = '0.1.4'
 ###############################################################################
 # Auxiliaries
 
-# get supported source versions
+#: Get supported source versions.
+#:
+#: .. seealso:: :func:`bpc_utils.get_parso_grammar_versions`
 WALRUS_VERSIONS = get_parso_grammar_versions(minimum='3.8')
 
 # will be set in every call to `convert()`
 uuid_gen = None  # TODO: will be refactored into the Context class
 
 # option default values
+#: Default value for the ``quiet`` option.
 _default_quiet = False
+#: Default value for the ``do-archive`` option.
 _default_do_archive = True
+#: Default value for the ``archive-path`` option.
 _default_archive_path = 'archive'
+#: Default value for the ``source-version`` option.
 _default_source_version = WALRUS_VERSIONS[-1]
+#: Default value for the ``linesep`` option.
 _default_linesep = None  # auto detect
+#: Default value for the ``indentation`` option.
 _default_indentation = None  # auto detect
+#: Default value for the ``pep8`` option.
 _default_pep8 = True
 
 # option getter utility functions
@@ -46,13 +55,13 @@ def _get_quiet_option(explicit=None):
 
     Args:
         explicit (Optional[bool]): the value explicitly specified by user,
-            ``None`` if not specified
+            :data:`None` if not specified
 
     Returns:
         bool: the value for the ``quiet`` option
 
     :Environment Variables:
-     - :envvar:`WALRUS_QUIET` -- the value in environment variable
+        :envvar:`WALRUS_QUIET` -- the value in environment variable
 
     """
     if explicit is not None:
@@ -64,17 +73,20 @@ def _get_quiet_option(explicit=None):
 
 
 def _get_do_archive_option(explicit=None):
-    """Get the value for the ``do_archive`` option.
+    """Get the value for the ``do-archive`` option.
 
     Args:
         explicit (Optional[bool]): the value explicitly specified by user,
-            ``None`` if not specified
+            :data:`None` if not specified
 
     Returns:
         bool: the value for the ``do_archive`` option
 
     :Environment Variables:
-     - :envvar:`WALRUS_DO_ARCHIVE` -- the value in environment variable
+        :envvar:`WALRUS_DO_ARCHIVE` -- the value in environment variable
+
+    See Also:
+        :data:`_default_do_archive`
 
     """
     if explicit is not None:
@@ -86,17 +98,20 @@ def _get_do_archive_option(explicit=None):
 
 
 def _get_archive_path_option(explicit=None):
-    """Get the value for the ``archive_path`` option.
+    """Get the value for the ``archive-path`` option.
 
     Args:
         explicit (Optional[str]): the value explicitly specified by user,
-            ``None`` if not specified
+            :data:`None` if not specified
 
     Returns:
         str: the value for the ``archive_path`` option
 
     :Environment Variables:
-     - :envvar:`WALRUS_ARCHIVE_PATH` -- the value in environment variable
+        :envvar:`WALRUS_ARCHIVE_PATH` -- the value in environment variable
+
+    See Also:
+        :data:`_default_archive_path`
 
     """
     if explicit:
@@ -108,17 +123,20 @@ def _get_archive_path_option(explicit=None):
 
 
 def _get_source_version_option(explicit=None):
-    """Get the value for the ``source_version`` option.
+    """Get the value for the ``source-version`` option.
 
     Args:
         explicit (Optional[str]): the value explicitly specified by user,
-            ``None`` if not specified
+            :data:`None` if not specified
 
     Returns:
         str: the value for the ``source_version`` option
 
     :Environment Variables:
-     - :envvar:`WALRUS_SOURCE_VERSION` -- the value in environment variable
+        :envvar:`WALRUS_SOURCE_VERSION` -- the value in environment variable
+
+    See Also:
+        :data:`_default_source_version`
 
     """
     if explicit:
@@ -134,14 +152,17 @@ def _get_linesep_option(explicit=None):
 
     Args:
         explicit (Optional[str]): the value explicitly specified by user,
-            ``None`` if not specified
+            :data:`None` if not specified
 
     Returns:
         Optional[Literal['\\n', '\\r\\n', '\\r']]: the value for the ``linesep`` option;
-        ``None`` means *auto detection* at runtime
+        :data:`None` means *auto detection* at runtime
 
     :Environment Variables:
-     - :envvar:`WALRUS_LINESEP` -- the value in environment variable
+        :envvar:`WALRUS_LINESEP` -- the value in environment variable
+
+    See Also:
+        :data:`_default_linesep`
 
     """
     if explicit:
@@ -157,14 +178,17 @@ def _get_indentation_option(explicit=None):
 
     Args:
         explicit (Optional[str]): the value explicitly specified by user,
-            ``None`` if not specified
+            :data:`None` if not specified
 
     Returns:
         Optional[str]: the value for the ``indentation`` option;
-        ``None`` means *auto detection* at runtime
+        :data:`None` means *auto detection* at runtime
 
     :Environment Variables:
-     - :envvar:`WALRUS_INDENTATION` -- the value in environment variable
+        :envvar:`WALRUS_INDENTATION` -- the value in environment variable
+
+    See Also:
+        :data:`_default_indentation`
 
     """
     if explicit:
@@ -180,13 +204,16 @@ def _get_pep8_option(explicit=None):
 
     Args:
         explicit (Optional[str]): the value explicitly specified by user,
-            ``None`` if not specified
+            :data:`None` if not specified
 
     Returns:
         bool: the value for the ``pep8`` option
 
     :Environment Variables:
-     - :envvar:`WALRUS_PEP8` -- the value in environment variable
+        :envvar:`WALRUS_PEP8` -- the value in environment variable
+
+    See Also:
+        :data:`_default_pep8`
 
     """
     if explicit is not None:
@@ -281,16 +308,11 @@ class Context:
         context (Optional[List[str]]): global context
         raw (bool): raw processing flag
 
-    :Environment Variables:
-        - :envvar:`WALRUS_LINESEP` -- line separator to process source files (same as ``--linesep`` option in CLI)
-        - :envvar:`WALRUS_INDENTATION` -- indentation tab size (same as ``--tabsize`` option in CLI)
-        - :envvar:`WALRUS_LINTING` -- lint converted codes (same as ``--linting`` option in CLI)
-
     Important:
-        ``raw`` should be :data:`True` if only the ``node`` is in the clause of another *context*,
+        ``raw`` should be :data:`True` only if the ``node`` is in the clause of another *context*,
         where the converted wrapper functions should be inserted.
 
-        Typically, if only ``node`` is an assignment expression (``namedexpr_test``) node,
+        Typically, only if ``node`` is an assignment expression (``namedexpr_test``) node,
         ``raw`` will be set as :data:`True`, in consideration of nesting assignment expressions.
 
     """
@@ -354,28 +376,43 @@ class Context:
         if context is None:
             context = list()
 
+        #: Config: Internal configurations as described in :class:`Config`
         self.config = config
-        self._indentation = config.indentation  # indentation sequence
-        self._linesep = config.linesep  # line seperator
+        #: str: Indentation sequence.
+        self._indentation = config.indentation
+        #: Union[Literal['\\n'], Literal['\\r\\n'], Literal['\\r']]: Line seperator.
+        self._linesep = config.linesep
 
-        # TODO: all options will be stored as attributes, no need to write about env vars in method docstrings
+        #: bool: :pep:`8` compliant conversion flag.
         self._pep8 = config.pep8
 
-        self._root = node  # root node
-        self._column = column  # current indentation
-        self._keyword = keyword  # global / nonlocal keyword
-        self._context = list(context)  # names in global statements
+        #: parso.tree.NodeOrLeaf: Root node as the ``node`` parameter.
+        self._root = node
+        #: int: Current indentation level.
+        self._column = column
+        #: Union[Literal['global'], Literal['nonlocal']]: The ``global`` / ``nonlocal`` keyword.
+        self._keyword = keyword
+        #: List[str]: Variable names in ``global`` statements.
+        self._context = list(context)
 
-        self._prefix_or_suffix = True  # flag if buffer is now prefix
-        self._node_before_walrus = None  # node preceding node with walrus
+        #: bool: Flag if buffer is now :attr:`self._prefix <walrus.Context._prefix>`.
+        self._prefix_or_suffix = True
+        #: Optional[parso.tree.NodeOrLeaf]: Preceding node with assignment expression, i.e. the *insersion point*.
+        self._node_before_walrus = None
 
-        self._prefix = ''  # codes before insersion point
-        self._suffix = ''  # codes after insersion point
-        self._buffer = ''  # final result
+        #: str: Codes before insersion point.
+        self._prefix = ''
+        #: str: Codes after insersion point.
+        self._suffix = ''
+        #: str: Final converted result.
+        self._buffer = ''
 
-        self._vars = list()  # variable initialisation
-        self._lamb = list()  # converted lambda definitions ({param, suite, uuid})
-        self._func = list()  # wrapper functions ({name, uuid, keyword})
+        #: List[str]: Original *left-hand-side* variable names in assignment expressions.
+        self._vars = list()
+        #: List[Lambda]: Converted *lambda* statements described as :class:`Lambda`.
+        self._lamb = list()
+        #: List[Function]: Converted wrapper functions described as :class:`Function`.
+        self._func = list()
 
         self._walk(node)  # traverse children
         if raw:
@@ -505,10 +542,10 @@ class Context:
 
         And if ``raw`` is set as :data:`True`, the method will keep records of converted wrapper
         functions (:meth:`Context.functions`), converted *lambda* statements (:meth:`Context.lambdef`)
-        and variable declration blocks (:meth:`Context.variables`) into current instance as well.
+        and *left-hand-side* variable names (:meth:`Context.variables`) into current instance as well.
 
         Important:
-            ``raw`` should be :data:`True` if only the ``node`` is in the clause of another *context*,
+            ``raw`` should be :data:`True` only if the ``node`` is in the clause of another *context*,
             where the converted wrapper functions should be inserted.
 
             However, it seems useless in current implementation.
@@ -766,6 +803,9 @@ class Context:
         Args:
             node (parso.python.tree.IfStmt): if node
 
+        This method processes each indented suite under the *if*, *elif*,
+        and *else* statements.
+
         """
         children = iter(node.children)
 
@@ -807,6 +847,9 @@ class Context:
         Args:
             node (parso.python.tree.WhileStmt): while node
 
+        This method processes the indented suite under the *while* and optional
+        *else* statements.
+
         """
         children = iter(node.children)
 
@@ -836,6 +879,9 @@ class Context:
 
         Args:
             node (parso.python.tree.ForStmt): for node
+
+        This method processes the indented suite under the *for* and optional
+        *else* statements.
 
         """
         children = iter(node.children)
@@ -871,6 +917,8 @@ class Context:
         Args:
             node (parso.python.tree.WithStmt): with node
 
+        This method processes the indented suite under the *with* statement.
+
         """
         children = iter(node.children)
 
@@ -895,6 +943,9 @@ class Context:
         Args:
             node (parso.python.tree.TryStmt): try node
 
+        This method processes the indented suite under the *try*, *except*,
+        *else*, and *finally* statements.
+
         """
         children = iter(node.children)
 
@@ -916,6 +967,8 @@ class Context:
 
         Args:
             node (parso.python.tree.PythonNode): argument node
+
+        This method processes arguments from function argument list.
 
         """
         children = iter(node.children)
@@ -940,7 +993,20 @@ class Context:
             self._process(child)
 
     def _concat(self):
-        """Concatenate final string."""
+        """Concatenate final string.
+
+        This method tries to inserted the recorded wrapper functions and variables
+        at the very location where starts to contain assignment expressions, i.e.
+        between the converted codes as :attr:`self._prefix <Context._prefix>` and
+        :attr:`self._suffix <Context._suffix>`.
+
+        The inserted codes include variable declaration rendered from
+        :data:`NAME_TEMPLATE`, wrapper function definitions rendered from
+        :data:`FUNC_TEMPLATE` and extracted *lambda* statements rendered from
+        :data:`LAMBDA_FUNC_TEMPLATE`. If :attr:`self._pep8 <Context._pep8>` is
+        :data:`True`, it will insert the codes in compliance with :pep:`8`.
+
+        """
         flag = self.has_walrus(self._root)
 
         # strip suffix comments
@@ -995,6 +1061,12 @@ class Context:
         Returns:
             Tuple[str, str]: a tuple of *prefix comments* and *suffix strings*
 
+        This method separates *prefixing* comments and *suffixing* codes. It is
+        rather useful when inserting codes might break `shebang`_ and encoding
+        cookies (:pep:`263`), etc.
+
+        .. _shebang: https://en.wikipedia.org/wiki/Shebang_(Unix)
+
         """
         prefix = ''
         suffix = ''
@@ -1040,6 +1112,16 @@ class Context:
         Returns:
             Union[Literal['global'], Literal['nonlocal']]: keyword
 
+        This method recursively perform the following checks on the parents
+        of ``node``:
+
+        * If current ``node`` is a module (:class:`parso.python.tree.Module`),
+          or a direct child of module then returns ``'global'``.
+        * If the direct parrent of current ``node`` is a function
+          (:class:`parso.python.tree.Function`) and/or class
+          (:class:`parso.python.tree.Class`) definition, then
+          returns ``'nonlocal'``.
+
         """
         if isinstance(node, parso.python.tree.Module):
             return 'global'
@@ -1053,7 +1135,7 @@ class Context:
 
     @staticmethod
     def is_walrus(node):
-        """Check if node is assignment expression.
+        """Check if ``node`` is assignment expression.
 
         Args:
             node (parso.tree.NodeOrLeaf): parso AST
@@ -1134,10 +1216,42 @@ class Context:
 
 
 class LambdaContext(Context):
-    """Lambda (suite) conversion context."""
+    """Lambda (suite) conversion context.
+
+    This class is mainly used for converting **lambda statements**.
+
+    Args:
+        node (parso.python.tree.Lambda): parso AST
+        config (Config): convertion configurations
+
+    Keyword Args:
+        column (int): current indentation level
+        keyword (Literal['nonlocal']): keyword for wrapper function
+        context (Optional[List[str]]): global context
+        raw (False): raw processing flag
+
+    Note:
+        * ``keyword`` should always be ``'nonlocal'``.
+        * ``raw`` should always be :data:`False`.
+
+    """
 
     def _concat(self):
-        """Concatenate final string."""
+        """Concatenate final string.
+
+        Since convertion of *lambda* statements doesn't involve inserting
+        points, this method first simply adds wrapper codes to the buffer
+        (:data:`self._buffer <Context._buffer>`); then it adds a *return*
+        statement yielding the converted *lambda* suite stored in
+        :data:`self._prefix <Context._prefix>` and :data:`self._suffix <Context._suffix>`.
+
+        The wrapper codes include variable declaration rendered from
+        :data:`NAME_TEMPLATE`, wrapper function definitions rendered from
+        :data:`FUNC_TEMPLATE` and extracted *lambda* statements rendered from
+        :data:`LAMBDA_FUNC_TEMPLATE`. If :attr:`self._pep8 <Context._pep8>` is
+        :data:`True`, it will insert the codes in compliance with :pep:`8`.
+
+        """
         flag = self.has_walrus(self._root)
 
         # first, the variables and functions
@@ -1176,54 +1290,91 @@ class LambdaContext(Context):
 
 
 class ClassContext(Context):
-    """Class (suite) conversion context."""
+    """Class (suite) conversion context.
+
+    This class is mainly used for converting **class variables**.
+
+    Args:
+        node (parso.python.tree.Class): parso AST
+        config (Config): convertion configurations
+
+    Keyword Args:
+        cls_ctx (str): class context name
+        cls_var (Dict[str, str]): mapping for assignment variable and its UUID
+        column (int): current indentation level
+        keyword (Optional[str]): keyword for wrapper function
+        context (Optional[List[str]]): global context
+        raw (False): raw context processing flag
+
+    Note:
+        ``raw`` should always be :data:`False`.
+
+    """
 
     @property
     def cls_var(self):
+        """Mapping for assignment variable and its UUID (:attr:`self._cls_var <walrus.Context._cls_var>`).
+
+        :rtype: Dict[str, str]
+
+        """
         return self._cls_var
 
     def __init__(self, node, config, *,
                  cls_ctx, cls_var=None,
                  column=0, keyword=None,
                  context=None, raw=False):
-        """Conversion context.
-
-        Args:
-            node (parso.tree.NodeOrLeaf): parso AST
-            config (Config): convertion configurations
-
-        Keyword Args:
-            cls_ctx (str): class context name
-            cls_var (Dict[str, str]): mapping for assignment variable and its UUID
-            column (int): current indentation level
-            keyword (Optional[str]): keyword for wrapper function
-            context (Optional[List[str]]): global context
-            raw (bool): raw context processing flag
-
-        :Environment Variables:
-         - :envvar:`WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-         - :envvar:`WALRUS_INDENTATION` -- indentation tab size (same as `--tabsize` option in CLI)
-         - :envvar:`WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
-
-        """
         if cls_var is None:
             cls_var = dict()
 
+        #: bool: Raw context processing flag.
         self._cls_raw = raw
+        #: Dict[str, str]: Mapping for assignment variable and its UUID.
         self._cls_var = cls_var
+        #: str: Class context name.
         self._cls_ctx = cls_ctx
 
         super().__init__(node=node, config=config, context=context,
                          column=column, keyword=keyword, raw=raw)
 
     def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
-        """Process indented suite (``suite`` or else).
+        """Process indented suite (``suite`` or others).
 
         Args:
             node (parso.tree.NodeOrLeaf): suite node
-            func (bool): if the suite is of function definition
-            raw (bool): raw context processing flag
-            cls_ctx (Optional[str]): class name when suite if of class contextion
+            func (bool): if ``node`` is suite from function definition
+            raw (bool): raw processing flag
+            cls_ctx (Optional[str]): class name if ``node`` is in class context
+
+        This method first checks if ``node`` contains assignment expression.
+        If not, it will not perform any processing, rather just append the
+        original source code to context buffer.
+
+        If ``node`` contains assignment expression, then it will initiate another
+        :class:`ClassContext` instance to perform the conversion process on such
+        ``node``; whilst if ``func`` is provided, then it will initiate a
+        :class:`Context` instance instead.
+
+        Note:
+            If ``func`` is True, when initiating the :class:`Context` instance,
+            ``keyword`` will be set as ``'nonlocal'``, as in the wrapper function
+            it will refer the original *left-hand-side* variable from the outer
+            function scope rather than global namespace.
+
+        The method will keep *global* statements (:meth:`Context.global_stmt`)
+        from the temporary :class:`Context` (or :class:`ClassContext`) instance in the
+        current instance.
+
+        And if ``raw`` is set as :data:`True`, the method will keep records of converted wrapper
+        functions (:meth:`Context.functions`), converted *lambda* statements (:meth:`Context.lambdef`)
+        and *left-hand-side* variable names (:meth:`Context.variables`), class variable
+        (:meth:`ClassContext.cls_var`) into current instance as well.
+
+        Important:
+            ``raw`` should be :data:`True` only if the ``node`` is in the clause of another *context*,
+            where the converted wrapper functions should be inserted.
+
+            However, it seems useless in current implementation.
 
         """
         if not self.has_walrus(node):
@@ -1268,6 +1419,17 @@ class ClassContext(Context):
         Args:
             node (parso.python.tree.PythonNode): assignment expression node
 
+        This method converts the assignment expression into wrapper function
+        and extracts related records for inserting converted codes.
+
+        * The *left-hand-side* variable name will be recorded in
+          :attr:`self._vars <walrus.Context._vars>`; and its corresponding UUID will
+          be recorded in :attr:`self._cls_var <ClassContext._cls_var>`.
+        * The *right-hand-side* expression will be converted using another
+          :class:`ClassContext` instance and replaced with a wrapper function call
+          rendered from :data:`CLS_CALL_TEMPLATE`; information described as
+          :class:`Function` will be recorded into :attr:`self._func <walrus.Context._func>`.
+
         """
         # split assignment expression
         node_name, _, node_expr = node.children
@@ -1307,6 +1469,14 @@ class ClassContext(Context):
         Args:
             node (parso.python.tree.Name): defined name node
 
+        This method processes name of defined *class variables*. The original
+        variable name will be replaced with a :obj:`dict` assignment statement
+        rendered from :data:`LCL_NAME_TEMPLATE`; and will be recorded in
+        :attr:`self._vars <walrus.Context._vars>`; its corresponding UUID will
+        be recorded in :attr:`self._cls_var <ClassContext._cls_var>`; information
+        described as :class:`Function` will be recorded into
+        :attr:`self._func <walrus.Context._func>`.
+
         """
         name = node.value
         nuid = uuid_gen.gen()
@@ -1323,6 +1493,11 @@ class ClassContext(Context):
 
         Args:
             node (parso.python.tree.ExprStmt): expression statement
+
+        This method processes expression statements in the class context.
+        It will search for *left-hand-side* variable names of defined
+        class variables and call :meth:`~ClassContext._process_defined_name`
+        to process such nodes.
 
         """
         # right hand side expression
@@ -1343,6 +1518,10 @@ class ClassContext(Context):
         Args:
             node (parso.python.tree.Name): variable name
 
+        This method processes the reference of variables in the class context.
+        If the variable is a defined *class variable*, then it will be replaced
+        with codes rendered from :data:`LCL_CALL_TEMPLATE`.
+
         """
         name = node.value
 
@@ -1355,7 +1534,19 @@ class ClassContext(Context):
         self += node.get_code()
 
     def _concat(self):
-        """Concatenate final string."""
+        """Concatenate final string.
+
+        This method tries to inserted the recorded wrapper functions and variables
+        at the very location where starts to contain assignment expressions, i.e.
+        between the converted codes as :attr:`self._prefix <Context._prefix>` and
+        :attr:`self._suffix <Context._suffix>`.
+
+        The inserted codes include wrapper namespace class declaration rendered from
+        :data:`CLS_NAME_TEMPLATE` and wrapper function definitions rendered from
+        :data:`CLS_FUNC_TEMPLATE`. If :attr:`self._pep8 <Context._pep8>` is
+        :data:`True`, it will insert the codes in compliance with :pep:`8`.
+
+        """
         flag = self.has_walrus(self._root)
 
         # strip suffix comments
@@ -1404,16 +1595,16 @@ def convert(code, filename=None, *, source_version=None, linesep=None, indentati
 
     Keyword Args:
         source_version (Optional[str]): parse the code as this version (uses the latest version by default)
-        linesep (Optional[str]): line separator of code (``LF``, CR``LF, ``CR``) (auto detect by default)
+        linesep (Optional[str]): line separator of code (``LF``, ``CRLF, ``CR``) (auto detect by default)
         indentation (Optional[Union[int, str]]): code indentation style, specify an integer for the number of spaces,
             or ``'t'``/``'tab'`` for tabs (auto detect by default)
         pep8 (Optional[bool]): whether to make code insertion :pep:`8` compliant
 
     :Environment Variables:
-     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source_version`` argument and ``--source-version`` option in CLI
-     - :envvar:`WALRUS_LINESEP` -- same as the `linesep` `argument` and ``--linesep`` option in CLI
-     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and ``--indentation`` option in CLI
-     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and ``--no-pep8`` option in CLI (logical negation)
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source_version`` argument and ``source-version`` option in CLI
+     - :envvar:`WALRUS_LINESEP` -- same as the `linesep` `argument` and ``linesep`` option in CLI
+     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and ``indentation`` option in CLI
+     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and ``no-pep8`` option in CLI (logical negation)
 
     Returns:
         str: converted source code
@@ -1462,11 +1653,11 @@ def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep
         quiet (Optional[bool]): whether to run in quiet mode
 
     :Environment Variables:
-     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source_version`` argument and ``--source-version`` option in CLI
-     - :envvar:`WALRUS_LINESEP` -- same as the ``linesep`` argument and ``--linesep`` option in CLI
-     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and ``--indentation`` option in CLI
-     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and ``--no-pep8`` option in CLI (logical negation)
-     - :envvar:`WALRUS_QUIET` -- same as the ``quiet`` argument and ``--quiet`` option in CLI
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source-version`` argument and ``source-version`` option in CLI
+     - :envvar:`WALRUS_LINESEP` -- same as the ``linesep`` argument and ``linesep`` option in CLI
+     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and ``indentation`` option in CLI
+     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and ``no-pep8`` option in CLI (logical negation)
+     - :envvar:`WALRUS_QUIET` -- same as the ``quiet`` argument and ``quiet`` option in CLI
 
     """
     quiet = _get_quiet_option(quiet)
@@ -1556,13 +1747,13 @@ def main(argv=None):
         argv (Optional[List[str]]): CLI arguments
 
     :Environment Variables:
-     - :envvar:`WALRUS_QUIET` -- same as the ``--quiet`` option in CLI
-     - :envvar:`WALRUS_DO_ARCHIVE` -- same as the ``--no-archive`` option in CLI (logical negation)
-     - :envvar:`WALRUS_ARCHIVE_PATH` -- same as the ``--archive-path`` option in CLI
-     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``--source-version`` option in CLI
-     - :envvar:`WALRUS_LINESEP` -- same as the ``--linesep`` option in CLI
-     - :envvar:`WALRUS_INDENTATION` -- same as the ``--indentation`` option in CLI
-     - :envvar:`WALRUS_PEP8` -- same as the ``--no-pep8`` option in CLI (logical negation)
+     - :envvar:`WALRUS_QUIET` -- same as the ``quiet`` option in CLI
+     - :envvar:`WALRUS_DO_ARCHIVE` -- same as the ``do-archive`` option in CLI (logical negation)
+     - :envvar:`WALRUS_ARCHIVE_PATH` -- same as the ``archive-path`` option in CLI
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source-version`` option in CLI
+     - :envvar:`WALRUS_LINESEP` -- same as the ``linesep`` option in CLI
+     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` option in CLI
+     - :envvar:`WALRUS_PEP8` -- same as the ``no-pep8`` option in CLI (logical negation)
 
     """
     parser = get_parser()

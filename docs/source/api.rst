@@ -129,7 +129,7 @@ render based on the following templates.
    :Variables:
       * **indentation** -- indentation sequence as defined in
         :attr:`Config.indentation <walrus.Config.indentation>`
-      * **name_list** -- comma-seperated list of variable names
+      * **name_list** -- equal (``=``) seperated list of variable names
 
    .. important::
 
@@ -319,86 +319,6 @@ Conversion Contexts
    :undoc-members:
    :private-members:
 
-   .. attribute:: config
-      :type: Config
-
-      Internal configurations as described in :class:`Config`.
-
-   .. attribute:: _indentation
-      :type: str
-
-      Indentation sequence.
-
-   .. attribute:: _linesep
-      :type: Union[Literal['\n'], Literal['\r\n'], Literal['\r']]
-
-      Line seperator.
-
-   .. attribute:: _pep8
-      :type: bool
-
-      :pep:`8` compliant conversion flag.
-
-   .. attribute:: _root
-      :type: parso.tree.NodeOrLeaf
-
-      Root node as the ``node`` parameter.
-
-   .. attribute:: _column
-      :type: int
-
-      Current indentation level.
-
-   .. attribute:: _keyword
-      :type: Union[Literal['global'], Literal['nonlocal']]
-
-      The ``global`` / ``nonlocal`` keyword.
-
-   .. attribute:: _context
-      :type: List[str]
-
-      Variable names in ``global`` statements.
-
-   .. attribute:: _prefix_or_suffix
-      :type: bool
-
-      Flag if buffer is now :attr:`self._prefix <walrus.Context._prefix>`.
-
-   .. attribute:: _node_before_walrus
-      :type: Optional[parso.tree.NodeOrLeaf]
-
-      Preceding node with assignment expression, i.e. the *insersion point*.
-
-   .. attribute:: _prefix
-      :type: str
-
-      Codes before insersion point.
-
-   .. attribute:: _suffix
-      :type: str
-
-      Codes after insersion point.
-
-   .. attribute:: _buffer
-      :type: str
-
-      Final converted result.
-
-   .. attribute:: _vars
-      :type: List[str]
-
-      Original *left-hand-side* variable names in assignment expressions.
-
-   .. attribute:: _func
-      :type: List[Function]
-
-      Converted wrapper functions described as :class:`Function`.
-
-   .. attribute:: _lamb
-      :type: List[Lambda]
-
-      Converted *lambda* statements described as :class:`Lambda`.
-
 .. autoclass:: walrus.LambdaContext
    :members:
    :undoc-members:
@@ -411,8 +331,43 @@ Conversion Contexts
    :private-members:
    :show-inheritance:
 
+Internal Auxiliaries
+--------------------
+
+Options & Defaults
+~~~~~~~~~~~~~~~~~~
+
+.. autodata:: walrus.WALRUS_VERSIONS
+
+Below are option getter utility functions. Option value precedence is::
+
+   explicit value (CLI/API arguments) > environment variable > default value
+
+.. autofunction:: walrus._get_quiet_option
+.. autofunction:: walrus._get_do_archive_option
+.. autofunction:: walrus._get_archive_path_option
+.. autofunction:: walrus._get_source_version_option
+.. autofunction:: walrus._get_linesep_option
+.. autofunction:: walrus._get_indentation_option
+.. autofunction:: walrus._get_pep8_option
+
+The following variables are used for fallback default values of options.
+
+.. autodata:: walrus._default_quiet
+.. autodata:: walrus._default_do_archive
+.. autodata:: walrus._default_archive_path
+.. autodata:: walrus._default_source_version
+.. autodata:: walrus._default_linesep
+.. autodata:: walrus._default_indentation
+.. autodata:: walrus._default_pep8
+
+.. important::
+
+   For :data:`_default_linesep` and :data:`_default_indentation`,
+   :data:`None` means *auto detection* during runtime.
+
 CLI Utilities
--------------
+~~~~~~~~~~~~~
 
 .. autofunction:: walrus.get_parser
 

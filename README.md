@@ -23,28 +23,28 @@ Python 3.8 flavour then compile for compatibility later.
 
 &emsp; For macOS users, `walrus` is now available through [Homebrew](https://brew.sh):
 
-```sh
+``sh
 brew tap jarryshaw/tap
 brew install walrus
 # or simply, a one-liner
 brew install jarryshaw/tap/walrus
-```
+``
 
 &emsp; Simply run the following to install the current version from PyPI:
 
-```sh
+``sh
 pip install python-walrus
-```
+``
 
 &emsp; Or install the latest version from the git repository:
 
-```sh
+``sh
 git clone https://github.com/pybpc/walrus.git
 cd walrus
 pip install -e .
 # and to update at any time
 git pull
-```
+``
 
 ## Basic Usage
 
@@ -54,13 +54,13 @@ git pull
 
 > context in `${...}` changes dynamically according to runtime environment
 
-```man
-usage: walrus [options] <python source files and folders...>
+``man
+usage: walrus [options] <Python source files and directories...>
 
 Back-port compiler for Python 3.8 assignment expressions.
 
 positional arguments:
-  SOURCE                python source files and folders to be converted (${CWD})
+  SOURCE                Python source files and directories to be converted (${PWD})
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -68,104 +68,40 @@ optional arguments:
   -q, --quiet           run in quiet mode
 
 archive options:
-  duplicate original files in case there's any issue
+  backup original files in case there're any issues
 
   -na, --no-archive     do not archive original files
   -p PATH, --archive-path PATH
-                        path to archive original files (${CWD}/archive)
+                        path to archive original files (${archive}/archive)
 
 convert options:
   compatibility configuration for non-unicode files
 
-  -c CODING, --encoding CODING
-                        encoding to open source files (${LOCALE_ENCODING})
-  -v VERSION, --python VERSION
-                        convert against Python version (${LATEST_VERSION})
+  -sv VERSION, -fv VERSION, --source-version VERSION, --from-version VERSION
+                        parse source code as Python version (3.9)
   -s SEP, --linesep SEP
-                        line separator to process source files (${OS_LINESEP})
-  -nl, --no-linting     do not lint converted codes
+                        line separator (LF, CRLF, CR) to read source files ('auto detect')
   -t INDENT, --indentation INDENT
-                        indentation style (${INDENTATION})
-```
+                        code indentation style, specify an integer for the number of spaces, or 't'/'tab' for tabs ('auto detect')
+  -n8, --no-pep8        do not make code insertion PEP 8 compliant
+``
 
 &emsp; `walrus` will read then convert all *assignment expressions* syntax in every Python
 file under this path. In case there might be some problems with the conversion, `walrus` will
 duplicate all original files it is to modify into `archive` directory ahead of the process,
-if `-n` not set.
+if `-na` not set.
 
-&emsp; Besides, to keep consistency of API to users, `walrus` ships with a *decorator* for
-such functions to check assignment expressions at runtime, if `-nl` not set.
+### Configuration
 
-## Developer Reference
+`walrus` currently supports following environment variables:
 
-### Environments
-
-`walrus` currently supports three environment arguments:
-
-- `WALRUS_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
-- `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
-- `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
-- `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-- `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
-- `WALRUS_INDENTATION` -- indentation style (same as `--indentation` option in CLI)
-
-### APIs
-
-#### `walrus` -- wrapper works for conversion
-
-```python
-walrus(filename)
-```
-
-Args:
-
-- `filename` -- `str`, file to be converted
-
-Envs:
-
-- `WALRUS_QUIET` -- run in quiet mode (same as `--quiet` option in CLI)
-- `WALRUS_ENCODING` -- encoding to open source files (same as `--encoding` option in CLI)
-- `WALRUS_VERSION`-- convert against Python version (same as `--python` option in CLI)
-- `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-- `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
-- `WALRUS_INDENTATION` -- indentation style (same as `--indentation` option in CLI)
-
-Raises:
-
-- `ConvertError` -- when source code contains syntax errors
-
-#### `convert` -- the main conversion process
-
-```python
-convert(string, source='<unknown>')
-```
-
-Args:
-
-- `string` -- `str`, context to be converted
-- `source` -- `str`, source of the context
-
-Envs:
-
-- `WALRUS_VERSION` -- convert against Python version (same as `--python` option in CLI)
-- `WALRUS_LINESEP` -- line separator to process source files (same as `--linesep` option in CLI)
-- `WALRUS_LINTING` -- lint converted codes (same as `--linting` option in CLI)
-- `WALRUS_INDENTATION` -- indentation style (same as `--indentation` option in CLI)
-
-Returns:
-
-- `str` -- converted string
-
-Raises:
-
-- `ConvertError` -- when source code contains syntax errors
-
-#### Internal exceptions
-
-```python
-class ConvertError(SyntaxError):
-    """Parso syntax error."""
-```
+- `WALRUS_QUIET` -- same as the `quiet` option in CLI
+- `WALRUS_DO_ARCHIVE` -- same as the `do-archive` option in CLI (logical negation)
+- `WALRUS_ARCHIVE_PATH` -- same as the `archive-path` option in CLI
+- `WALRUS_SOURCE_VERSION` -- same as the `source-version` option in CLI
+- `WALRUS_LINESEP` -- same as the `linesep` option in CLI
+- `WALRUS_INDENTATION` -- same as the `indentation` option in CLI
+- `WALRUS_PEP8` -- same as the `no-pep8` option in CLI (logical negation)
 
 ## Test
 

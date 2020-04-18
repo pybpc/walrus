@@ -1730,7 +1730,7 @@ def get_parser():
                                help='line separator (LF, CRLF, CR) to read source files (%(default)r)')
     convert_group.add_argument('-t', '--indentation', action='store', default=__walrus_indentation__, metavar='INDENT',
                                help='code indentation style, specify an integer for the number of spaces, '
-                                    "or 't'/'tab' for tabs (%(default)s)")
+                                    "or 't'/'tab' for tabs (%(default)r)")
     convert_group.add_argument('-n8', '--no-pep8', action='store_false', dest='pep8',
                                help='do not make code insertion PEP 8 compliant')
 

@@ -222,7 +222,7 @@ wrapper function will render based on the following templates.
 
       '_walrus_wrapper_%(cls)s_dict[%(name)r]'
 
-   Record regular assign expressions to the local dictionary.
+   Record regular assignment statements to the local dictionary.
 
    :Variables:
       * **cls** -- class name
@@ -285,7 +285,7 @@ wrapper function will render based on the following templates.
       * **indentation** -- indentation sequence as defined in
         :attr:`Config.indentation <walrus.Config.indentation>`
 
-.. data:: CLS_FUNC_TEMPLATE
+.. data:: CLS_SET_FUNC_TEMPLATE
    :type: str
 
    .. code:: python
@@ -294,16 +294,92 @@ wrapper function will render based on the following templates.
        '%(indentation)sdef set_%(name)s_%(uuid)s(expr):',
        '%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""',
        '%(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[%(name)r] = expr',
-       '%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]',
-       '',
-       '%(indentation)s@staticmethod',
+       '%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]']
+
+   Classmethods for setting variables from the wrapper class context.
+
+   :Variables:
+      * **indentation** -- indentation sequence as defined in
+        :attr:`Config.indentation <walrus.Config.indentation>`
+      * **cls** -- class name
+      * \*\*\ **kwargs** -- function record as described in :class:`Function`
+
+.. data:: CLS_GET_FUNC_TEMPLATE
+   :type: str
+
+   .. code:: python
+
+      ['%(indentation)s@staticmethod',
        '%(indentation)sdef get_%(name)s_%(uuid)s():',
        '%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""',
        '%(indentation)s%(indentation)sif %(name)r in _walrus_wrapper_%(cls)s_dict:',
        '%(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]',
        "%(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% %(name)r)"]
 
-   Classmethods for getting and setting variables from the wrapper class context.
+   Classmethods for getting variables from the wrapper class context.
+
+   :Variables:
+      * **indentation** -- indentation sequence as defined in
+        :attr:`Config.indentation <walrus.Config.indentation>`
+      * **cls** -- class name
+      * \*\*\ **kwargs** -- function record as described in :class:`Function`
+
+.. data:: CLS_EXT_CALL_TEMPLATE
+   :type: str
+
+   .. code:: python
+
+      '__WalrusWrapper%(cls)s.ext_%(name)s_%(uuid)s(%(expr)s)'
+
+   Record external variable to its source scope.
+
+   :Variables:
+      * **cls** -- class name
+      * **name** -- variable name
+      * **uuid** -- UUID text
+      * **expr** -- original *right-hand-side* expression
+
+.. data:: CLS_EXT_VARS_GLOBAL_TEMPLATE
+   :type: str
+
+   .. code:: python
+
+      '%(indentation)sglobal %(name_list)s'
+
+   Declare :token:`global <global_stmt>` variables.
+
+   :Variables:
+      * **indentation** -- indentation sequence as defined in
+        :attr:`Config.indentation <walrus.Config.indentation>`
+      * **name_list** -- comma (``,``) seperated list of variable names
+
+.. data:: CLS_EXT_VARS_NONLOCAL_TEMPLATE
+   :type: str
+
+   .. code:: python
+
+      '%(indentation)snonlocal %(name_list)s'
+
+   Declare :token:`nonlocal <nonlocal_stmt>` variables.
+
+   :Variables:
+      * **indentation** -- indentation sequence as defined in
+        :attr:`Config.indentation <walrus.Config.indentation>`
+      * **name_list** -- comma (``,``) seperated list of variable names
+
+.. data:: CLS_EXT_FUNC_TEMPLATE
+   :type: str
+
+   .. code:: python
+
+      ['%(indentation)s@staticmethod',
+       '%(indentation)sdef ext_%(name)s_%(uuid)s(expr):',
+       '%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""',
+       '%(indentation)s%(indentation)s%(keyword)s %(name)s',
+       '%(indentation)s%(indentation)s%(name)s = expr',
+       '%(indentation)s%(indentation)sreturn %(name)s']
+
+   Classmethods for injecting external variables to its source scope.
 
    :Variables:
       * **indentation** -- indentation sequence as defined in

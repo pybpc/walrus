@@ -284,13 +284,14 @@ CLS_NAME_TEMPLATE = '''\
 class __WalrusWrapper%(cls)s:
 %(indentation)s"""Wrapper class for assignment expression."""
 '''.splitlines()  # `str.splitlines` will remove trailing newline
-CLS_FUNC_TEMPLATE = '''\
+CLS_SET_FUNC_TEMPLATE = '''\
 %(indentation)s@staticmethod
 %(indentation)sdef set_%(name)s_%(uuid)s(expr):
 %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
 %(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[%(name)r] = expr
 %(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
-
+'''.splitlines()  # `str.splitlines` will remove trailing newline
+CLS_GET_FUNC_TEMPLATE = '''\
 %(indentation)s@staticmethod
 %(indentation)sdef get_%(name)s_%(uuid)s():
 %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
@@ -298,7 +299,17 @@ CLS_FUNC_TEMPLATE = '''\
 %(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
 %(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% %(name)r)
 '''.splitlines()  # `str.splitlines` will remove trailing newline
-
+CLS_EXT_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.ext_%(name)s_%(uuid)s(%(expr)s)'
+CLS_EXT_VARS_GLOBAL_TEMPLATE = '%(indentation)sglobal %(name_list)s'
+CLS_EXT_VARS_NONLOCAL_TEMPLATE = '%(indentation)snonlocal %(name_list)s'
+CLS_EXT_FUNC_TEMPLATE = '''\
+%(indentation)s@staticmethod
+%(indentation)sdef ext_%(name)s_%(uuid)s(expr):
+%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
+%(indentation)s%(indentation)s%(keyword)s %(name)s
+%(indentation)s%(indentation)s%(name)s = expr
+%(indentation)s%(indentation)sreturn %(name)s
+'''.splitlines()  # `str.splitlines` will remove trailing newline
 
 class Context:
     """General conversion context.
@@ -310,14 +321,14 @@ class Context:
     Keyword Args:
         column (int): current indentation level
         keyword (Optional[Union[Literal['global'], Literal['nonlocal']]]): keyword for wrapper function
-        context (Optional[List[str]]): global context
+        context (Optional[List[str]]): global context (:term:`namespace`)
         raw (bool): raw processing flag
 
     Important:
         ``raw`` should be :data:`True` only if the ``node`` is in the clause of another *context*,
         where the converted wrapper functions should be inserted.
 
-        Typically, only if ``node`` is an assignment expression (``namedexpr_test``) node,
+        Typically, only if ``node`` is an assignment expression (:token:`namedexpr_test`) node,
         ``raw`` will be set as :data:`True`, in consideration of nesting assignment expressions.
 
     """
@@ -353,7 +364,7 @@ class Context:
 
     @property
     def functions(self):
-        """Assignment expression wrapper function records.
+        """Assignment expression wrapper function records (:attr:`self._func <walrus.ontext._func>`).
 
         :rtype: List[Function]
 
@@ -362,7 +373,7 @@ class Context:
 
     @property
     def global_stmt(self):
-        """List of variables declared in the ``global`` statements.
+        """List of variables declared in the :token:`global <global_stmt>` statements.
 
         If current root node (:attr:`self._root <walrus.Context._root>`) is a function definition
         (:class:`parso.python.tree.Function`), then returns an empty list; else returns
@@ -395,9 +406,10 @@ class Context:
         self._root = node
         #: int: Current indentation level.
         self._column = column
-        #: Union[Literal['global'], Literal['nonlocal']]: The ``global`` / ``nonlocal`` keyword.
+        #: Union[Literal['global'], Literal['nonlocal']]:
+        #: The :token:`global <global_stmt>` / :token:`nonlocal <nonlocal_stmt>` keyword.
         self._keyword = keyword
-        #: List[str]: Variable names in ``global`` statements.
+        #: List[str]: Variable names in :token:`global <global_stmt>` statements.
         self._context = list(context)
 
         #: bool: Flag if buffer is now :attr:`self._prefix <walrus.Context._prefix>`.
@@ -518,7 +530,7 @@ class Context:
         self += node.get_code()
 
     def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
-        """Process indented suite (``suite`` or others).
+        """Process indented suite (:token:`suite` or others).
 
         Args:
             node (parso.tree.NodeOrLeaf): suite node
@@ -588,7 +600,7 @@ class Context:
         self._context.extend(ctx.global_stmt)
 
     def _process_namedexpr_test(self, node):
-        """Process assignment expression (``namedexpr_test``).
+        """Process assignment expression (:token:`namedexpr_test`).
 
         Args:
             node (parso.python.tree.PythonNode): assignment expression node
@@ -633,7 +645,7 @@ class Context:
         self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
 
     def _process_global_stmt(self, node):
-        """Process function definition (``global_stmt``).
+        """Process function definition (:token:`global_stmt`).
 
         Args:
             node (parso.python.tree.GlobalStmt): global statement node
@@ -665,7 +677,7 @@ class Context:
         self += node.get_code()
 
     def _process_classdef(self, node):
-        """Process class definition (``classdef``).
+        """Process class definition (:token:`classdef`).
 
         Args:
             node (parso.python.tree.Class): class node
@@ -738,7 +750,7 @@ class Context:
                                                                  blank=1, linesep=self._linesep)
 
     def _process_funcdef(self, node):
-        """Process function definition (``funcdef``).
+        """Process function definition (:token:`funcdef`).
 
         Args:
             node (parso.python.tree.Function): function node
@@ -804,7 +816,7 @@ class Context:
         self += LAMBDA_CALL_TEMPLATE % dict(uuid=nuid)
 
     def _process_if_stmt(self, node):
-        """Process if statement (``if_stmt``).
+        """Process if statement (:token:`if_stmt`).
 
         Args:
             node (parso.python.tree.IfStmt): if node
@@ -848,7 +860,7 @@ class Context:
                 continue
 
     def _process_while_stmt(self, node):
-        """Process while statement (``while_stmt``).
+        """Process while statement (:token:`while_stmt`).
 
         Args:
             node (parso.python.tree.WhileStmt): while node
@@ -881,7 +893,7 @@ class Context:
         self._process_suite_node(next(children))
 
     def _process_for_stmt(self, node):
-        """Process for statement (``for_stmt``).
+        """Process for statement (:token:`for_stmt`).
 
         Args:
             node (parso.python.tree.ForStmt): for node
@@ -918,7 +930,7 @@ class Context:
         self._process_suite_node(next(children))
 
     def _process_with_stmt(self, node):
-        """Process with statement (``with_stmt``).
+        """Process with statement (:token:`with_stmt`).
 
         Args:
             node (parso.python.tree.WithStmt): with node
@@ -944,7 +956,7 @@ class Context:
         self._process_suite_node(next(children))
 
     def _process_try_stmt(self, node):
-        """Process try statement (``try_stmt``).
+        """Process try statement (:token:`try_stmt`).
 
         Args:
             node (parso.python.tree.TryStmt): try node
@@ -969,7 +981,7 @@ class Context:
             self._process_suite_node(next(children))
 
     def _process_argument(self, node):
-        """Process function argument (``argument``).
+        """Process function argument (:token:`argument`).
 
         Args:
             node (parso.python.tree.PythonNode): argument node
@@ -1091,7 +1103,7 @@ class Context:
 
     @classmethod
     def has_walrus(cls, node):
-        """Check if node has assignment expression. (``namedexpr_test``)
+        """Check if node has assignment expression. (:token:`namedexpr_test`)
 
         Args:
             node (parso.tree.NodeOrLeaf): parso AST
@@ -1233,7 +1245,7 @@ class LambdaContext(Context):
     Keyword Args:
         column (int): current indentation level
         keyword (Literal['nonlocal']): keyword for wrapper function
-        context (Optional[List[str]]): global context
+        context (Optional[List[str]]): global context (:term:`namespace`)
         raw (False): raw processing flag
 
     Note:
@@ -1309,8 +1321,11 @@ class ClassContext(Context):
         cls_var (Dict[str, str]): mapping for assignment variable and its UUID
         column (int): current indentation level
         keyword (Optional[str]): keyword for wrapper function
-        context (Optional[List[str]]): global context
+        context (Optional[List[str]]): global context (:term:`namespace`)
         raw (False): raw context processing flag
+        external (Optional[Dict[str, Union[Literal['global'], Literal['nonlocal']]]]):
+            mapping of *class variables* declared in :token:`global <global_stmt>` and/or
+            :token:`nonlocal <nonlocal_stmt>` statements
 
     Note:
         ``raw`` should always be :data:`False`.
@@ -1326,12 +1341,39 @@ class ClassContext(Context):
         """
         return self._cls_var
 
+    @property
+    def external_variables(self):
+        """Assignment expression variable records (:attr:`self._ext_vars <walrus.ClassContext._ext_vars>`).
+
+        The variables are the *left-hand-side* variable name of the assignment expressions
+        for *class variables* declared in :token:`global <global_stmt>` and/or
+        :token:`nonlocal <nonlocal_stmt>` statements.
+
+        :rtype: Dict[str, Union[Literal['global'], Literal['nonlocal']]]
+
+        """
+        return self._ext_vars
+
+    @property
+    def external_functions(self):
+        """Assignment expression wrapper function records (:attr:`self._ext_func <walrus.ClassContext._ext_func>`)
+        for *class variables* declared in :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>`
+        statements.
+
+        :rtype: List[Function]
+
+        """
+        return self._ext_func
+
     def __init__(self, node, config, *,
                  cls_ctx, cls_var=None,
                  column=0, keyword=None,
-                 context=None, raw=False):
+                 context=None, raw=False,
+                 external=None):
         if cls_var is None:
             cls_var = dict()
+        if external is None:
+            external = dict()
 
         #: bool: Raw context processing flag.
         self._cls_raw = raw
@@ -1340,11 +1382,21 @@ class ClassContext(Context):
         #: str: Class context name.
         self._cls_ctx = cls_ctx
 
+        #: Dict[str, Union[Literal['global'], Literal['nonlocal']]]: Original
+        #: *left-hand-side* variable names in assignment expressions for
+        #: *class variables* declared in :token:`global <global_stmt>` and/or
+        #: :token:`nonlocal <nonlocal_stmt>` statements.
+        self._ext_vars = external
+        #: List[Function]: Converted wrapper functions for *class variables* declared in
+        #: :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>` statements
+        #: described as :class:`Function`.
+        self._ext_func = list()
+
         super().__init__(node=node, config=config, context=context,
                          column=column, keyword=keyword, raw=raw)
 
     def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
-        """Process indented suite (``suite`` or others).
+        """Process indented suite (:token:`suite` or others).
 
         Args:
             node (parso.tree.NodeOrLeaf): suite node
@@ -1374,7 +1426,9 @@ class ClassContext(Context):
         And if ``raw`` is set as :data:`True`, the method will keep records of converted wrapper
         functions (:meth:`Context.functions`), converted *lambda* statements (:meth:`Context.lambdef`)
         and *left-hand-side* variable names (:meth:`Context.variables`), class variable
-        (:meth:`ClassContext.cls_var`) into current instance as well.
+        (:meth:`ClassContext.cls_var`), external variables (:meth:`ClassContext.external_variables`),
+        wrapper functions for external variables (:meth:`ClassContext.external_functions`) into current
+        instance as well.
 
         Important:
             ``raw`` should be :data:`True` only if the ``node`` is in the clause of another *context*,
@@ -1400,7 +1454,7 @@ class ClassContext(Context):
             # process suite
             ctx = Context(node=node, config=self.config,
                           context=self._context, column=indent,
-                          keyword=keyword)
+                          keyword=keyword, raw=raw)
         else:
             keyword = self._keyword
 
@@ -1408,7 +1462,7 @@ class ClassContext(Context):
             ctx = ClassContext(node=node, config=self.config,
                                cls_ctx=cls_ctx, cls_var=cls_var,
                                context=self._context, column=indent,
-                               keyword=keyword)
+                               keyword=keyword, raw=raw, external=self._ext_vars)
         self += ctx.string.lstrip()
 
         # keep record
@@ -1416,11 +1470,14 @@ class ClassContext(Context):
             self._lamb.extend(ctx.lambdef)
             self._vars.extend(ctx.variables)
             self._func.extend(ctx.functions)
+
             self._cls_var.update(ctx.cls_var)
+            self._ext_vars.update(ctx.external_variables)
+            self._ext_func.extend(ctx.external_functions)
         self._context.extend(ctx.global_stmt)
 
     def _process_namedexpr_test(self, node):
-        """Process assignment expression (``namedexpr_test``).
+        """Process assignment expression (:token:`namedexpr_test`).
 
         Args:
             node (parso.python.tree.PythonNode): assignment expression node
@@ -1436,6 +1493,15 @@ class ClassContext(Context):
           rendered from :data:`CLS_CALL_TEMPLATE`; information described as
           :class:`Function` will be recorded into :attr:`self._func <walrus.Context._func>`.
 
+        For special *class variables* declared in :token:`global <global_stmt>` and/or
+        :token:`nonlocal <nonlocal_stmt>` statements:
+
+        * The *left-hand-side* variable name will **NOT** be considered as *class variable*,
+          thus shall **NOT** be recorded.
+        * The expression will be replaced with a wrapper function call rendered from
+          :data:`CLS_EXT_CALL_TEMPLATE`; information described as :class:`Function` will be
+          recorded into :attr:`self._ext_func <walrus.ClassContext._ext_func>` instead.
+
         """
         # split assignment expression
         node_name, _, node_expr = node.children
@@ -1446,19 +1512,34 @@ class ClassContext(Context):
         ctx = ClassContext(node=node_expr, config=self.config,
                            cls_ctx=self._cls_ctx, cls_var=self._cls_var,
                            context=self._context, column=self._column,
-                           keyword=self._keyword, raw=True)
+                           keyword=self._keyword, raw=True,
+                           external=self._ext_vars)
         expr = ctx.string.strip()
+
         self._lamb.extend(ctx.lambdef)
         self._vars.extend(ctx.variables)
         self._func.extend(ctx.functions)
+        self._context.extend(ctx.global_stmt)
+
         self._cls_var.update(ctx.cls_var)
+        self._ext_vars.update(ctx.external_variables)
+        self._ext_func.extend(ctx.external_functions)
+
+        # if declared in global/nonlocal statements
+        external = name in self._ext_vars
 
         # replacing codes
-        code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
+        if external:
+            code = CLS_EXT_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
+        else:
+            code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
         prefix, suffix = self.extract_whitespaces(node)
         self += prefix + code + suffix
 
-        self._context.extend(ctx.global_stmt)
+        if external:
+            self._ext_func.append(dict(name=name, uuid=nuid, keyword=self._ext_vars[name]))
+            return
+
         if name in self._context:
             keyword = 'global'
         else:
@@ -1470,7 +1551,7 @@ class ClassContext(Context):
         self._cls_var[name] = nuid
 
     def _process_defined_name(self, node):
-        """Process defined name (``name``).
+        """Process defined name (:token:`name`).
 
         Args:
             node (parso.python.tree.Name): defined name node
@@ -1483,8 +1564,19 @@ class ClassContext(Context):
         described as :class:`Function` will be recorded into
         :attr:`self._func <walrus.Context._func>`.
 
+        Note:
+            If the *left-hand-side* variable was declared in :token:`global <global_stmt>`
+            and/or :token:`nonlocal <nonlocal_stmt>`, then it shall **NOT** be
+            considered as *class variable*.
+
         """
         name = node.value
+
+        # if declared in global/nonlocal statements
+        if name in self._ext_vars:
+            self += node.get_code()
+            return
+
         nuid = uuid_gen.gen()
 
         prefix, _ = self.extract_whitespaces(node)
@@ -1495,7 +1587,7 @@ class ClassContext(Context):
         self._cls_var[name] = nuid
 
     def _process_expr_stmt(self, node):
-        """Process variable name (``expr_stmt``).
+        """Process variable name (:token:`expr_stmt`).
 
         Args:
             node (parso.python.tree.ExprStmt): expression statement
@@ -1519,7 +1611,7 @@ class ClassContext(Context):
             self += child.get_code()
 
     def _process_name(self, node):
-        """Process variable name (``name``).
+        """Process variable name (:token:`name`).
 
         Args:
             node (parso.python.tree.Name): variable name
@@ -1539,6 +1631,73 @@ class ClassContext(Context):
         # normal processing
         self += node.get_code()
 
+    def _process_global_stmt(self, node):
+        """Process function definition (:token:`global_stmt`).
+
+        Args:
+            node (parso.python.tree.GlobalStmt): global statement node
+
+        This method records all variables declared in a *global* statement
+        into :attr:`self._context <walrus.Context._context>` and
+        :attr:`self._ext_vars <walrus.ClassContext._ext_vars>`.
+
+        """
+        children = iter(node.children)
+
+        # <Keyword: global>
+        next(children)
+        # <Name: ...>
+        name = next(children)
+        self._context.append(name.value)
+        self._ext_vars[name.value] = 'global'
+
+        while True:
+            try:
+                # <Operator: ,>
+                next(children)
+            except StopIteration:
+                break
+
+            # <Name: ...>
+            name = next(children)
+            self._context.append(name.value)
+            self._ext_vars[name.value] = 'global'
+
+        # process code
+        self += node.get_code()
+
+    def _process_nonlocal_stmt(self, node):
+        """Process function definition (:token:`nonlocal_stmt`).
+
+        Args:
+            node (parso.python.tree.GlobalStmt): nonlocal statement node
+
+        This method records all variables declared in a *nonlocal* statement
+        into :attr:`self._ext_vars <walrus.ClassContext._ext_vars>`.
+
+        """
+        children = iter(node.children)
+
+        # <Keyword: nonlocal>
+        next(children)
+        # <Name: ...>
+        name = next(children)
+        self._ext_vars[name.value] = 'nonlocal'
+
+        while True:
+            try:
+                # <Operator: ,>
+                next(children)
+            except StopIteration:
+                break
+
+            # <Name: ...>
+            name = next(children)
+            self._ext_vars[name.value] = 'nonlocal'
+
+        # process code
+        self += node.get_code()
+
     def _concat(self):
         """Concatenate final string.
 
@@ -1549,8 +1708,17 @@ class ClassContext(Context):
 
         The inserted codes include wrapper namespace class declaration rendered from
         :data:`CLS_NAME_TEMPLATE` and wrapper function definitions rendered from
-        :data:`CLS_FUNC_TEMPLATE`. If :attr:`self._pep8 <Context._pep8>` is
-        :data:`True`, it will insert the codes in compliance with :pep:`8`.
+        :data:`CLS_GET_FUNC_TEMPLATE` and :data:`CLS_SET_FUNC_TEMPLATE`. If
+        :attr:`self._pep8 <Context._pep8>` is :data:`True`, it will insert the codes
+        in compliance with :pep:`8`.
+
+        Also, for special *class variables* declared in :token:`global <global_stmt>`
+        and/or :token:`nonlocal <nonlocal_stmt>` statements, they will be declared again
+        with its original keyword in the wrapper class context rendered from
+        :data:`CLS_EXT_VARS_GLOBAL_TEMPLATE` and :data:`CLS_EXT_VARS_NONLOCAL_TEMPLATE`.
+        When assigning to to such variables, i.e. they are on *left-hand-side* of
+        assignment expressions, the expressions will be assigned with a wrapper function
+        rendered from :data:`CLS_EXT_FUNC_TEMPLATE`.
 
         """
         flag = self.has_walrus(self._root)
@@ -1577,12 +1745,46 @@ class ClassContext(Context):
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(CLS_NAME_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
+
+        global_list = list()
+        nonlocal_list = list()
+        for name, keyword in self._ext_vars.items():
+            if keyword == 'global':
+                global_list.append(name)
+            if keyword == 'nonlocal':
+                nonlocal_list.append(name)
+        if global_list:
+            if self._buffer:
+                self._buffer += linesep
+            name_list = ' = '.join(sorted(set(global_list)))
+            self._buffer += indent + CLS_EXT_VARS_GLOBAL_TEMPLATE % dict(
+                indentation=self._indentation, name_list=name_list
+            ) + self._linesep
+        if nonlocal_list:
+            if not global_list:
+                self._buffer += linesep
+            name_list = ' = '.join(sorted(set(nonlocal_list)))
+            self._buffer += indent + CLS_EXT_VARS_NONLOCAL_TEMPLATE % dict(
+                indentation=self._indentation, name_list=name_list
+            ) + self._linesep
+
+        for func in sorted(self._ext_func, key=lambda func: func['name']):
+            if self._buffer:
+                self._buffer += linesep
+            self._buffer += indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(CLS_EXT_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
+
         for func in sorted(self._func, key=lambda func: func['name']):
             if self._buffer:
                 self._buffer += linesep
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
-            ).join(CLS_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
+            ).join(CLS_GET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
+            self._buffer += linesep
+            self._buffer += indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(CLS_SET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
 
         # finally, the suffix codes
         if flag and self._pep8:

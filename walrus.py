@@ -1661,11 +1661,11 @@ def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep
             or ``'t'``/``'tab'`` for tabs (auto detect by default)
         pep8 (Optional[bool]): whether to make code insertion :pep:`8` compliant
         quiet (Optional[bool]): whether to run in quiet mode
-        dry_run (bool): if True, only print the name of the file to convert but do not perform any conversion
+        dry_run (bool): if :data:`True`, only print the name of the file to convert but do not perform any conversion
 
     :Environment Variables:
-     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source-version`` argument
-        and the ``--source-version`` option in CLI
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source-version`` argument and the ``--source-version`` option
+       in CLI
      - :envvar:`WALRUS_LINESEP` -- same as the ``linesep`` argument and the ``--linesep`` option in CLI
      - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and the ``--indentation`` option in CLI
      - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and the ``--no-pep8`` option in CLI (logical negation)

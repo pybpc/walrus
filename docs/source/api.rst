@@ -24,7 +24,7 @@ The main logic of the :mod:`walrus` conversion is to wrap *assignment expression
 as functions which manipulates variable namespaces to implement the **assignment**
 part and evaluates original code blocks to archive the **expression** part.
 
-.. For implementation algorithms and details, please refer to :doc:`...`.
+For conversion algorithms and details, please refer to :doc:`concept`.
 
 Data Structures
 ~~~~~~~~~~~~~~~
@@ -378,29 +378,58 @@ The following variables are used for help messages in the argument parser.
 
    Current working directory returned by :func:`os.getcwd`.
 
+.. data:: walrus.__walrus_quiet__
+   :type: Union[Literal['quiet mode'], Literal['non-quiet mode']]
+
+   Default value for the ``--quiet`` option.
+
+   .. seealso:: :func:`walrus._get_quiet_option`
+
+.. data:: walrus.__walrus_concurrency__
+   :type: Union[int, Literal['auto detect']]
+
+   Default value for the ``--concurrency`` option.
+
+   .. seealso:: :func:`walrus._get_concurrency_option`
+
+.. data:: walrus.__walrus_do_archive__
+   :type: Union[Literal['will do archive'], Literal['will not do archive']]
+
+   Default value for the ``--no-archive`` option.
+
+   .. seealso:: :func:`_get_do_archive_option`
+
 .. data:: walrus.__walrus_archive_path__
    :type: str
 
-   Path to archive original source code.
+   Default value for the ``--archive-path`` option.
 
    .. seealso:: :func:`walrus._get_archive_path_option`
 
 .. data:: walrus.__walrus_source_version__
    :type: str
 
-   Parse source code as Python version.
+   Default value for the ``--source-version`` option.
 
    .. seealso:: :func:`walrus._get_source_version_option`
 
 .. data:: walrus.__walrus_linesep__
-   :type: Union[Literal['\n'], Literal['\r\n'], Literal['\r'], Literal['auto detect']]
+   :type: Union[Literal['LF'], Literal['CRLF'], Literal['CR'], Literal['auto detect']]
 
-   Line separator (``LF``, ``CRLF``, ``CR``) to read source files.
+   Default value for the ``--linesep`` option.
 
    .. seealso:: :func:`walrus._get_linesep_option`
 
 .. data:: walrus.__walrus_indentation__
-   :type: Union[int, Literal['\t'], Literal['auto detect']]
+   :type: Union[Literal['%d spaces'], Literal['tab'], Literal['auto detect']]
 
-   Code indentation style; an integer for the number of spaces,
-   or ``\t`` for tabs.
+   Default value for the ``--indentation`` option.
+
+   .. seealso:: :func:`walrus._get_indentation_option`
+
+.. data:: walrus.__walrus_pep8__
+   :type: Union[Literal['will conform to PEP 8'], Literal['will not conform to PEP 8']]
+
+   Default value for the ``--no-pep8`` option.
+
+   .. seealso:: :func:`walrus._get_pep8_option`

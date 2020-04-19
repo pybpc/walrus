@@ -17,8 +17,9 @@ compatibility later.
 .. toctree::
    :maxdepth: 3
 
-   api
+   concept
    example
+   api
 
 ------------
 Installation
@@ -66,8 +67,6 @@ CLI
 
 It is fairly straightforward to use :mod:`walrus`:
 
-.. note:: context in ``${...}`` changes dynamically according to runtime environment
-
 .. code:: text
 
    usage: walrus [options] <Python source files and directories...>
@@ -75,35 +74,44 @@ It is fairly straightforward to use :mod:`walrus`:
    Back-port compiler for Python 3.8 assignment expressions.
 
    positional arguments:
-     SOURCE                Python source files and directories to be converted
+     <Python source files and directories...>
+                           Python source files and directories to be converted
 
    optional arguments:
      -h, --help            show this help message and exit
      -V, --version         show program's version number and exit
      -q, --quiet           run in quiet mode
+     -C N, --concurrency N
+                           the number of concurrent processes for conversion
+     --dry-run             list the files to be converted without actually performing conversion and archiving
 
    archive options:
      backup original files in case there're any issues
 
      -na, --no-archive     do not archive original files
-     -p PATH, --archive-path PATH
-                           path to archive original files (${PWD}/archive)
+     -k PATH, --archive-path PATH
+                           path to archive original files
+     -r ARCHIVE_FILE, --recover ARCHIVE_FILE
+                           recover files from a given archive file
+     -r2                   remove the archive file after recovery
+     -r3                   remove the archive file after recovery, and remove the archive directory if it becomes empty
 
    convert options:
      conversion configuration
 
-     -sv VERSION, -fv VERSION, --source-version VERSION, --from-version VERSION
-                           parse source code as Python version (${LATEST_VERSION})
-     -s SEP, --linesep SEP
-                           line separator (LF, CRLF, CR) to read source files (auto detect)
+     -vs VERSION, -vf VERSION, --source-version VERSION, --from-version VERSION
+                           parse source code as this Python version
+     -l LINESEP, --linesep LINESEP
+                           line separator (LF, CRLF, CR) to read source files
      -t INDENT, --indentation INDENT
-                           code indentation style, specify an integer for the number of spaces, or 't'/'tab' for tabs (auto detect)
+                           code indentation style, specify an integer for the number of spaces, or 't'/'tab' for tabs
      -n8, --no-pep8        do not make code insertion PEP 8 compliant
 
-Normally you will just call ``walrus .``, then mod:`walrus` will read and convert all *assignment expressions* syntax in every
-Python file under the current working directory. In case there might be some problems with the
-conversion, :mod:`walrus` will backup all original files it is to modify into
-the ``archive`` directory ahead of the process, if the ``-na`` option is not set.
+Normally you will just call :mod:`walrus`, then mod:`walrus` will read and convert all
+*assignment expressions* syntax in every Python file under the current working directory.
+In case there might be some problems with the conversion, :mod:`walrus` will backup all
+original files it is to modify into the ``archive`` directory ahead of the process, if
+the ``-na`` option is not set.
 
 Configuration
 -------------

@@ -7,7 +7,7 @@ back-port compiler for Python 3.8 assignment expression
 -------------------------------------------------------
 
 :Version: v0.1.4
-:Date: March 09, 2020
+:Date: April 19, 2020
 :Manual section: 1
 :Author:
     Jarry Shaw, a newbie programmer, is the author, owner and maintainer
@@ -18,14 +18,14 @@ back-port compiler for Python 3.8 assignment expression
 SYNOPSIS
 ========
 
-walrus [*options*] <*python source files and folders*> ...
+walrus [*options*] <*Python source files and directories...*>
 
 DESCRIPTION
 ===========
 
 Since PEP 572, Python introduced *assignment expressions* syntax in
 version __3.8__. For those who wish to use *assignment expressions*
-in their code, `walrus` provides an intelligent, yet imperfect,
+in their code, ``walrus`` provides an intelligent, yet imperfect,
 solution of a **backport compiler** by replacing *assignment expressions*
 syntax with old-fashioned assignment-then-conditional syntax, which
 guarantees you to always write *assignment expressions* in Python 3.8
@@ -37,7 +37,7 @@ OPTIONS
 positional arguments
 --------------------
 
-:SOURCE:              python source files and folders to be converted
+:SOURCE:              Python source files and directories to be converted
 
 optional arguments
 ------------------
@@ -46,34 +46,46 @@ optional arguments
 -V, --version         show program's version number and exit
 -q, --quiet           run in quiet mode
 
+-C *N*, --concurrency *N*
+                      the number of concurrent processes for conversion
+
+--dry-run             list the files to be converted without actually
+                      performing conversion and archiving
+
 archive options
 ---------------
 
-duplicate original files in case there's any issue
+backup original files in case there're any issues
 
 -na, --no-archive     do not archive original files
 
--p *PATH*, --archive-path *PATH*
+-k *PATH*, --archive-path *PATH*
                       path to archive original files
+
+-r *ARCHIVE_FILE*, --recover *ARCHIVE_FILE*
+                      recover files from a given archive file
+
+-r2                   remove the archive file after recovery
+
+-r3                   remove the archive file after recovery, and remove
+                      the archive directory if it becomes empty
 
 convert options
 ---------------
 
-compatibility configuration for non-unicode files
+conversion configuration
 
--c *CODING*, --encoding *CODING*
-                      encoding to open source files
+-vs *VERSION*, -vf *VERSION*, --source-version *VERSION*, -from-version *VERSION*
+                      parse source code as this Python version
 
--v *VERSION*, --python *VERSION*
-                      convert against Python version
-
--s *SEP*, --linesep *SEP*
-                      line separator to process source files
-
--nl, --no-linting     do not lint converted codes
+-l *LINESEP*, --linesep *LINESEP*
+                      line separator (**LF**, **CRLF**, **CR**) to read source files
 
 -t *INDENT*, --indentation *INDENT*
-                      indentation style
+                      code indentation style, specify an integer for the number of
+                      spaces, or ``'t'``/``'tab'`` for tabs
+
+-n8, --no-pep8        do not make code insertion **PEP 8** compliant
 
 ENVIRONMENT
 ===========

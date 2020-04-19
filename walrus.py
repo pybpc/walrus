@@ -5,6 +5,7 @@ import argparse
 import io
 import os
 import pathlib
+import re
 import sys
 import traceback
 
@@ -273,31 +274,31 @@ def __walrus_wrapper_lambda_%(uuid)s(%(param)s):
 # locals dict
 LCL_DICT_TEMPLATE = '_walrus_wrapper_%(cls)s_dict = dict()'
 LCL_NAME_TEMPLATE = '_walrus_wrapper_%(cls)s_dict[%(name)r]'
-LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s()'
+LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get(%(name)r)'
 LCL_VARS_TEMPLATE = '''\
 [setattr(%(cls)s, k, v) for k, v in _walrus_wrapper_%(cls)s_dict.items()]
 del _walrus_wrapper_%(cls)s_dict
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 # class clause
-CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set_%(name)s_%(uuid)s(%(expr)s)'
+CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set(%(name)r, %(expr)s)'
 CLS_NAME_TEMPLATE = '''\
 class __WalrusWrapper%(cls)s:
 %(indentation)s"""Wrapper class for assignment expression."""
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 CLS_SET_FUNC_TEMPLATE = '''\
 %(indentation)s@staticmethod
-%(indentation)sdef set_%(name)s_%(uuid)s(expr):
+%(indentation)sdef set(name, expr):
 %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
-%(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[%(name)r] = expr
-%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
+%(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[name] = expr
+%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 CLS_GET_FUNC_TEMPLATE = '''\
 %(indentation)s@staticmethod
-%(indentation)sdef get_%(name)s_%(uuid)s():
+%(indentation)sdef get(name):
 %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
-%(indentation)s%(indentation)sif %(name)r in _walrus_wrapper_%(cls)s_dict:
-%(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]
-%(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% %(name)r)
+%(indentation)s%(indentation)sif name in _walrus_wrapper_%(cls)s_dict:
+%(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]
+%(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% name)
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 CLS_EXT_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.ext_%(name)s_%(uuid)s(%(expr)s)'
 CLS_EXT_VARS_GLOBAL_TEMPLATE = '%(indentation)sglobal %(name_list)s'
@@ -499,17 +500,65 @@ class Context:
         the same logic on each child.
 
         See Also:
-            * :meth:`Context._process_namedexpr_test`
-            * :meth:`Context._process_global_stmt`
-            * :meth:`Context._process_classdef`
-            * :meth:`Context._process_funcdef`
-            * :meth:`Context._process_lambdef`
-            * :meth:`Context._process_if_stmt`
-            * :meth:`Context._process_while`
-            * :meth:`Context._process_for_stmt`
-            * :meth:`Context._process_with_stmt`
-            * :meth:`Context._process_try_stmt`
-            * :meth:`Context._process_argument`
+            * :token:`suite`
+
+              - :meth:`Context._process_suite_node`
+              - :meth:`ClassContext._process_suite_node`
+
+            * :token:`namedexpr_test`
+
+              - :meth:`Context._process_namedexpr_test`
+              - :meth:`ClassContext._process_namedexpr_test`
+
+            * :token:`global_stmt`
+
+              - :meth:`Context._process_global_stmt`
+              - :meth:`ClassContext._process_global_stmt`
+
+            * :token:`classdef`
+
+              - :meth:`Context._process_classdef`
+
+            * :token:`funcdef`
+
+              - :meth:`Context._process_funcdef`
+
+            * :token:`lambdef`
+
+              - :meth:`Context._process_lambdef`
+
+            * :token:`if_stmt`
+
+              - :meth:`Context._process_if_stmt`
+
+            * :token:`while_stmt`
+
+              - :meth:`Context._process_while_stmt`
+
+            * :token:`for_stmt`
+
+              - :meth:`Context._process_for_stmt`
+
+            * :token:`with_stmt`
+
+              - :meth:`Context._process_with_stmt`
+
+            * :token:`try_stmt`
+
+              - :meth:`Context._process_try_stmt`
+
+            * :token:`argument`
+
+              - :meth:`Context._process_argument`
+
+            * :token:`name`
+
+              - :meth:`ClassContext._process_name`
+              - :meth:`ClassContext._process_defined_name`
+
+            * :token:`nonlocal_stmt`
+
+              - :meth:`ClassContext._process_nonlocal_stmt`
 
         """
         # 'funcdef', 'classdef', 'if_stmt', 'while_stmt', 'for_stmt', 'with_stmt', 'try_stmt'
@@ -1548,7 +1597,7 @@ class ClassContext(Context):
         # keep records
         self._vars.append(name)
         self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
-        self._cls_var[name] = nuid
+        self._cls_var[self._mangle(name)] = nuid
 
     def _process_defined_name(self, node):
         """Process defined name (:token:`name`).
@@ -1584,7 +1633,7 @@ class ClassContext(Context):
 
         self._vars.append(name)
         self._func.append(dict(name=name, uuid=nuid, keyword=self._keyword))
-        self._cls_var[name] = nuid
+        self._cls_var[self._mangle(name)] = nuid
 
     def _process_expr_stmt(self, node):
         """Process variable name (:token:`expr_stmt`).
@@ -1621,7 +1670,7 @@ class ClassContext(Context):
         with codes rendered from :data:`LCL_CALL_TEMPLATE`.
 
         """
-        name = node.value
+        name = self._mangle(node.value)
 
         if name in self._cls_var:
             prefix, _ = self.extract_whitespaces(node)
@@ -1792,6 +1841,32 @@ class ClassContext(Context):
             self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=suffix,
                                                                      blank=blank, linesep=self._linesep)
         self._buffer += suffix
+
+    def _mangle(self, name):
+        """Mangle variable names.
+
+        The method mangles variable names as described in `Python documentation`_.
+
+        Args:
+            name (str): variable name
+
+        Returns:
+            str: mangled variable name
+
+        .. _Python documentation: https://docs.python.org/3/reference/expressions.html#atom-identifiers
+
+        """
+        # class name contains only underscores
+        match0 = re.fullmatch(r'_+', self._cls_ctx)
+        if match0 is not None:
+            return name
+
+        # starts and ends with exactly two underscores
+        match1 = re.match(r'^__[a-zA-Z0-9]+', name)
+        match2 = re.match(r'.*[a-zA-Z0-9]__$', name)
+        if match1 is not None and match2 is not None:
+            return '_%(cls)s%(name)s' % dict(cls=self._cls_ctx.lstrip('_'), name=name)
+        return name
 
 
 ###############################################################################

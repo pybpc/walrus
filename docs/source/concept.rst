@@ -80,8 +80,8 @@ Python provides :token:`global <global_stmt>` and :token:`nonlocal <nonlocal_stm
 keywords for interacting with variables not in current namespace. Following the Python
 grammar definitions, :mod:`walrus` selects the keyword in the mechanism described below:
 
-0. If current context is at module level, i.e. neither inside a :term:`function` nor a
-   :term:`class` definition, then :token:`global <global_stmt>` should be used.
+0. If current context is at :term:`module` level, i.e. neither inside a :term:`function`
+   nor a :term:`class` definition, then :token:`global <global_stmt>` should be used.
 1. If current context is at :term:`function` level and the variable is not declared in
    any :token:`global <global_stmt>` statements, then :token:`nonlocal <nonlocal_stmt>`
    should be used; otherwise :token:`global <global_stmt>` should be used.
@@ -94,5 +94,110 @@ as another special case.
 Lambda Statements
 -----------------
 
+The :term:`lambda` statements can always be transformed as a regular :term:`function`.
+This is the foundation of converting *assignment expressions* in a :term:`lambda` statement.
+
+For a sample :term:`lambda` statement as following:
+
+.. code:: python
+
+   >>> foo = lambda: [x := i ** 2 for i in range(10)]
+   >>> foo()
+   [0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
+
+:mod:`walrus` will transform the original :term:`lambda` statement into a function first:
+
+.. code:: python
+
+   def foo():
+       return [x := i ** 2 for i in range(10)]
+
+And now, :mod:`walrus` can simply apply the generic conversion templates to replace the
+*assignment expressions* with a wrapper function:
+
+.. code:: python
+
+   def foo():
+       if False:
+           x = NotImplemented
+
+       def wraps(expr):
+           """Wrapper function."""
+           nonlocal x  # assume that ``x`` never declared by ``global``
+           x = expr
+           return x
+
+       return [wraps(i ** 2) for i in range(10)]
+
+.. seealso::
+
+   * :data:`walrus.LAMBDA_CALL_TEMPLATE`
+   * :data:`walrus.LAMBDA_FUNC_TEMPLATE`
+
 Class Definitions
 -----------------
+
+As the :term:`class` context is slightly different from regular :term:`module`
+and/or :term:`function` context, the generic conversion templates are **NOT**
+applicable to such scenarios.
+
+.. note::
+
+   For :term:`method` context in the :term:`class` body, it is will applicable
+   with the generic conversion templates. In this section, we are generally
+   discussing conversion related to *class variables*.
+
+Given a :term:`class` definition as following:
+
+.. code:: python
+
+   class A:
+
+       bar = (foo := x ** 2)
+
+:mod:`walrus` will rewrite all *class variables* in the current context:
+
+.. code:: python
+
+   # temporary namespace for class context
+   namespace = dict()
+
+   class A:
+
+       def wraps(expr):
+           """Wrapper function."""
+           namespace['foo'] = expr
+           return namespace['foo']
+
+       # assign to temporary namespace
+       namespace['bar'] = wraps(x ** 2)
+
+   # set attributes from temporary namespace
+   [setattr(A, k, v) for k, v in namespace.items()]
+   del namespace
+
+The major reason of doing so is that the :term:`class` name is not available
+in its context, i.e. we cannot directly assign :attr:`A.foo` in the :meth:`A.wraps`
+method. Rewriting all assignment and reference to *class variables* as operations
+to the ``namespace`` dictionary grants :mod:`walrus` an efficiently to synchronise
+all changes to such variables.
+
+However, if a variable is declared in :token:`global <global_stmt>` and/or
+:token:`nonlocal <nonlocal_stmt>` statements, it is **NOT** supposed to be assigned
+to the :term:`class` context, rather the outer scope (:term:`namespace`).
+
+
+.. seealso::
+
+   * :data:`walrus.LCL_DICT_TEMPLATE`
+   * :data:`walrus.LCL_NAME_TEMPLATE`
+   * :data:`walrus.LCL_CALL_TEMPLATE`
+   * :data:`walrus.LCL_VARS_TEMPLATE`
+   * :data:`walrus.CLS_CALL_TEMPLATE`
+   * :data:`walrus.CLS_NAME_TEMPLATE`
+   * :data:`walrus.CLS_SET_FUNC_TEMPLATE`
+   * :data:`walrus.CLS_GET_FUNC_TEMPLATE`
+   * :data:`walrus.CLS_EXT_CALL_TEMPLATE`
+   * :data:`walrus.CLS_EXT_FUNC_TEMPLATE`
+   * :data:`walrus.CLS_EXT_VARS_GLOBAL_TEMPLATE`
+   * :data:`walrus.CLS_EXT_VARS_NONLOCAL_TEMPLATE`

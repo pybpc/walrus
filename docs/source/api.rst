@@ -497,7 +497,7 @@ The following variables are used for help messages in the argument parser.
    .. seealso:: :func:`walrus._get_linesep_option`
 
 .. data:: walrus.__walrus_indentation__
-   :type: Union[Literal['%d spaces'], Literal['tab'], Literal['auto detect']]
+   :type: str
 
    Default value for the ``--indentation`` option.
 

@@ -40,6 +40,8 @@ class TestWalrus(unittest.TestCase):
     """Test case."""
     all_test_cases = [fn[:-3] for fn in os.listdir(os.path.join(ROOT, 'sample')) if fn.endswith('.py')]
 
+    if sys.version_info[:2] < (3, 5):
+        all_test_cases.remove('pep572_exceptional_unpacking')  # skip unpacking test case on Python < 3.5
     if sys.version_info[:2] < (3, 6):
         all_test_cases.remove('pep572_exceptional_fstring')  # skip f-string test case on Python < 3.6
 
@@ -76,8 +78,8 @@ class TestWalrus(unittest.TestCase):
             for test_case in TestWalrus.all_test_cases:
                 shutil.copy(os.path.join(ROOT, 'sample', test_case + '.py'), tmpdir)
 
-            for entry in os.scandir(tmpdir):
-                core_func(entry.path, quiet=True)
+            for file in os.listdir(tmpdir):
+                core_func(os.path.join(tmpdir, file), quiet=True)
 
             for test_case in TestWalrus.all_test_cases:
                 with self.subTest(test_case=test_case):

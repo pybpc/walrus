@@ -3,12 +3,10 @@
 
 import os
 import shutil
-import subprocess
+import subprocess  # nosec
 import sys
 import tempfile
 import unittest
-
-from bpc_utils import BPCSyntaxError as ConvertError
 
 # root path
 ROOT = os.path.dirname(os.path.realpath(__file__))
@@ -18,17 +16,12 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 # pylint: disable=wrong-import-position
 sys.path.insert(0, os.path.abspath(os.path.join(ROOT, '..')))
 
-from walrus import convert, get_parser
-from walrus import main as main_func
-from walrus import walrus as core_func
+from walrus import BPCSyntaxError, convert, get_parser  # noqa: E402
+from walrus import main as main_func  # noqa: E402
+from walrus import walrus as core_func  # noqa: E402
 
 sys.path.pop(0)
 ###############################################################################
-
-# environs
-os.environ['WALRUS_QUIET'] = 'true'
-os.environ['WALRUS_ENCODING'] = 'utf-8'
-os.environ['WALRUS_LINESEP'] = 'LF'
 
 
 def read_text_file(filename, encoding='utf-8'):
@@ -50,25 +43,18 @@ class TestWalrus(unittest.TestCase):
     if sys.version_info[:2] < (3, 6):
         all_test_cases.remove('pep572_exceptional_fstring')  # skip f-string test case on Python < 3.6
 
-    def test_get_parser(self):
+    def test_get_parser(self):  # TODO: enhance this test
         """Test the argument parser."""
         parser = get_parser()
-        args = parser.parse_args(['-na', '-q', '-p/tmp/',
-                                  '-cgb2312', '-v3.8',
+        args = parser.parse_args(['-na', '-q', '-k/tmp/',
+                                  '-vs', '3.8',
                                   'test1.py', 'test2.py'])
 
-        self.assertIs(args.quiet, True,
-                      'run in quiet mode')
-        self.assertIs(args.archive, False,
-                      'do not archive original files')
-        self.assertEqual(args.archive_path, '/tmp/',
-                         'path to archive original files')
-        self.assertEqual(args.encoding, 'gb2312',
-                         'encoding to open source files')
-        self.assertEqual(args.python, '3.8',
-                         'convert against Python version')
-        self.assertEqual(args.file, ['test1.py', 'test2.py'],
-                         'python source files and folders to be converted')
+        self.assertIs(args.quiet, True)
+        self.assertIs(args.do_archive, False)
+        self.assertEqual(args.archive_path, '/tmp/')
+        self.assertEqual(args.source_version, '3.8')
+        self.assertEqual(args.files, ['test1.py', 'test2.py'])
 
     def test_main(self):
         """Test the main entrypoint."""
@@ -76,7 +62,7 @@ class TestWalrus(unittest.TestCase):
             for test_case in TestWalrus.all_test_cases:
                 shutil.copy(os.path.join(ROOT, 'sample', test_case + '.py'), tmpdir)
 
-            main_func(['-na', tmpdir])
+            main_func(['-q', '-na', tmpdir])
 
             for test_case in TestWalrus.all_test_cases:
                 with self.subTest(test_case=test_case):
@@ -91,7 +77,7 @@ class TestWalrus(unittest.TestCase):
                 shutil.copy(os.path.join(ROOT, 'sample', test_case + '.py'), tmpdir)
 
             for entry in os.scandir(tmpdir):
-                core_func(entry.path)
+                core_func(entry.path, quiet=True)
 
             for test_case in TestWalrus.all_test_cases:
                 with self.subTest(test_case=test_case):
@@ -152,8 +138,9 @@ class TestWalrus(unittest.TestCase):
 
         for code in pep572_invalid_codes:
             with self.subTest(test_case=code):
-                with self.assertRaises(ConvertError):
+                with self.assertRaises(BPCSyntaxError):
                     convert(code)
+        # TODO: add more tests
 
 
 if __name__ == '__main__':

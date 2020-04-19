@@ -75,7 +75,7 @@ It is fairly straightforward to use :mod:`walrus`:
    Back-port compiler for Python 3.8 assignment expressions.
 
    positional arguments:
-     SOURCE                Python source files and directories to be converted (${CWD})
+     SOURCE                Python source files and directories to be converted
 
    optional arguments:
      -h, --help            show this help message and exit
@@ -87,23 +87,23 @@ It is fairly straightforward to use :mod:`walrus`:
 
      -na, --no-archive     do not archive original files
      -p PATH, --archive-path PATH
-                           path to archive original files (${CWD}/archive)
+                           path to archive original files (${PWD}/archive)
 
    convert options:
-     compatibility configuration for non-unicode files
+     conversion configuration
 
      -sv VERSION, -fv VERSION, --source-version VERSION, --from-version VERSION
-                           parse source code as Python version (3.9)
+                           parse source code as Python version (${LATEST_VERSION})
      -s SEP, --linesep SEP
-                           line separator (LF, CRLF, CR) to read source files ('auto detect')
+                           line separator (LF, CRLF, CR) to read source files (auto detect)
      -t INDENT, --indentation INDENT
-                           code indentation style, specify an integer for the number of spaces, or 't'/'tab' for tabs ('auto detect')
+                           code indentation style, specify an integer for the number of spaces, or 't'/'tab' for tabs (auto detect)
      -n8, --no-pep8        do not make code insertion PEP 8 compliant
 
-:mod:`walrus` will read the convert all *assignment expressions* syntax in every
-Python file under this path. In case there might be some problems with the
-conversion, :mod:`walrus` will duplicate all original files it is to modify into
-``archive`` direcotry ahead of the  process, if ``-na`` not set.
+Normally you will just call ``walrus .``, then mod:`walrus` will read and convert all *assignment expressions* syntax in every
+Python file under the current working directory. In case there might be some problems with the
+conversion, :mod:`walrus` will backup all original files it is to modify into
+the ``archive`` directory ahead of the process, if the ``-na`` option is not set.
 
 Configuration
 -------------

@@ -2,17 +2,19 @@
 """Back-port compiler for Python 3.8 assignment expressions."""
 
 import argparse
-import functools
 import io
 import os
+import pathlib
 import sys
+import traceback
 
 import parso
 import tbtrim
-from bpc_utils import (CPU_CNT, BPCSyntaxError, Config, UUID4Generator, archive_files,
+from bpc_utils import (BPCSyntaxError, Config, TaskLock, UUID4Generator, archive_files,
                        detect_encoding, detect_files, detect_indentation, detect_linesep,
-                       get_parso_grammar_versions, mp, parse_boolean_state, parse_indentation,
-                       parse_linesep, parso_parse)
+                       first_non_none, get_parso_grammar_versions, map_tasks, parse_boolean_state,
+                       parse_indentation, parse_linesep, parse_positive_integer, parso_parse,
+                       recover_files)
 
 __all__ = ['main', 'walrus', 'convert']
 
@@ -33,11 +35,13 @@ uuid_gen = None  # TODO: will be refactored into the Context class
 # option default values
 #: Default value for the ``quiet`` option.
 _default_quiet = False
-#: Default value for the ``do-archive`` option.
+#: Default value for the ``concurrency`` option.
+_default_concurrency = None  # auto detect
+#: Default value for the ``do_archive`` option.
 _default_do_archive = True
-#: Default value for the ``archive-path`` option.
+#: Default value for the ``archive_path`` option.
 _default_archive_path = 'archive'
-#: Default value for the ``source-version`` option.
+#: Default value for the ``source_version`` option.
 _default_source_version = WALRUS_VERSIONS[-1]
 #: Default value for the ``linesep`` option.
 _default_linesep = None  # auto detect
@@ -63,17 +67,42 @@ def _get_quiet_option(explicit=None):
     :Environment Variables:
         :envvar:`WALRUS_QUIET` -- the value in environment variable
 
+    See Also:
+        :data:`_default_quiet`
+
     """
-    if explicit is not None:
-        return explicit
-    env_value = parse_boolean_state(os.getenv('WALRUS_QUIET'))
-    if env_value is not None:
-        return env_value
-    return _default_quiet
+    # We need lazy evaluation, so first_non_none(a, b, c) does not work here
+    # with PEP 505 we can simply write a ?? b ?? c
+    def _option_layers():
+        yield explicit
+        yield parse_boolean_state(os.getenv('WALRUS_QUIET'))
+        yield _default_quiet
+    return first_non_none(_option_layers())
+
+
+def _get_concurrency_option(explicit=None):
+    """Get the value for the ``concurrency`` option.
+
+    Args:
+        explicit (Optional[int]): the value explicitly specified by user,
+            :data:`None` if not specified
+
+    Returns:
+        Optional[int]: the value for the ``concurrency`` option;
+        :data:`None` means *auto detection* at runtime
+
+    :Environment Variables:
+        :envvar:`WALRUS_CONCURRENCY` -- the value in environment variable
+
+    See Also:
+        :data:`_default_concurrency`
+
+    """
+    return parse_positive_integer(explicit or os.getenv('WALRUS_CONCURRENCY') or _default_concurrency)
 
 
 def _get_do_archive_option(explicit=None):
-    """Get the value for the ``do-archive`` option.
+    """Get the value for the ``do_archive`` option.
 
     Args:
         explicit (Optional[bool]): the value explicitly specified by user,
@@ -89,16 +118,15 @@ def _get_do_archive_option(explicit=None):
         :data:`_default_do_archive`
 
     """
-    if explicit is not None:
-        return explicit
-    env_value = parse_boolean_state(os.getenv('WALRUS_DO_ARCHIVE'))
-    if env_value is not None:
-        return env_value
-    return _default_do_archive
+    def _option_layers():
+        yield explicit
+        yield parse_boolean_state(os.getenv('WALRUS_DO_ARCHIVE'))
+        yield _default_do_archive
+    return first_non_none(_option_layers())
 
 
 def _get_archive_path_option(explicit=None):
-    """Get the value for the ``archive-path`` option.
+    """Get the value for the ``archive_path`` option.
 
     Args:
         explicit (Optional[str]): the value explicitly specified by user,
@@ -114,16 +142,11 @@ def _get_archive_path_option(explicit=None):
         :data:`_default_archive_path`
 
     """
-    if explicit:
-        return explicit
-    env_value = os.getenv('WALRUS_ARCHIVE_PATH')
-    if env_value:
-        return env_value
-    return _default_archive_path
+    return explicit or os.getenv('WALRUS_ARCHIVE_PATH') or _default_archive_path
 
 
 def _get_source_version_option(explicit=None):
-    """Get the value for the ``source-version`` option.
+    """Get the value for the ``source_version`` option.
 
     Args:
         explicit (Optional[str]): the value explicitly specified by user,
@@ -139,12 +162,7 @@ def _get_source_version_option(explicit=None):
         :data:`_default_source_version`
 
     """
-    if explicit:
-        return explicit
-    env_value = os.getenv('WALRUS_SOURCE_VERSION')
-    if env_value:
-        return env_value
-    return _default_source_version
+    return explicit or os.getenv('WALRUS_SOURCE_VERSION') or _default_source_version
 
 
 def _get_linesep_option(explicit=None):
@@ -165,19 +183,14 @@ def _get_linesep_option(explicit=None):
         :data:`_default_linesep`
 
     """
-    if explicit:
-        return explicit
-    env_value = parse_linesep(os.getenv('WALRUS_LINESEP'))
-    if env_value:
-        return env_value
-    return _default_linesep
+    return parse_linesep(explicit or os.getenv('WALRUS_LINESEP') or _default_linesep)
 
 
 def _get_indentation_option(explicit=None):
     """Get the value for the ``indentation`` option.
 
     Args:
-        explicit (Optional[str]): the value explicitly specified by user,
+        explicit (Optional[Union[str, int]]): the value explicitly specified by user,
             :data:`None` if not specified
 
     Returns:
@@ -191,19 +204,14 @@ def _get_indentation_option(explicit=None):
         :data:`_default_indentation`
 
     """
-    if explicit:
-        return explicit
-    env_value = parse_indentation(os.getenv('WALRUS_INDENTATION'))
-    if env_value:
-        return env_value
-    return _default_indentation
+    return parse_indentation(explicit or os.getenv('WALRUS_INDENTATION') or _default_indentation)
 
 
 def _get_pep8_option(explicit=None):
     """Get the value for the ``pep8`` option.
 
     Args:
-        explicit (Optional[str]): the value explicitly specified by user,
+        explicit (Optional[bool]): the value explicitly specified by user,
             :data:`None` if not specified
 
     Returns:
@@ -216,31 +224,28 @@ def _get_pep8_option(explicit=None):
         :data:`_default_pep8`
 
     """
-    if explicit is not None:
-        return explicit
-    env_value = parse_boolean_state(os.getenv('WALRUS_PEP8'))
-    if env_value is not None:
-        return env_value
-    return _default_pep8
+    def _option_layers():
+        yield explicit
+        yield parse_boolean_state(os.getenv('WALRUS_PEP8'))
+        yield _default_pep8
+    return first_non_none(_option_layers())
 
 
 ###############################################################################
-# Traceback trim (tbtrim)
+# Traceback Trimming (tbtrim)
 
 # root path
-ROOT = os.path.dirname(os.path.realpath(__file__))
+ROOT = pathlib.Path(__file__).resolve().parent
 
 
-def predicate(filename):  # pragma: no cover
-    if os.path.basename(filename) == 'walrus':
-        return True
-    return ROOT in os.path.realpath(filename)
+def predicate(filename):
+    return pathlib.Path(filename).parent == ROOT
 
 
 tbtrim.set_trim_rule(predicate, strict=True, target=BPCSyntaxError)
 
 ###############################################################################
-# Main convertion implementation
+# Main Conversion Implementation
 
 # walrus wrapper template
 NAME_TEMPLATE = '''\
@@ -265,7 +270,7 @@ def __walrus_wrapper_lambda_%(uuid)s(%(param)s):
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 # special templates for ClassVar
-## locals dict
+# locals dict
 LCL_DICT_TEMPLATE = '_walrus_wrapper_%(cls)s_dict = dict()'
 LCL_NAME_TEMPLATE = '_walrus_wrapper_%(cls)s_dict[%(name)r]'
 LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s()'
@@ -273,7 +278,7 @@ LCL_VARS_TEMPLATE = '''\
 [setattr(%(cls)s, k, v) for k, v in _walrus_wrapper_%(cls)s_dict.items()]
 del _walrus_wrapper_%(cls)s_dict
 '''.splitlines()  # `str.splitlines` will remove trailing newline
-## class clause
+# class clause
 CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set_%(name)s_%(uuid)s(%(expr)s)'
 CLS_NAME_TEMPLATE = '''\
 class __WalrusWrapper%(cls)s:
@@ -300,7 +305,7 @@ class Context:
 
     Args:
         node (parso.tree.NodeOrLeaf): parso AST
-        config (Config): convertion configurations
+        config (Config): conversion configurations
 
     Keyword Args:
         column (int): current indentation level
@@ -687,7 +692,7 @@ class Context:
 
             self += self._indentation * self._column \
                  + LCL_DICT_TEMPLATE % dict(cls=name.value) \
-                 + self._linesep
+                 + self._linesep  # noqa: E127
 
             if self._pep8:
                 blank = 2 if self._column == 0 else 1
@@ -717,8 +722,9 @@ class Context:
                                                                  blank=blank, linesep=self._linesep)
 
             self += indent \
-                 + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(indentation=self._indentation, cls=name.value) \
-                 + self._linesep
+                 + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(indentation=self._indentation,
+                                                                                     cls=name.value) \
+                 + self._linesep  # noqa: E127
 
             if self._pep8:
                 buffer = self._prefix if self._prefix_or_suffix else self._suffix
@@ -1015,8 +1021,8 @@ class Context:
         # first, the prefix codes
         self._buffer += self._prefix + prefix
         if flag and self._pep8 and self._buffer:
-            if (self._node_before_walrus is not None \
-                    and self._node_before_walrus.type in ('funcdef', 'classdef') \
+            if (self._node_before_walrus is not None
+                    and self._node_before_walrus.type in ('funcdef', 'classdef')
                     and self._column == 0):
                 blank = 2
             else:
@@ -1222,7 +1228,7 @@ class LambdaContext(Context):
 
     Args:
         node (parso.python.tree.Lambda): parso AST
-        config (Config): convertion configurations
+        config (Config): conversion configurations
 
     Keyword Args:
         column (int): current indentation level
@@ -1239,7 +1245,7 @@ class LambdaContext(Context):
     def _concat(self):
         """Concatenate final string.
 
-        Since convertion of *lambda* statements doesn't involve inserting
+        Since conversion of *lambda* statements doesn't involve inserting
         points, this method first simply adds wrapper codes to the buffer
         (:data:`self._buffer <Context._buffer>`); then it adds a *return*
         statement yielding the converted *lambda* suite stored in
@@ -1296,7 +1302,7 @@ class ClassContext(Context):
 
     Args:
         node (parso.python.tree.Class): parso AST
-        config (Config): convertion configurations
+        config (Config): conversion configurations
 
     Keyword Args:
         cls_ctx (str): class context name
@@ -1586,25 +1592,29 @@ class ClassContext(Context):
         self._buffer += suffix
 
 
+###############################################################################
+# Public Interface
+
 def convert(code, filename=None, *, source_version=None, linesep=None, indentation=None, pep8=None):
-    """Convert the given source code string.
+    """Convert the given Python source code string.
 
     Args:
         code (Union[str, bytes]): the source code to be converted
         filename (Optional[str]): an optional source file name to provide a context in case of error
 
     Keyword Args:
-        source_version (Optional[str]): parse the code as this version (uses the latest version by default)
-        linesep (Optional[str]): line separator of code (``LF``, ``CRLF, ``CR``) (auto detect by default)
+        source_version (Optional[str]): parse the code as this Python version (uses the latest version by default)
+        linesep (Optional[str]): line separator of code (``LF``, ``CRLF``, ``CR``) (auto detect by default)
         indentation (Optional[Union[int, str]]): code indentation style, specify an integer for the number of spaces,
             or ``'t'``/``'tab'`` for tabs (auto detect by default)
         pep8 (Optional[bool]): whether to make code insertion :pep:`8` compliant
 
     :Environment Variables:
-     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source_version`` argument and ``source-version`` option in CLI
-     - :envvar:`WALRUS_LINESEP` -- same as the `linesep` `argument` and ``linesep`` option in CLI
-     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and ``indentation`` option in CLI
-     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and ``no-pep8`` option in CLI (logical negation)
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source_version`` argument
+        and the ``--source-version`` option in CLI
+     - :envvar:`WALRUS_LINESEP` -- same as the `linesep` `argument` and the ``--linesep`` option in CLI
+     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and the ``--indentation`` option in CLI
+     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and the ``--no-pep8`` option in CLI (logical negation)
 
     Returns:
         str: converted source code
@@ -1628,41 +1638,46 @@ def convert(code, filename=None, *, source_version=None, linesep=None, indentati
         indentation = detect_indentation(code)
     pep8 = _get_pep8_option(pep8)
 
-    # convertion configuration
+    # pack conversion configuration
     config = Config(linesep=linesep, indentation=indentation, pep8=pep8)
 
     # convert source string
     result = Context(module, config).string
 
-    # return converted string
+    # return conversion result
     return result
 
 
-def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep8=None, quiet=None):
+def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep8=None, quiet=None, dry_run=False):
     """Convert the given Python source code file. The file will be overwritten.
 
     Args:
-        filename (Optional[str]): an optional source file name to provide a context in case of error
+        filename (str): the file to convert
 
     Keyword Args:
-        source_version (Optional[str]): parse the code as this version (uses the latest version by default)
+        source_version (Optional[str]): parse the code as this Python version (uses the latest version by default)
         linesep (Optional[str]): line separator of code (``LF``, ``CRLF``, ``CR``) (auto detect by default)
         indentation (Optional[Union[int, str]]): code indentation style, specify an integer for the number of spaces,
             or ``'t'``/``'tab'`` for tabs (auto detect by default)
         pep8 (Optional[bool]): whether to make code insertion :pep:`8` compliant
         quiet (Optional[bool]): whether to run in quiet mode
+        dry_run (bool): if True, only print the name of the file to convert but do not perform any conversion
 
     :Environment Variables:
-     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source-version`` argument and ``source-version`` option in CLI
-     - :envvar:`WALRUS_LINESEP` -- same as the ``linesep`` argument and ``linesep`` option in CLI
-     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and ``indentation`` option in CLI
-     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and ``no-pep8`` option in CLI (logical negation)
-     - :envvar:`WALRUS_QUIET` -- same as the ``quiet`` argument and ``quiet`` option in CLI
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source-version`` argument
+        and the ``--source-version`` option in CLI
+     - :envvar:`WALRUS_LINESEP` -- same as the ``linesep`` argument and the ``--linesep`` option in CLI
+     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and the ``--indentation`` option in CLI
+     - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and the ``--no-pep8`` option in CLI (logical negation)
+     - :envvar:`WALRUS_QUIET` -- same as the ``quiet`` argument and the ``--quiet`` option in CLI
 
     """
     quiet = _get_quiet_option(quiet)
-    if not quiet:  # pragma: no cover
-        print('Now converting %r...' % filename)
+    if not quiet:
+        with TaskLock():
+            print('Now converting: %r' % filename, file=sys.stderr)
+    if dry_run:
+        return
 
     # read file content
     with open(filename, 'rb') as file:
@@ -1682,23 +1697,40 @@ def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep
                 indentation = detect_indentation(file)
 
     # do the dirty things
-    text = convert(content, filename=filename, source_version=source_version,
-                   linesep=linesep, indentation=indentation, pep8=pep8)
+    result = convert(content, filename=filename, source_version=source_version,
+                     linesep=linesep, indentation=indentation, pep8=pep8)
 
-    # dump back to the file
+    # overwrite the file with conversion result
     with open(filename, 'w', encoding=encoding, newline='') as file:
-        file.write(text)
+        file.write(result)
 
 
 ###############################################################################
-# CLI & entry point
+# CLI & Entry Point
 
-# default values
+# option values display
+# these values are only intended for argparse help messages
+# this shows default values by default, environment variables may override them
 __cwd__ = os.getcwd()
+__walrus_quiet__ = 'quiet mode' if _get_quiet_option() else 'non-quiet mode'
+__walrus_concurrency__ = _get_concurrency_option() or 'auto detect'
+__walrus_do_archive__ = 'will do archive' if _get_do_archive_option() else 'will not do archive'
 __walrus_archive_path__ = os.path.join(__cwd__, _get_archive_path_option())
 __walrus_source_version__ = _get_source_version_option()
-__walrus_linesep__ = _get_linesep_option() or 'auto detect'
-__walrus_indentation__ = _get_indentation_option() or 'auto detect'
+__walrus_linesep__ = {
+    '\n': 'LF',
+    '\r\n': 'CRLF',
+    '\r': 'CR',
+    None: 'auto detect'
+}[_get_linesep_option()]
+__walrus_indentation__ = _get_indentation_option()
+if __walrus_indentation__ is None:
+    __walrus_indentation__ = 'auto detect'
+elif __walrus_indentation__ == '\t':
+    __walrus_indentation__ = 'tab'
+else:
+    __walrus_indentation__ = '%d spaces' % len(__walrus_indentation__)
+__walrus_pep8__ = 'will conform to PEP 8' if _get_pep8_option() else 'will not conform to PEP 8'
 
 
 def get_parser():
@@ -1712,32 +1744,52 @@ def get_parser():
                                      usage='walrus [options] <Python source files and directories...>',
                                      description='Back-port compiler for Python 3.8 assignment expressions.')
     parser.add_argument('-V', '--version', action='version', version=__version__)
-    parser.add_argument('-q', '--quiet', action='store_true', help='run in quiet mode')
+    parser.add_argument('-q', '--quiet', action='store_true', default=None,
+                        help='run in quiet mode (current: %s)' % __walrus_quiet__)
+    parser.add_argument('-C', '--concurrency', action='store', type=int, metavar='N',
+                        help='the number of concurrent processes for conversion (current: %s)' % __walrus_concurrency__)
+    parser.add_argument('--dry-run', action='store_true',
+                        help='list the files to be converted without actually performing conversion and archiving')
 
     archive_group = parser.add_argument_group(title='archive options',
                                               description="backup original files in case there're any issues")
-    archive_group.add_argument('-na', '--no-archive', action='store_false', dest='do_archive',
-                               help='do not archive original files')
-    archive_group.add_argument('-p', '--archive-path', action='store', default=__walrus_archive_path__, metavar='PATH',
-                               help='path to archive original files (%(default)s)')
+    archive_group.add_argument('-na', '--no-archive', action='store_false', dest='do_archive', default=None,
+                               help='do not archive original files (current: %s)' % __walrus_do_archive__)
+    archive_group.add_argument('-k', '--archive-path', action='store', default=__walrus_archive_path__, metavar='PATH',
+                               help='path to archive original files (current: %(default)s)')
+    archive_group.add_argument('-r', '--recover', action='store', dest='recover_file', metavar='ARCHIVE_FILE',
+                               help='recover files from a given archive file')
+    archive_group.add_argument('-r2', action='store_true', help='remove the archive file after recovery')
+    archive_group.add_argument('-r3', action='store_true', help='remove the archive file after recovery, '
+                                                                'and remove the archive directory if it becomes empty')
 
-    convert_group = parser.add_argument_group(title='convert options',
-                                              description='compatibility configuration for non-unicode files')  # TODO: revise this description
-    convert_group.add_argument('-sv', '-fv', '--source-version', '--from-version', action='store', metavar='VERSION',
+    convert_group = parser.add_argument_group(title='convert options', description='conversion configuration')
+    convert_group.add_argument('-vs', '-vf', '--source-version', '--from-version', action='store', metavar='VERSION',
                                default=__walrus_source_version__, choices=WALRUS_VERSIONS,
-                               help='parse source code as Python version (%(default)s)')
-    convert_group.add_argument('-s', '--linesep', action='store', default=__walrus_linesep__, metavar='SEP',
-                               help='line separator (LF, CRLF, CR) to read source files (%(default)r)')
-    convert_group.add_argument('-t', '--indentation', action='store', default=__walrus_indentation__, metavar='INDENT',
+                               help='parse source code as this Python version (current: %(default)s)')
+    convert_group.add_argument('-l', '--linesep', action='store',
+                               help='line separator (LF, CRLF, CR) to read '
+                                    'source files (current: %s)' % __walrus_linesep__)
+    convert_group.add_argument('-t', '--indentation', action='store', metavar='INDENT',
                                help='code indentation style, specify an integer for the number of spaces, '
-                                    "or 't'/'tab' for tabs (%(default)r)")
-    convert_group.add_argument('-n8', '--no-pep8', action='store_false', dest='pep8',
-                               help='do not make code insertion PEP 8 compliant')
+                                    "or 't'/'tab' for tabs (current: %s)" % __walrus_indentation__)
+    convert_group.add_argument('-n8', '--no-pep8', action='store_false', dest='pep8', default=None,
+                               help='do not make code insertion PEP 8 compliant (current: %s)' % __walrus_pep8__)
 
-    parser.add_argument('file', nargs='*', metavar='SOURCE', default=[__cwd__],
-                        help='Python source files and directories to be converted (%(default)r)')
+    parser.add_argument('files', action='store', nargs='*', metavar='<Python source files and directories...>',
+                        help='Python source files and directories to be converted')
 
     return parser
+
+
+def do_walrus(filename, **kwargs):
+    """Wrapper function to catch exceptions."""
+    try:
+        walrus(filename, **kwargs)
+    except Exception:  # pylint: disable=broad-except
+        with TaskLock():
+            print('Failed to convert file: %r' % filename, file=sys.stderr)
+            traceback.print_exc()
 
 
 def main(argv=None):
@@ -1747,13 +1799,14 @@ def main(argv=None):
         argv (Optional[List[str]]): CLI arguments
 
     :Environment Variables:
-     - :envvar:`WALRUS_QUIET` -- same as the ``quiet`` option in CLI
-     - :envvar:`WALRUS_DO_ARCHIVE` -- same as the ``do-archive`` option in CLI (logical negation)
-     - :envvar:`WALRUS_ARCHIVE_PATH` -- same as the ``archive-path`` option in CLI
-     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source-version`` option in CLI
-     - :envvar:`WALRUS_LINESEP` -- same as the ``linesep`` option in CLI
-     - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` option in CLI
-     - :envvar:`WALRUS_PEP8` -- same as the ``no-pep8`` option in CLI (logical negation)
+     - :envvar:`WALRUS_QUIET` -- same as the ``--quiet`` option in CLI
+     - :envvar:`WALRUS_CONCURRENCY` -- same as the ``--concurrency`` option in CLI
+     - :envvar:`WALRUS_DO_ARCHIVE` -- same as the ``--no-archive`` option in CLI (logical negation)
+     - :envvar:`WALRUS_ARCHIVE_PATH` -- same as the ``--archive-path`` option in CLI
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``--source-version`` option in CLI
+     - :envvar:`WALRUS_LINESEP` -- same as the ``--linesep`` option in CLI
+     - :envvar:`WALRUS_INDENTATION` -- same as the ``--indentation`` option in CLI
+     - :envvar:`WALRUS_PEP8` -- same as the ``--no-pep8`` option in CLI (logical negation)
 
     """
     parser = get_parser()
@@ -1761,29 +1814,49 @@ def main(argv=None):
 
     # get options
     quiet = _get_quiet_option(args.quiet)
+    processes = _get_concurrency_option(args.concurrency)
     do_archive = _get_do_archive_option(args.do_archive)
     archive_path = _get_archive_path_option(args.archive_path)
 
-    # fetch file list
-    filelist = sorted(detect_files(args.file))
+    # check if doing recovery
+    if args.recover_file:
+        recover_files(args.recover_file)
+        if not args.quiet:
+            print('Recovered files from archive: %r' % args.recover_file, file=sys.stderr)
+        # TODO: maybe implement deletion in bpc-utils?
+        if args.r2 or args.r3:
+            os.remove(args.recover_file)
+            if args.r3:
+                archive_dir = os.path.dirname(os.path.realpath(args.recover_file))
+                if not os.listdir(archive_dir):
+                    os.rmdir(archive_dir)
+        return
 
-    # if no file supplied
-    if not filelist:  # pragma: no cover
-        parser.error('no valid source file found')
+    # fetch file list
+    if not args.files:
+        parser.error('no Python source files or directories are given')
+    filelist = sorted(detect_files(args.files))
+
+    # terminate if no valid Python source files detected
+    if not filelist:
+        if not args.quiet:
+            print('Warning: no valid Python source files found in %r' % args.files, file=sys.stderr)
+        return
 
     # make archive
-    if do_archive:
+    if do_archive and not args.dry_run:
         archive_files(filelist, archive_path)
 
     # process files
-    do_walrus = functools.partial(walrus, source_version=args.source_version, linesep=args.linesep,
-                                  indentation=args.indentation, pep8=args.pep8, quiet=quiet)
-    if mp is None or CPU_CNT <= 1:
-        for filename in filelist:  # pragma: no cover
-            do_walrus(filename)
-    else:
-        with mp.Pool(processes=CPU_CNT) as pool:
-            pool.map(do_walrus, filelist)
+    options = {
+        'source_version': args.source_version,
+        'linesep': args.linesep,
+        'indentation': args.indentation,
+        'pep8': args.pep8,
+        'quiet': quiet,
+        'dry_run': args.dry_run,
+    }
+    map_tasks(do_walrus, filelist, kwargs=options, processes=processes)
 
 
 if __name__ == '__main__':

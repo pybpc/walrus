@@ -1610,8 +1610,8 @@ def convert(code, filename=None, *, source_version=None, linesep=None, indentati
         pep8 (Optional[bool]): whether to make code insertion :pep:`8` compliant
 
     :Environment Variables:
-     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source_version`` argument
-        and the ``--source-version`` option in CLI
+     - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source_version`` argument and the ``--source-version`` option
+        in CLI
      - :envvar:`WALRUS_LINESEP` -- same as the `linesep` `argument` and the ``--linesep`` option in CLI
      - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and the ``--indentation`` option in CLI
      - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and the ``--no-pep8`` option in CLI (logical negation)
@@ -1665,7 +1665,7 @@ def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep
 
     :Environment Variables:
      - :envvar:`WALRUS_SOURCE_VERSION` -- same as the ``source-version`` argument and the ``--source-version`` option
-       in CLI
+        in CLI
      - :envvar:`WALRUS_LINESEP` -- same as the ``linesep`` argument and the ``--linesep`` option in CLI
      - :envvar:`WALRUS_INDENTATION` -- same as the ``indentation`` argument and the ``--indentation`` option in CLI
      - :envvar:`WALRUS_PEP8` -- same as the ``pep8`` argument and the ``--no-pep8`` option in CLI (logical negation)

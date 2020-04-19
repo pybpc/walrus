@@ -4,7 +4,7 @@
 [![PyPI - Version](https://img.shields.io/pypi/v/python-walrus.svg)](https://pypi.org/project/python-walrus)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/python-walrus.svg)](https://pypi.org/project/python-walrus)
 
-[![Travis CI - Status](https://img.shields.io/travis/pybpc/walrus.svg)](https://travis-ci.org/pybpc/walrus)
+[![Travis CI - Status](https://img.shields.io/travis/pybpc/walrus.svg)](https://travis-ci.com/pybpc/walrus)
 [![Codecov - Coverage](https://codecov.io/gh/pybpc/walrus/branch/master/graph/badge.svg)](https://codecov.io/gh/pybpc/walrus)
 [![Documentation Status](https://readthedocs.org/projects/bpc-walrus/badge/?version=latest)](https://bpc-walrus.readthedocs.io/en/latest/)
 <!-- [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE) -->

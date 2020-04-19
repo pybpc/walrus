@@ -320,7 +320,7 @@ class Context:
 
     Keyword Args:
         column (int): current indentation level
-        keyword (Optional[Union[Literal['global'], Literal['nonlocal']]]): keyword for wrapper function
+        keyword (Optional[Literal['global', 'nonlocal']]): keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (bool): raw processing flag
 
@@ -396,7 +396,7 @@ class Context:
         self.config = config
         #: str: Indentation sequence.
         self._indentation = config.indentation
-        #: Union[Literal['\\n'], Literal['\\r\\n'], Literal['\\r']]: Line seperator.
+        #: Literal['\\n', '\\r\\n', '\\r']: Line seperator.
         self._linesep = config.linesep
 
         #: bool: :pep:`8` compliant conversion flag.
@@ -406,7 +406,7 @@ class Context:
         self._root = node
         #: int: Current indentation level.
         self._column = column
-        #: Union[Literal['global'], Literal['nonlocal']]:
+        #: Literal['global', 'nonlocal']:
         #: The :token:`global <global_stmt>` / :token:`nonlocal <nonlocal_stmt>` keyword.
         self._keyword = keyword
         #: List[str]: Variable names in :token:`global <global_stmt>` statements.
@@ -1128,7 +1128,7 @@ class Context:
             node (parso.tree.NodeOrLeaf): parso AST
 
         Returns:
-            Union[Literal['global'], Literal['nonlocal']]: keyword
+            Literal['global', 'nonlocal']: keyword
 
         This method recursively perform the following checks on the parents
         of ``node``:
@@ -1323,7 +1323,7 @@ class ClassContext(Context):
         keyword (Optional[str]): keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (False): raw context processing flag
-        external (Optional[Dict[str, Union[Literal['global'], Literal['nonlocal']]]]):
+        external (Optional[Dict[str, Literal['global', 'nonlocal']]]):
             mapping of *class variables* declared in :token:`global <global_stmt>` and/or
             :token:`nonlocal <nonlocal_stmt>` statements
 
@@ -1349,7 +1349,7 @@ class ClassContext(Context):
         for *class variables* declared in :token:`global <global_stmt>` and/or
         :token:`nonlocal <nonlocal_stmt>` statements.
 
-        :rtype: Dict[str, Union[Literal['global'], Literal['nonlocal']]]
+        :rtype: Dict[str, Literal['global', 'nonlocal']]
 
         """
         return self._ext_vars
@@ -1382,7 +1382,7 @@ class ClassContext(Context):
         #: str: Class context name.
         self._cls_ctx = cls_ctx
 
-        #: Dict[str, Union[Literal['global'], Literal['nonlocal']]]: Original
+        #: Dict[str, Literal['global', 'nonlocal']]: Original
         #: *left-hand-side* variable names in assignment expressions for
         #: *class variables* declared in :token:`global <global_stmt>` and/or
         #: :token:`nonlocal <nonlocal_stmt>` statements.

@@ -28,9 +28,6 @@ print(x)
 
 print(loc := (33, 44))
 print(loc)
-data = [15, 16, 17]
-print(info := (13, 14, *data))
-print(info)
 
 try:
     (px, py, pz := (31, 32, 33))

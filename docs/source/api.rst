@@ -233,14 +233,13 @@ wrapper function will render based on the following templates.
 
    .. code:: python
 
-      '__WalrusWrapper%(cls)s.get_%(name)s_%(uuid)s()'
+      '__WalrusWrapper%(cls)s.get(%(name)r)'
 
    Fetch variable recorded in the local dictionary.
 
    :Variables:
       * **cls** -- class name
       * **name** -- variable name
-      * **uuid** -- UUID text
 
 .. data:: LCL_VARS_TEMPLATE
    :type: str
@@ -260,14 +259,13 @@ wrapper function will render based on the following templates.
 
    .. code:: python
 
-      '__WalrusWrapper%(cls)s.set_%(name)s_%(uuid)s(%(expr)s)'
+      '__WalrusWrapper%(cls)s.set(%(name)r, %(expr)s)'
 
    Record variable in the local dictionary.
 
    :Variables:
       * **cls** -- class name
       * **name** -- variable name
-      * **uuid** -- UUID text
       * **expr** -- original *right-hand-side* expression
 
 .. data:: CLS_NAME_TEMPLATE
@@ -291,10 +289,10 @@ wrapper function will render based on the following templates.
    .. code:: python
 
       ['%(indentation)s@staticmethod',
-       '%(indentation)sdef set_%(name)s_%(uuid)s(expr):',
+       '%(indentation)sdef set(name, expr):',
        '%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""',
-       '%(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[%(name)r] = expr',
-       '%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]']
+       '%(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[name] = expr',
+       '%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]']
 
    Classmethods for setting variables from the wrapper class context.
 
@@ -302,7 +300,6 @@ wrapper function will render based on the following templates.
       * **indentation** -- indentation sequence as defined in
         :attr:`Config.indentation <walrus.Config.indentation>`
       * **cls** -- class name
-      * \*\*\ **kwargs** -- function record as described in :class:`Function`
 
 .. data:: CLS_GET_FUNC_TEMPLATE
    :type: str
@@ -310,11 +307,11 @@ wrapper function will render based on the following templates.
    .. code:: python
 
       ['%(indentation)s@staticmethod',
-       '%(indentation)sdef get_%(name)s_%(uuid)s():',
+       '%(indentation)sdef get(name):',
        '%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""',
-       '%(indentation)s%(indentation)sif %(name)r in _walrus_wrapper_%(cls)s_dict:',
-       '%(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[%(name)r]',
-       "%(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% %(name)r)"]
+       '%(indentation)s%(indentation)sif name in _walrus_wrapper_%(cls)s_dict:',
+       '%(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]',
+       "%(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% name)"]
 
    Classmethods for getting variables from the wrapper class context.
 
@@ -322,7 +319,6 @@ wrapper function will render based on the following templates.
       * **indentation** -- indentation sequence as defined in
         :attr:`Config.indentation <walrus.Config.indentation>`
       * **cls** -- class name
-      * \*\*\ **kwargs** -- function record as described in :class:`Function`
 
 .. data:: CLS_EXT_CALL_TEMPLATE
    :type: str
@@ -386,6 +382,12 @@ wrapper function will render based on the following templates.
         :attr:`Config.indentation <walrus.Config.indentation>`
       * **cls** -- class name
       * \*\*\ **kwargs** -- function record as described in :class:`Function`
+
+.. note::
+
+   If a wrapper function and/or class involves manipulation over the
+   :token:`global <global_stmt>` and :token:`nonlocal <nonlocal_stmt>`
+   statements, then :mod:`walrus` will append a UUID exclusively.
 
 Conversion Contexts
 ~~~~~~~~~~~~~~~~~~~

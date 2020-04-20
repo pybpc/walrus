@@ -1581,7 +1581,7 @@ class ClassContext(Context):
         if external:
             code = CLS_EXT_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
         else:
-            code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
+            code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, expr=expr)
         prefix, suffix = self.extract_whitespaces(node)
         self += prefix + code + suffix
 
@@ -1626,6 +1626,7 @@ class ClassContext(Context):
             self += node.get_code()
             return
 
+        name = self._mangle(name)
         nuid = uuid_gen.gen()
 
         prefix, _ = self.extract_whitespaces(node)
@@ -1674,7 +1675,7 @@ class ClassContext(Context):
 
         if name in self._cls_var:
             prefix, _ = self.extract_whitespaces(node)
-            self += prefix + LCL_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=self._cls_var[name])
+            self += prefix + LCL_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name)
             return
 
         # normal processing
@@ -1817,23 +1818,24 @@ class ClassContext(Context):
                 indentation=self._indentation, name_list=name_list
             ) + self._linesep
 
+        if self._buffer:
+            self._buffer += linesep
+        self._buffer += indent + (
+            '%s%s' % (self._linesep, indent)
+        ).join(CLS_GET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
+
+        if self._buffer:
+            self._buffer += linesep
+        self._buffer += indent + (
+            '%s%s' % (self._linesep, indent)
+        ).join(CLS_SET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
+
         for func in sorted(self._ext_func, key=lambda func: func['name']):
             if self._buffer:
                 self._buffer += linesep
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(CLS_EXT_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
-
-        for func in sorted(self._func, key=lambda func: func['name']):
-            if self._buffer:
-                self._buffer += linesep
-            self._buffer += indent + (
-                '%s%s' % (self._linesep, indent)
-            ).join(CLS_GET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
-            self._buffer += linesep
-            self._buffer += indent + (
-                '%s%s' % (self._linesep, indent)
-            ).join(CLS_SET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
 
         # finally, the suffix codes
         if flag and self._pep8:
@@ -1856,6 +1858,9 @@ class ClassContext(Context):
         .. _Python documentation: https://docs.python.org/3/reference/expressions.html#atom-identifiers
 
         """
+        if not name.startswith('__'):
+            return name
+
         # class name contains only underscores
         match0 = re.fullmatch(r'_+', self._cls_ctx)
         if match0 is not None:
@@ -1865,8 +1870,8 @@ class ClassContext(Context):
         match1 = re.match(r'^__[a-zA-Z0-9]+', name)
         match2 = re.match(r'.*[a-zA-Z0-9]__$', name)
         if match1 is not None and match2 is not None:
-            return '_%(cls)s%(name)s' % dict(cls=self._cls_ctx.lstrip('_'), name=name)
-        return name
+            return name
+        return '_%(cls)s%(name)s' % dict(cls=self._cls_ctx.lstrip('_'), name=name)
 
 
 ###############################################################################

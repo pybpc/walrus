@@ -3,7 +3,7 @@ parso>=0.6.0
 bpc-utils>=0.6.2
 -e .
 autopep8==1.5.2
-codecov
+codecov==2.1.3
 coverage
 doc8
 homebrew-pypi-poet

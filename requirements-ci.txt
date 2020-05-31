@@ -10,4 +10,4 @@ homebrew-pypi-poet==0.10.0
 pylint==2.5.2
 requests==2.23.0
 sphinx==3.0.4
-ipython
+ipython==7.15.0

@@ -8,6 +8,6 @@ coverage==5.1
 doc8==0.8.0
 homebrew-pypi-poet==0.10.0
 pylint==2.5.2
-requests
+requests==2.23.0
 sphinx
 ipython

@@ -415,7 +415,7 @@ Internal Auxiliaries
 Options & Defaults
 ~~~~~~~~~~~~~~~~~~
 
-.. autodata:: walrus.WALRUS_VERSIONS
+.. autodata:: walrus.WALRUS_SOURCE_VERSIONS
 
 Below are option getter utility functions. Option value precedence is::
 

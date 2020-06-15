@@ -28,7 +28,7 @@ __version__ = '0.1.4'
 #: Get supported source versions.
 #:
 #: .. seealso:: :func:`bpc_utils.get_parso_grammar_versions`
-WALRUS_VERSIONS = get_parso_grammar_versions(minimum='3.8')
+WALRUS_SOURCE_VERSIONS = get_parso_grammar_versions(minimum='3.8')
 
 # will be set in every call to `convert()`
 uuid_gen = None  # TODO: will be refactored into the Context class
@@ -43,7 +43,7 @@ _default_do_archive = True
 #: Default value for the ``archive_path`` option.
 _default_archive_path = 'archive'
 #: Default value for the ``source_version`` option.
-_default_source_version = WALRUS_VERSIONS[-1]
+_default_source_version = WALRUS_SOURCE_VERSIONS[-1]
 #: Default value for the ``linesep`` option.
 _default_linesep = None  # auto detect
 #: Default value for the ``indentation`` option.
@@ -2047,7 +2047,7 @@ def get_parser():
 
     convert_group = parser.add_argument_group(title='convert options', description='conversion configuration')
     convert_group.add_argument('-vs', '-vf', '--source-version', '--from-version', action='store', metavar='VERSION',
-                               default=__walrus_source_version__, choices=WALRUS_VERSIONS,
+                               default=__walrus_source_version__, choices=WALRUS_SOURCE_VERSIONS,
                                help='parse source code as this Python version (current: %(default)s)')
     convert_group.add_argument('-l', '--linesep', action='store',
                                help='line separator (LF, CRLF, CR) to read '

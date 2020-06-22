@@ -23,7 +23,7 @@ lazy-object-proxy==1.5.0
 MarkupSafe==1.1.1
 mccabe==0.6.1
 packaging==20.4
-parso==0.6.2
+parso==0.7.0
 pexpect==4.8.0
 pickleshare==0.7.5
 pockets==0.9.1

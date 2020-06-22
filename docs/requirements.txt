@@ -29,7 +29,7 @@ pickleshare==0.7.5
 pockets==0.9.1
 prompt-toolkit==3.0.5
 ptyprocess==0.6.0
-pycodestyle==2.5.0
+pycodestyle==2.6.0
 Pygments==2.6.1
 pylint==2.4.4
 pyparsing==2.4.7

@@ -8,7 +8,7 @@ bpc-utils==0.6.2
 certifi==2020.6.20
 chardet==3.0.4
 codecov==2.1.8
-coverage==5.2
+coverage==5.2.1
 decorator==4.4.2
 docutils==0.16
 homebrew-pypi-poet==0.10.0
@@ -16,14 +16,14 @@ idna==2.10
 imagesize==1.2.0
 ipython==7.16.1
 ipython-genutils==0.2.0
-isort==5.1.4
+isort==5.2.0
 jedi==0.17.2
 Jinja2==2.11.2
-lazy-object-proxy==1.5.0
+lazy-object-proxy==1.5.1
 MarkupSafe==1.1.1
 mccabe==0.6.1
 packaging==20.4
-parso==0.7.0
+parso==0.7.1
 pexpect==4.8.0
 pickleshare==0.7.5
 pockets==0.9.1
@@ -49,6 +49,6 @@ sphinxcontrib-serializinghtml==1.1.4
 sphinxemoji==0.1.6
 tbtrim==0.3.1
 traitlets==4.3.3
-urllib3==1.25.9
+urllib3==1.25.10
 wcwidth==0.2.5
 wrapt==1.12.1

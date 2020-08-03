@@ -16,7 +16,7 @@ idna==2.10
 imagesize==1.2.0
 ipython==7.17.0
 ipython-genutils==0.2.0
-isort==5.2.0
+isort==5.2.2
 jedi==0.17.2
 Jinja2==2.11.2
 lazy-object-proxy==1.5.1

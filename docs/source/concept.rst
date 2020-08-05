@@ -186,7 +186,6 @@ However, if a variable is declared in :token:`global <global_stmt>` and/or
 :token:`nonlocal <nonlocal_stmt>` statements, it is **NOT** supposed to be assigned
 to the :term:`class` context, rather the outer scope (:term:`namespace`).
 
-
 .. seealso::
 
    * :data:`walrus.LCL_DICT_TEMPLATE`

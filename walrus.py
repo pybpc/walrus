@@ -561,7 +561,6 @@ class Context:
               - :meth:`ClassContext._process_nonlocal_stmt`
 
         """
-        # 'funcdef', 'classdef', 'if_stmt', 'while_stmt', 'for_stmt', 'with_stmt', 'try_stmt'
         func_name = '_process_%s' % node.type
         if hasattr(self, func_name):
             func = getattr(self, func_name)
@@ -1542,6 +1541,12 @@ class ClassContext(Context):
           rendered from :data:`CLS_CALL_TEMPLATE`; information described as
           :class:`Function` will be recorded into :attr:`self._func <walrus.Context._func>`.
 
+        Important:
+            :class:`~walrus.ClassContext` will `mangle`_ *left-hand-side* variable name
+            through :meth:`self._mangle <walrus.ClassContext._mangle>` when converting.
+
+            .. _mangle: https://docs.python.org/3/reference/expressions.html?highlight=mangling#atom-identifiers
+
         For special *class variables* declared in :token:`global <global_stmt>` and/or
         :token:`nonlocal <nonlocal_stmt>` statements:
 
@@ -1581,7 +1586,7 @@ class ClassContext(Context):
         if external:
             code = CLS_EXT_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
         else:
-            code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, expr=expr)
+            code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=self._mangle(name), expr=expr)
         prefix, suffix = self.extract_whitespaces(node)
         self += prefix + code + suffix
 

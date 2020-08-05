@@ -5,7 +5,6 @@ import argparse
 import io
 import os
 import pathlib
-import re
 import sys
 import traceback
 
@@ -311,6 +310,7 @@ CLS_EXT_FUNC_TEMPLATE = '''\
 %(indentation)s%(indentation)s%(name)s = expr
 %(indentation)s%(indentation)sreturn %(name)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
+
 
 class Context:
     """General conversion context.
@@ -782,8 +782,8 @@ class Context:
                                                                  blank=blank, linesep=self._linesep)
 
             self += indent \
-                 + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) % dict(indentation=self._indentation,
-                                                                                     cls=name.value) \
+                 + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) \
+                    % dict(indentation=self._indentation, cls=name.value) \
                  + self._linesep  # noqa: E127
 
             if self._pep8:
@@ -1863,19 +1863,16 @@ class ClassContext(Context):
         .. _Python documentation: https://docs.python.org/3/reference/expressions.html#atom-identifiers
 
         """
-        if not name.startswith('__'):
+        # should only perform mangling if variable name begins with two or more underscores
+        # and does not end in two or more underscores
+        if not name.startswith('__') or name.endswith('__'):
             return name
 
-        # class name contains only underscores
-        match0 = re.fullmatch(r'_+', self._cls_ctx)
-        if match0 is not None:
+        # when class name consists only of underscores, do not perform mangling
+        if set(self._cls_ctx) == {'_'}:
             return name
 
-        # starts and ends with exactly two underscores
-        match1 = re.match(r'^__[a-zA-Z0-9]+', name)
-        match2 = re.match(r'.*[a-zA-Z0-9]__$', name)
-        if match1 is not None and match2 is not None:
-            return name
+        # perform mangling, remove leading underscores from the class name when inserting
         return '_%(cls)s%(name)s' % dict(cls=self._cls_ctx.lstrip('_'), name=name)
 
 

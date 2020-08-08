@@ -1005,7 +1005,7 @@ class Context(BaseContext):
 
     @classmethod
     def has_expr(cls, node):
-        """Check if node has assignment expression. (:token:`namedexpr_test`)
+        """Check if node has assignment expression (:token:`namedexpr_test`).
 
         Args:
             node (parso.tree.NodeOrLeaf): parso AST

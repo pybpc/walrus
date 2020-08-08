@@ -19,7 +19,7 @@ __version__ = '0.1.4'
 
 # set-up script for pip distribution
 setup(
-    name='python-walrus',
+    name='bpc-walrus',
     version=__version__,
     author='Jarry Shaw',
     author_email='jarryshaw@icloud.com',
@@ -29,10 +29,10 @@ setup(
     description='Back-port compiler for Python 3.8 assignment expressions.',
     long_description=long_desc,
     long_description_content_type='text/markdown; charset=UTF-8',
-    python_requires='>=3.4',
+    python_requires='>=3.5',
     zip_safe=True,
     install_requires=[
-        'parso>=0.6.0',      # universal AST support
+        'parso>=0.7.0',      # universal AST support
         'tbtrim>=0.2.1',     # traceback trim support
         'bpc-utils>=0.6.2',  # utility library
     ],
@@ -50,14 +50,12 @@ setup(
         ],
     },
     classifiers=[
-        'Development Status :: 4 - Beta',
-        # 'Development Status :: 5 - Production/Stable',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',

@@ -30,7 +30,7 @@ rstcheck = "*"
 [packages]
 tbtrim = "*"
 parso = ">=0.6.0"
-bpc-utils = ">=0.6.2"
+bpc-utils = {git = "https://github.com/pybpc/bpc-utils.git"}
 
 [requires]
 python_version = "3.8"

@@ -2,7 +2,6 @@
 """Back-port compiler for Python 3.8 assignment expressions."""
 
 import argparse
-import io
 import os
 import pathlib
 import sys
@@ -10,7 +9,7 @@ import traceback
 
 import parso
 import tbtrim
-from bpc_utils import (BPCSyntaxError, Config, TaskLock, UUID4Generator, archive_files,
+from bpc_utils import (BaseContext, BPCSyntaxError, Config, TaskLock, archive_files,
                        detect_encoding, detect_files, detect_indentation, detect_linesep,
                        first_non_none, get_parso_grammar_versions, map_tasks, parse_boolean_state,
                        parse_indentation, parse_linesep, parse_positive_integer, parso_parse,
@@ -28,9 +27,6 @@ __version__ = '0.1.4'
 #:
 #: .. seealso:: :func:`bpc_utils.get_parso_grammar_versions`
 WALRUS_SOURCE_VERSIONS = get_parso_grammar_versions(minimum='3.8')
-
-# will be set in every call to `convert()`
-uuid_gen = None  # TODO: will be refactored into the Context class
 
 # option default values
 #: Default value for the ``quiet`` option.
@@ -312,7 +308,7 @@ CLS_EXT_FUNC_TEMPLATE = '''\
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 
-class Context:
+class Context(BaseContext):
     """General conversion context.
 
     Args:
@@ -332,16 +328,70 @@ class Context:
         Typically, only if ``node`` is an assignment expression (:token:`namedexpr_test`) node,
         ``raw`` will be set as :data:`True`, in consideration of nesting assignment expressions.
 
+    For the :class:`Context` class of :mod:`walrus` module,
+    it will process nodes with following methods:
+
+    * :token:`suite`
+
+      - :meth:`Context._process_suite_node`
+      - :meth:`ClassContext._process_suite_node`
+
+    * :token:`namedexpr_test`
+
+      - :meth:`Context._process_namedexpr_test`
+      - :meth:`ClassContext._process_namedexpr_test`
+
+    * :token:`global_stmt`
+
+      - :meth:`Context._process_global_stmt`
+      - :meth:`ClassContext._process_global_stmt`
+
+    * :token:`classdef`
+
+      - :meth:`Context._process_classdef`
+
+    * :token:`funcdef`
+
+      - :meth:`Context._process_funcdef`
+
+    * :token:`lambdef`
+
+      - :meth:`Context._process_lambdef`
+
+    * :token:`if_stmt`
+
+      - :meth:`Context._process_if_stmt`
+
+    * :token:`while_stmt`
+
+      - :meth:`Context._process_while_stmt`
+
+    * :token:`for_stmt`
+
+      - :meth:`Context._process_for_stmt`
+
+    * :token:`with_stmt`
+
+      - :meth:`Context._process_with_stmt`
+
+    * :token:`try_stmt`
+
+      - :meth:`Context._process_try_stmt`
+
+    * :token:`argument`
+
+      - :meth:`Context._process_argument`
+
+    * :token:`name`
+
+      - :meth:`ClassContext._process_name`
+      - :meth:`ClassContext._process_defined_name`
+
+    * :token:`nonlocal_stmt`
+
+      - :meth:`ClassContext._process_nonlocal_stmt`
+
     """
-
-    @property
-    def string(self):
-        """Conversion buffer (:attr:`self._buffer <walrus.Context._buffer>`).
-
-        :rtype: str
-
-        """
-        return self._buffer
 
     @property
     def lambdef(self):
@@ -393,37 +443,11 @@ class Context:
         if context is None:
             context = list()
 
-        #: Config: Internal configurations as described in :class:`Config`
-        self.config = config
-        #: str: Indentation sequence.
-        self._indentation = config.indentation
-        #: Literal['\\n', '\\r\\n', '\\r']: Line seperator.
-        self._linesep = config.linesep
-
-        #: bool: :pep:`8` compliant conversion flag.
-        self._pep8 = config.pep8
-
-        #: parso.tree.NodeOrLeaf: Root node as the ``node`` parameter.
-        self._root = node
-        #: int: Current indentation level.
-        self._column = column
         #: Literal['global', 'nonlocal']:
         #: The :token:`global <global_stmt>` / :token:`nonlocal <nonlocal_stmt>` keyword.
         self._keyword = keyword
         #: List[str]: Variable names in :token:`global <global_stmt>` statements.
         self._context = list(context)
-
-        #: bool: Flag if buffer is now :attr:`self._prefix <walrus.Context._prefix>`.
-        self._prefix_or_suffix = True
-        #: Optional[parso.tree.NodeOrLeaf]: Preceding node with assignment expression, i.e. the *insersion point*.
-        self._node_before_walrus = None
-
-        #: str: Codes before insersion point.
-        self._prefix = ''
-        #: str: Codes after insersion point.
-        self._suffix = ''
-        #: str: Final converted result.
-        self._buffer = ''
 
         #: List[str]: Original *left-hand-side* variable names in assignment expressions.
         self._vars = list()
@@ -432,150 +456,8 @@ class Context:
         #: List[Function]: Converted wrapper functions described as :class:`Function`.
         self._func = list()
 
-        self._walk(node)  # traverse children
-        if raw:
-            self._buffer = self._prefix + self._suffix
-        else:
-            self._concat()  # generate final result
-
-    def __iadd__(self, code):
-        """Support of ``+=`` operator.
-
-        If :attr:`self._prefix_or_suffix <walrus.Context._prefix_or_suffix>` is :data:`True`, then
-        the ``code`` will be appended to :attr:`self._prefix <walrus.Context._prefix>`; else
-        it will be appended to :attr:`self._suffix <walrus.Context._suffix>`.
-
-        Args:
-            code (str): code string
-
-        """
-        if self._prefix_or_suffix:
-            self._prefix += code
-        else:
-            self._suffix += code
-        return self
-
-    def __str__(self):
-        """Returns *stripped* :attr:`self._buffer <walrus.Context._buffer>`."""
-        return self._buffer.strip()
-
-    def _walk(self, node):
-        """Start traversing the AST module.
-
-        Args:
-            node (parso.tree.NodeOrLeaf): parso AST
-
-        The method traverses through all *children* of ``node``. It first checks
-        if such child has assignment expression. If so, it will toggle
-        :attr:`self._prefix_or_suffix <walrus.Context._prefix_or_suffix>` as
-        :data:`False` and save the last previous child as
-        :attr:`self._node_before_walrus <walrus.Context._node_before_walrus>`.
-        Then it processes the child with :meth:`self._process <walrus.Context._process>`.
-
-        """
-        # process node
-        if hasattr(node, 'children'):
-            last_node = None
-            for child in node.children:
-                if self.has_walrus(child):
-                    self._prefix_or_suffix = False
-                    self._node_before_walrus = last_node
-                self._process(child)
-                last_node = child
-            return
-
-        # process leaf
-        self += node.get_code()
-
-    def _process(self, node):
-        """Walk parso AST.
-
-        Args:
-            node (parso.tree.NodeOrLeaf): parso AST
-
-        All processing methods for a specific ``node`` type are defined as
-        ``_process_{type}``. This method first checks if such processing
-        method exists. If so, it will call such method on the ``node``;
-        else it will traverse through all *children* of ``node``, and perform
-        the same logic on each child.
-
-        See Also:
-            * :token:`suite`
-
-              - :meth:`Context._process_suite_node`
-              - :meth:`ClassContext._process_suite_node`
-
-            * :token:`namedexpr_test`
-
-              - :meth:`Context._process_namedexpr_test`
-              - :meth:`ClassContext._process_namedexpr_test`
-
-            * :token:`global_stmt`
-
-              - :meth:`Context._process_global_stmt`
-              - :meth:`ClassContext._process_global_stmt`
-
-            * :token:`classdef`
-
-              - :meth:`Context._process_classdef`
-
-            * :token:`funcdef`
-
-              - :meth:`Context._process_funcdef`
-
-            * :token:`lambdef`
-
-              - :meth:`Context._process_lambdef`
-
-            * :token:`if_stmt`
-
-              - :meth:`Context._process_if_stmt`
-
-            * :token:`while_stmt`
-
-              - :meth:`Context._process_while_stmt`
-
-            * :token:`for_stmt`
-
-              - :meth:`Context._process_for_stmt`
-
-            * :token:`with_stmt`
-
-              - :meth:`Context._process_with_stmt`
-
-            * :token:`try_stmt`
-
-              - :meth:`Context._process_try_stmt`
-
-            * :token:`argument`
-
-              - :meth:`Context._process_argument`
-
-            * :token:`name`
-
-              - :meth:`ClassContext._process_name`
-              - :meth:`ClassContext._process_defined_name`
-
-            * :token:`nonlocal_stmt`
-
-              - :meth:`ClassContext._process_nonlocal_stmt`
-
-        """
-        func_name = '_process_%s' % node.type
-        if hasattr(self, func_name):
-            func = getattr(self, func_name)
-            func(node)
-            return
-
-        if hasattr(node, 'children'):
-            for child in node.children:
-                func_name = '_process_%s' % child.type
-                func = getattr(self, func_name, self._process)
-                func(child)
-            return
-
-        # leaf node
-        self += node.get_code()
+        # call suprt init
+        super().__init__(node, config, column=column, raw=raw)
 
     def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
         """Process indented suite (:token:`suite` or others).
@@ -616,7 +498,7 @@ class Context:
             However, it seems useless in current implementation.
 
         """
-        if not self.has_walrus(node):
+        if not self.has_expr(node):
             self += node.get_code()
             return
 
@@ -667,7 +549,7 @@ class Context:
         # split assignment expression
         node_name, _, node_expr = node.children
         name = node_name.value
-        nuid = uuid_gen.gen()
+        nuid = self._uuid.gen()
 
         # calculate expression string
         ctx = Context(node=node_expr, config=self.config,
@@ -738,7 +620,7 @@ class Context:
         local namespace dictionary.
 
         """
-        flag = self.has_walrus(node)
+        flag = self.has_expr(node)
         code = node.get_code()
 
         # <Name: ...>
@@ -832,7 +714,7 @@ class Context:
         call rendered from :data:`LAMBDA_CALL_TEMPLATE`.
 
         """
-        if not self.has_walrus(node):
+        if not self.has_expr(node):
             self += node.get_code()
             return
 
@@ -857,7 +739,7 @@ class Context:
         suite = ctx.string.strip()
 
         # keep record
-        nuid = uuid_gen.gen()
+        nuid = self._uuid.gen()
         self._lamb.append(dict(param=param, suite=suite, uuid=nuid))
 
         # replacing lambda
@@ -1073,7 +955,7 @@ class Context:
         :data:`True`, it will insert the codes in compliance with :pep:`8`.
 
         """
-        flag = self.has_walrus(self._root)
+        flag = self.has_expr(self._root)
 
         # strip suffix comments
         prefix, suffix = self._strip()
@@ -1081,8 +963,8 @@ class Context:
         # first, the prefix codes
         self._buffer += self._prefix + prefix
         if flag and self._pep8 and self._buffer:
-            if (self._node_before_walrus is not None
-                    and self._node_before_walrus.type in ('funcdef', 'classdef')
+            if (self._node_before_expr is not None
+                    and self._node_before_expr.type in ('funcdef', 'classdef')
                     and self._column == 0):
                 blank = 2
             else:
@@ -1121,36 +1003,8 @@ class Context:
                                                                      blank=blank, linesep=self._linesep)
         self._buffer += suffix
 
-    def _strip(self):
-        """Strip comments from suffix buffer.
-
-        Returns:
-            Tuple[str, str]: a tuple of *prefix comments* and *suffix strings*
-
-        This method separates *prefixing* comments and *suffixing* codes. It is
-        rather useful when inserting codes might break `shebang`_ and encoding
-        cookies (:pep:`263`), etc.
-
-        .. _shebang: https://en.wikipedia.org/wiki/Shebang_(Unix)
-
-        """
-        prefix = ''
-        suffix = ''
-
-        lines = io.StringIO(self._suffix, newline=self._linesep)
-        for line in lines:
-            if line.strip().startswith('#'):
-                prefix += line
-                continue
-            suffix += line
-            break
-
-        for line in lines:
-            suffix += line
-        return prefix, suffix
-
     @classmethod
-    def has_walrus(cls, node):
+    def has_expr(cls, node):
         """Check if node has assignment expression. (:token:`namedexpr_test`)
 
         Args:
@@ -1164,7 +1018,7 @@ class Context:
             return True
         if hasattr(node, 'children'):
             for child in node.children:
-                if cls.has_walrus(child):
+                if cls.has_expr(child):
                     return True
         return False
 
@@ -1216,70 +1070,6 @@ class Context:
             return True
         return False
 
-    @staticmethod
-    def missing_whitespaces(prefix, suffix, blank, linesep):
-        """Count missing preceding or succeeding blank lines.
-
-        Args:
-            prefix (str): preceding source code
-            suffix (str): succeeding source code
-            blank (int): number of expecting blank lines
-            linesep (str): line seperator
-
-        Returns:
-            int: number of preceding blank lines
-
-        """
-        count = 0
-        if prefix:
-            for line in reversed(prefix.split(linesep)):
-                if line.strip():
-                    break
-                count += 1
-            if count > 0:  # keep trailing newline in `prefix`
-                count -= 1
-        if suffix:
-            for line in suffix.split(linesep):
-                if line.strip():
-                    break
-                count += 1
-
-        if count < 0:
-            count = 0
-        missing = blank - count
-        if missing > 0:
-            return missing
-        return 0
-
-    @staticmethod
-    def extract_whitespaces(node):
-        """Extract preceding and succeeding whitespaces.
-
-        Args:
-            node (parso.tree.NodeOrLeaf) parso AST
-
-        Returns:
-            Tuple[str, str]: a tuple of *preceding* and *succeeding* whitespaces
-
-        """
-        code = node.get_code()
-
-        # preceding whitespaces
-        prefix = ''
-        for char in code:
-            if char not in ' \t\n\r\f\v':
-                break
-            prefix += char
-
-        # succeeding whitespaces
-        suffix = ''
-        for char in reversed(code):
-            if char not in ' \t\n\r\f\v':
-                break
-            suffix += char
-
-        return prefix, suffix
-
 
 class LambdaContext(Context):
     """Lambda (suite) conversion context.
@@ -1318,7 +1108,7 @@ class LambdaContext(Context):
         :data:`True`, it will insert the codes in compliance with :pep:`8`.
 
         """
-        flag = self.has_walrus(self._root)
+        flag = self.has_expr(self._root)
 
         # first, the variables and functions
         indent = self._indentation * self._column
@@ -1485,7 +1275,7 @@ class ClassContext(Context):
             However, it seems useless in current implementation.
 
         """
-        if not self.has_walrus(node):
+        if not self.has_expr(node):
             self += node.get_code()
             return
 
@@ -1560,7 +1350,7 @@ class ClassContext(Context):
         # split assignment expression
         node_name, _, node_expr = node.children
         name = node_name.value
-        nuid = uuid_gen.gen()
+        nuid = self._uuid.gen()
 
         # calculate expression string
         ctx = ClassContext(node=node_expr, config=self.config,
@@ -1632,7 +1422,7 @@ class ClassContext(Context):
             return
 
         name = self._mangle(name)
-        nuid = uuid_gen.gen()
+        nuid = self._uuid.gen()
 
         prefix, _ = self.extract_whitespaces(node)
         self += prefix + LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name)
@@ -1776,7 +1566,7 @@ class ClassContext(Context):
         rendered from :data:`CLS_EXT_FUNC_TEMPLATE`.
 
         """
-        flag = self.has_walrus(self._root)
+        flag = self.has_expr(self._root)
 
         # strip suffix comments
         prefix, suffix = self._strip()
@@ -1789,8 +1579,8 @@ class ClassContext(Context):
         linesep = self._linesep
         if flag:
             if self._pep8:
-                if (self._node_before_walrus is not None
-                        and self._node_before_walrus.type in ('funcdef', 'classdef')
+                if (self._node_before_expr is not None
+                        and self._node_before_expr.type in ('funcdef', 'classdef')
                         and self._column == 0):
                     blank = 2
                 else:
@@ -1904,11 +1694,6 @@ def convert(code, filename=None, *, source_version=None, linesep=None, indentati
         str: converted source code
 
     """
-    # TODO: define UUID generator in the Context class, avoid using a global variable
-    # Initialise new UUID4Generator for identifier UUIDs
-    global uuid_gen
-    uuid_gen = UUID4Generator(dash=False)
-
     # parse source string
     source_version = _get_source_version_option(source_version)
     module = parso_parse(code, filename=filename, version=source_version)

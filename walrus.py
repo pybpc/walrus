@@ -1658,10 +1658,6 @@ class ClassContext(Context):
         if not name.startswith('__') or name.endswith('__'):
             return name
 
-        # when class name consists only of underscores, do not perform mangling
-        if set(self._cls_ctx) == {'_'}:
-            return name
-
         # perform mangling, remove leading underscores from the class name when inserting
         return '_%(cls)s%(name)s' % dict(cls=self._cls_ctx.lstrip('_'), name=name)
 

@@ -1815,6 +1815,13 @@ def get_parser():
                         help='the number of concurrent processes for conversion (current: %s)' % __walrus_concurrency__)
     parser.add_argument('--dry-run', action='store_true',
                         help='list the files to be converted without actually performing conversion and archiving')
+    parser.add_argument('-s', '--simple', action='store', nargs='?', dest='simple_args', const='', metavar='FILE',
+                        help='this option tells the program to operate in "simple mode"; '
+                             'if a file name is provided, the program will convert the file but print conversion '
+                             'result to standard output instead of overwriting the file; '
+                             'if no file names are provided, read code for conversion from standard input and print '
+                             'conversion result to standard output; '
+                             'in "simple mode", no file names shall be provided via positional arguments')
 
     archive_group = parser.add_argument_group(title='archive options',
                                               description="backup original files in case there're any issues")
@@ -1877,6 +1884,27 @@ def main(argv=None):
     parser = get_parser()
     args = parser.parse_args(argv)
 
+    options = {
+        'source_version': args.source_version,
+        'linesep': args.linesep,
+        'indentation': args.indentation,
+        'pep8': args.pep8,
+    }
+
+    # check if running in simple mode
+    if args.simple_args is not None:
+        if args.files:
+            parser.error('no Python source files or directories shall be given as positional arguments in simple mode')
+        if not args.simple_args:  # read from stdin
+            code = sys.stdin.read()
+        else:  # read from file
+            filename = args.simple_args
+            options['filename'] = filename
+            with open(filename, 'rb') as file:
+                code = file.read()
+        sys.stdout.write(convert(code, **options))  # print conversion result to stdout
+        return
+
     # get options
     quiet = _get_quiet_option(args.quiet)
     processes = _get_concurrency_option(args.concurrency)
@@ -1913,14 +1941,10 @@ def main(argv=None):
         archive_files(filelist, archive_path)
 
     # process files
-    options = {
-        'source_version': args.source_version,
-        'linesep': args.linesep,
-        'indentation': args.indentation,
-        'pep8': args.pep8,
+    options.update({
         'quiet': quiet,
         'dry_run': args.dry_run,
-    }
+    })
     map_tasks(do_walrus, filelist, kwargs=options, processes=processes)
 
 

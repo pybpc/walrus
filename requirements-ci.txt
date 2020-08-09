@@ -1,7 +1,7 @@
 # pyup: ignore file
 tbtrim
 parso>=0.6.0
-bpc-utils>=0.6.2
+bpc-utils>=0.7.0
 -e .
 autopep8
 codecov

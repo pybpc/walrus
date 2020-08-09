@@ -316,7 +316,7 @@ class Context(BaseContext):
         config (Config): conversion configurations
 
     Keyword Args:
-        column (int): current indentation level
+        indent_level (int): current indentation level
         keyword (Optional[Literal['global', 'nonlocal']]): keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (bool): raw processing flag
@@ -437,7 +437,7 @@ class Context(BaseContext):
             return list()
         return self._context
 
-    def __init__(self, node, config, *, column=0, keyword=None, context=None, raw=False):
+    def __init__(self, node, config, *, indent_level=0, keyword=None, context=None, raw=False):
         if keyword is None:
             keyword = self.guess_keyword(node)
         if context is None:
@@ -456,8 +456,8 @@ class Context(BaseContext):
         #: List[Function]: Converted wrapper functions described as :class:`Function`.
         self._func = list()
 
-        # call suprt init
-        super().__init__(node, config, column=column, raw=raw)
+        # call super init
+        super().__init__(node, config, indent_level=indent_level, raw=raw)
 
     def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
         """Process indented suite (:token:`suite` or others).
@@ -502,7 +502,7 @@ class Context(BaseContext):
             self += node.get_code()
             return
 
-        indent = self._column + 1
+        indent = self._indent_level + 1
         self += self._linesep + self._indentation * indent
 
         if func:
@@ -513,12 +513,12 @@ class Context(BaseContext):
         # process suite
         if cls_ctx is None:
             ctx = Context(node=node, config=self.config,
-                          context=self._context, column=indent,
+                          context=self._context, indent_level=indent,
                           keyword=keyword, raw=raw)
         else:
             ctx = ClassContext(cls_ctx=cls_ctx,
                                node=node, config=self.config,
-                               context=self._context, column=indent,
+                               context=self._context, indent_level=indent,
                                keyword=keyword, raw=raw)
         self += ctx.string.lstrip()
 
@@ -549,11 +549,11 @@ class Context(BaseContext):
         # split assignment expression
         node_name, _, node_expr = node.children
         name = node_name.value
-        nuid = self._uuid.gen()
+        nuid = self._uuid_gen.gen()
 
         # calculate expression string
         ctx = Context(node=node_expr, config=self.config,
-                      context=self._context, column=self._column,
+                      context=self._context, indent_level=self._indent_level,
                       keyword=self._keyword, raw=True)
         expr = ctx.string.strip()
         self._vars.extend(ctx.variables)
@@ -629,19 +629,19 @@ class Context(BaseContext):
             if self._pep8:
                 buffer = self._prefix if self._prefix_or_suffix else self._suffix
 
-                self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix=code,
-                                                                 blank=1, linesep=self._linesep)
+                self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
+                                                              expected=1, linesep=self._linesep)
 
-            self += self._indentation * self._column \
+            self += self._indentation * self._indent_level \
                  + LCL_DICT_TEMPLATE % dict(cls=name.value) \
                  + self._linesep  # noqa: E127
 
             if self._pep8:
-                blank = 2 if self._column == 0 else 1
+                blank = 2 if self._indent_level == 0 else 1
                 buffer = self._prefix if self._prefix_or_suffix else self._suffix
 
-                self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix=code,
-                                                                 blank=1, linesep=self._linesep)
+                self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
+                                                              expected=1, linesep=self._linesep)
 
         # <Keyword: class>
         # <Name: ...>
@@ -655,13 +655,13 @@ class Context(BaseContext):
         self._process_suite_node(suite, cls_ctx=name.value)
 
         if flag:
-            indent = self._indentation * self._column
+            indent = self._indentation * self._indent_level
 
             if self._pep8:
-                blank = 2 if self._column == 0 else 1
+                blank = 2 if self._indent_level == 0 else 1
                 buffer = self._prefix if self._prefix_or_suffix else self._suffix
-                self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix='',
-                                                                 blank=blank, linesep=self._linesep)
+                self += self._linesep * self.missing_newlines(prefix=buffer, suffix='',
+                                                              expected=blank, linesep=self._linesep)
 
             self += indent \
                  + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) \
@@ -676,8 +676,8 @@ class Context(BaseContext):
                 while leaf is not None:
                     code += leaf.get_code()
                     leaf = leaf.get_next_leaf()
-                self += self._linesep * self.missing_whitespaces(prefix=buffer, suffix=code,
-                                                                 blank=1, linesep=self._linesep)
+                self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
+                                                              expected=1, linesep=self._linesep)
 
     def _process_funcdef(self, node):
         """Process function definition (:token:`funcdef`).
@@ -732,14 +732,14 @@ class Context(BaseContext):
         param = ''.join(map(lambda n: n.get_code(), para_list))
 
         # test_nocond | test
-        indent = self._column + 1
+        indent = self._indent_level + 1
         ctx = LambdaContext(node=next(children), config=self.config,
-                            context=self._context, column=indent,
+                            context=self._context, indent_level=indent,
                             keyword='nonlocal')
         suite = ctx.string.strip()
 
         # keep record
-        nuid = self._uuid.gen()
+        nuid = self._uuid_gen.gen()
         self._lamb.append(dict(param=param, suite=suite, uuid=nuid))
 
         # replacing lambda
@@ -958,24 +958,24 @@ class Context(BaseContext):
         flag = self.has_expr(self._root)
 
         # strip suffix comments
-        prefix, suffix = self._strip()
+        prefix, suffix = self.split_comments(self._suffix, self._linesep)
 
         # first, the prefix codes
         self._buffer += self._prefix + prefix
         if flag and self._pep8 and self._buffer:
             if (self._node_before_expr is not None
                     and self._node_before_expr.type in ('funcdef', 'classdef')
-                    and self._column == 0):
+                    and self._indent_level == 0):
                 blank = 2
             else:
                 blank = 1
-            self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix='',
-                                                                     blank=blank, linesep=self._linesep)
+            self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix='',
+                                                                  expected=blank, linesep=self._linesep)
 
         # then, the variables and functions
-        indent = self._indentation * self._column
+        indent = self._indentation * self._indent_level
         if self._pep8:
-            linesep = self._linesep * (1 if self._column > 0 else 2)
+            linesep = self._linesep * (1 if self._indent_level > 0 else 2)
         else:
             linesep = ''
         if self._vars:
@@ -998,9 +998,9 @@ class Context(BaseContext):
 
         # finally, the suffix codes
         if flag and self._pep8:
-            blank = 2 if self._column == 0 else 1
-            self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=suffix,
-                                                                     blank=blank, linesep=self._linesep)
+            blank = 2 if self._indent_level == 0 else 1
+            self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
+                                                                  expected=blank, linesep=self._linesep)
         self._buffer += suffix
 
     @classmethod
@@ -1081,7 +1081,7 @@ class LambdaContext(Context):
         config (Config): conversion configurations
 
     Keyword Args:
-        column (int): current indentation level
+        indent_level (int): current indentation level
         keyword (Literal['nonlocal']): keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (False): raw processing flag
@@ -1111,9 +1111,9 @@ class LambdaContext(Context):
         flag = self.has_expr(self._root)
 
         # first, the variables and functions
-        indent = self._indentation * self._column
+        indent = self._indentation * self._indent_level
         if self._pep8:
-            linesep = self._linesep * (1 if self._column > 0 else 2)
+            linesep = self._linesep * (1 if self._indent_level > 0 else 2)
         else:
             linesep = ''
         if self._vars:
@@ -1134,9 +1134,9 @@ class LambdaContext(Context):
                 '%s%s' % (self._linesep, indent)
             ).join(LAMBDA_FUNC_TEMPLATE) % dict(indentation=self._indentation, **lamb) + self._linesep
         if flag and self._pep8:
-            blank = 2 if self._column == 0 else 1
-            self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=self._prefix,
-                                                                     blank=blank, linesep=self._linesep)
+            blank = 2 if self._indent_level == 0 else 1
+            self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=self._prefix,
+                                                                  expected=blank, linesep=self._linesep)
 
         # then, the `return` statement
         self._buffer += indent + 'return'
@@ -1157,7 +1157,7 @@ class ClassContext(Context):
     Keyword Args:
         cls_ctx (str): class context name
         cls_var (Dict[str, str]): mapping for assignment variable and its UUID
-        column (int): current indentation level
+        indent_level (int): current indentation level
         keyword (Optional[str]): keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (False): raw context processing flag
@@ -1205,7 +1205,7 @@ class ClassContext(Context):
 
     def __init__(self, node, config, *,
                  cls_ctx, cls_var=None,
-                 column=0, keyword=None,
+                 indent_level=0, keyword=None,
                  context=None, raw=False,
                  external=None):
         if cls_var is None:
@@ -1231,7 +1231,7 @@ class ClassContext(Context):
         self._ext_func = list()
 
         super().__init__(node=node, config=config, context=context,
-                         column=column, keyword=keyword, raw=raw)
+                         indent_level=indent_level, keyword=keyword, raw=raw)
 
     def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
         """Process indented suite (:token:`suite` or others).
@@ -1279,7 +1279,7 @@ class ClassContext(Context):
             self += node.get_code()
             return
 
-        indent = self._column + 1
+        indent = self._indent_level + 1
         self += self._linesep + self._indentation * indent
 
         if cls_ctx is None:
@@ -1291,7 +1291,7 @@ class ClassContext(Context):
 
             # process suite
             ctx = Context(node=node, config=self.config,
-                          context=self._context, column=indent,
+                          context=self._context, indent_level=indent,
                           keyword=keyword, raw=raw)
         else:
             keyword = self._keyword
@@ -1299,7 +1299,7 @@ class ClassContext(Context):
             # process suite
             ctx = ClassContext(node=node, config=self.config,
                                cls_ctx=cls_ctx, cls_var=cls_var,
-                               context=self._context, column=indent,
+                               context=self._context, indent_level=indent,
                                keyword=keyword, raw=raw, external=self._ext_vars)
         self += ctx.string.lstrip()
 
@@ -1350,12 +1350,12 @@ class ClassContext(Context):
         # split assignment expression
         node_name, _, node_expr = node.children
         name = node_name.value
-        nuid = self._uuid.gen()
+        nuid = self._uuid_gen.gen()
 
         # calculate expression string
         ctx = ClassContext(node=node_expr, config=self.config,
                            cls_ctx=self._cls_ctx, cls_var=self._cls_var,
-                           context=self._context, column=self._column,
+                           context=self._context, indent_level=self._indent_level,
                            keyword=self._keyword, raw=True,
                            external=self._ext_vars)
         expr = ctx.string.strip()
@@ -1422,7 +1422,7 @@ class ClassContext(Context):
             return
 
         name = self._mangle(name)
-        nuid = self._uuid.gen()
+        nuid = self._uuid_gen.gen()
 
         prefix, _ = self.extract_whitespaces(node)
         self += prefix + LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name)
@@ -1569,24 +1569,24 @@ class ClassContext(Context):
         flag = self.has_expr(self._root)
 
         # strip suffix comments
-        prefix, suffix = self._strip()
+        prefix, suffix = self.split_comments(self._suffix, self._linesep)
 
         # first, the prefix codes
         self._buffer += self._prefix + prefix
 
         # then, the class and functions
-        indent = self._indentation * self._column
+        indent = self._indentation * self._indent_level
         linesep = self._linesep
         if flag:
             if self._pep8:
                 if (self._node_before_expr is not None
                         and self._node_before_expr.type in ('funcdef', 'classdef')
-                        and self._column == 0):
+                        and self._indent_level == 0):
                     blank = 2
                 else:
                     blank = 1
-                self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix='',
-                                                                         blank=blank, linesep=self._linesep)
+                self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix='',
+                                                                      expected=blank, linesep=self._linesep)
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(CLS_NAME_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
@@ -1634,9 +1634,9 @@ class ClassContext(Context):
 
         # finally, the suffix codes
         if flag and self._pep8:
-            blank = 2 if self._column == 0 else 1
-            self._buffer += self._linesep * self.missing_whitespaces(prefix=self._buffer, suffix=suffix,
-                                                                     blank=blank, linesep=self._linesep)
+            blank = 2 if self._indent_level == 0 else 1
+            self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
+                                                                  expected=blank, linesep=self._linesep)
         self._buffer += suffix
 
     def _mangle(self, name):

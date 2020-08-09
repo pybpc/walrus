@@ -44,6 +44,8 @@ class TestWalrus(unittest.TestCase):
         all_test_cases.remove('pep572_exceptional_unpacking')  # skip unpacking test case on Python < 3.5
     if sys.version_info[:2] < (3, 6):
         all_test_cases.remove('pep572_exceptional_fstring')  # skip f-string test case on Python < 3.6
+    if sys.version_info[:2] < (3, 7):
+        all_test_cases.remove('annotations_pep563')  # skip test case for postponed evaluation of annotations on Python < 3.7
 
     def test_get_parser(self):  # TODO: enhance this test
         """Test the argument parser."""

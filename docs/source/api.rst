@@ -20,11 +20,11 @@ Public Interface
 Conversion Implementation
 -------------------------
 
-The main logic of the :mod:`walrus` conversion is to wrap *assignment expressions*
+The main logic of the ``walrus`` conversion is to wrap *assignment expressions*
 as functions which manipulates variable namespaces to implement the **assignment**
 part and evaluates original code blocks to archive the **expression** part.
 
-For conversion algorithms and details, please refer to :doc:`concept`.
+For conversion algorithms and details, please refer to :doc:`algorithms`.
 
 Data Structures
 ~~~~~~~~~~~~~~~
@@ -43,9 +43,9 @@ be as following:
       indentation sequence
 
    .. attribute:: linesep
-      :type: Union[Literal['\n'], Literal['\r\n'], Literal['\r']]
+      :type: Literal[\'\\n\', \'\\r\\n\', \'\\r\']
 
-      line seperator
+      line separator
 
    .. attribute:: pep8
       :type: bool
@@ -68,15 +68,15 @@ the conversion.
       :type: str
 
       Function name, as the original *left-hand-side* variable name
-      from assignment expression.
+      from the assignment expression.
 
    .. attribute:: uuid
       :type: str
 
-      UUID text in the function name to avoid renaming existing functions.
+      UUID text in the function name to avoid name collision with existing functions.
 
    .. attribute:: keyword
-      :type: Union[Literal['global'], Literal['nonlocal']]
+      :type: Literal[\'global\', \'nonlocal\']
 
       Scope manipulation keyword. If :attr:`name` is declared in *global*
       namespace, then it will be ``'global'``, else ``'nonlocal'``.
@@ -107,13 +107,13 @@ the wrapper function for the conversion.
    .. attribute:: uuid
       :type: str
 
-      UUID text in the function name to avoid renaming existing functions.
+      UUID text in the function name to avoid name collision with existing functions.
 
 Conversion Templates
 ~~~~~~~~~~~~~~~~~~~~
 
-For general conversion scenarios, the converted wrapper functions will
-render based on the following templates.
+For general conversion scenarios, the converted wrapper functions will be
+rendered based on the following templates.
 
 .. data:: NAME_TEMPLATE
    :type: List[str]
@@ -129,7 +129,7 @@ render based on the following templates.
    :Variables:
       * **indentation** -- indentation sequence as defined in
         :attr:`Config.indentation <walrus.Config.indentation>`
-      * **name_list** -- equal (``=``) seperated list of variable names
+      * **name_list** -- equal (``=``) separated list of variable names
 
    .. important::
 
@@ -210,7 +210,7 @@ wrapper function will render based on the following templates.
 
       '_walrus_wrapper_%(cls)s_dict = dict()'
 
-   Dictionary for recording decalred class variables.
+   Dictionary for recording declared class variables.
 
    :Variables:
       * **cls** -- class name
@@ -347,7 +347,7 @@ wrapper function will render based on the following templates.
    :Variables:
       * **indentation** -- indentation sequence as defined in
         :attr:`Config.indentation <walrus.Config.indentation>`
-      * **name_list** -- comma (``,``) seperated list of variable names
+      * **name_list** -- comma (``,``) separated list of variable names
 
 .. data:: CLS_EXT_VARS_NONLOCAL_TEMPLATE
    :type: str
@@ -361,7 +361,7 @@ wrapper function will render based on the following templates.
    :Variables:
       * **indentation** -- indentation sequence as defined in
         :attr:`Config.indentation <walrus.Config.indentation>`
-      * **name_list** -- comma (``,``) seperated list of variable names
+      * **name_list** -- comma (``,``) separated list of variable names
 
 .. data:: CLS_EXT_FUNC_TEMPLATE
    :type: str
@@ -387,7 +387,7 @@ wrapper function will render based on the following templates.
 
    If a wrapper function and/or class involves manipulation over the
    :token:`global <global_stmt>` and :token:`nonlocal <nonlocal_stmt>`
-   statements, then :mod:`walrus` will append a UUID exclusively.
+   statements, then ``walrus`` will append a UUID exclusively.
 
 Conversion Contexts
 ~~~~~~~~~~~~~~~~~~~
@@ -422,6 +422,7 @@ Below are option getter utility functions. Option value precedence is::
    explicit value (CLI/API arguments) > environment variable > default value
 
 .. autofunction:: walrus._get_quiet_option
+.. autofunction:: walrus._get_concurrency_option
 .. autofunction:: walrus._get_do_archive_option
 .. autofunction:: walrus._get_archive_path_option
 .. autofunction:: walrus._get_source_version_option
@@ -432,6 +433,7 @@ Below are option getter utility functions. Option value precedence is::
 The following variables are used for fallback default values of options.
 
 .. autodata:: walrus._default_quiet
+.. autodata:: walrus._default_concurrency
 .. autodata:: walrus._default_do_archive
 .. autodata:: walrus._default_archive_path
 .. autodata:: walrus._default_source_version
@@ -441,7 +443,7 @@ The following variables are used for fallback default values of options.
 
 .. important::
 
-   For :data:`_default_linesep` and :data:`_default_indentation`,
+   For :data:`_default_concurrency`, :data:`_default_linesep` and :data:`_default_indentation`,
    :data:`None` means *auto detection* during runtime.
 
 CLI Utilities
@@ -457,25 +459,25 @@ The following variables are used for help messages in the argument parser.
    Current working directory returned by :func:`os.getcwd`.
 
 .. data:: walrus.__walrus_quiet__
-   :type: Union[Literal['quiet mode'], Literal['non-quiet mode']]
+   :type: Literal[\'quiet mode\', \'non-quiet mode\']
 
    Default value for the ``--quiet`` option.
 
    .. seealso:: :func:`walrus._get_quiet_option`
 
 .. data:: walrus.__walrus_concurrency__
-   :type: Union[int, Literal['auto detect']]
+   :type: Union[int, Literal[\'auto detect\']]
 
    Default value for the ``--concurrency`` option.
 
    .. seealso:: :func:`walrus._get_concurrency_option`
 
 .. data:: walrus.__walrus_do_archive__
-   :type: Union[Literal['will do archive'], Literal['will not do archive']]
+   :type: Literal[\'will do archive\', \'will not do archive\']
 
    Default value for the ``--no-archive`` option.
 
-   .. seealso:: :func:`_get_do_archive_option`
+   .. seealso:: :func:`walrus._get_do_archive_option`
 
 .. data:: walrus.__walrus_archive_path__
    :type: str
@@ -492,7 +494,7 @@ The following variables are used for help messages in the argument parser.
    .. seealso:: :func:`walrus._get_source_version_option`
 
 .. data:: walrus.__walrus_linesep__
-   :type: Union[Literal['LF'], Literal['CRLF'], Literal['CR'], Literal['auto detect']]
+   :type: Literal[\'LF\', \'CRLF\', \'CR\', \'auto detect\']
 
    Default value for the ``--linesep`` option.
 
@@ -506,7 +508,7 @@ The following variables are used for help messages in the argument parser.
    .. seealso:: :func:`walrus._get_indentation_option`
 
 .. data:: walrus.__walrus_pep8__
-   :type: Union[Literal['will conform to PEP 8'], Literal['will not conform to PEP 8']]
+   :type: Literal[\'will conform to PEP 8\', \'will not conform to PEP 8\']
 
    Default value for the ``--no-pep8`` option.
 

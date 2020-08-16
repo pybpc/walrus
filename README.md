@@ -17,7 +17,9 @@ intelligent, yet imperfect, solution of a **backport compiler** by replacing *as
 old-fashioned syntax, which guarantees you to always write *assignment expressions* in Python 3.8 flavour then
 compile for compatibility later.
 
-See [documentation](https://bpc-walrus.readthedocs.io/en/latest/) for usage and more details.
+## Documentation
+
+&emsp; See [documentation](https://bpc-walrus.readthedocs.io/en/latest/) for usage and more details.
 
 ## Contribution
 

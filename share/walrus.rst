@@ -27,9 +27,13 @@ Since PEP 572, Python introduced *assignment expressions* syntax in
 version __3.8__. For those who wish to use *assignment expressions*
 in their code, ``walrus`` provides an intelligent, yet imperfect,
 solution of a **backport compiler** by replacing *assignment expressions*
-syntax with old-fashioned assignment-then-conditional syntax, which
-guarantees you to always write *assignment expressions* in Python 3.8
-flavour then compile for compatibility later.
+syntax with old-fashioned syntax, which guarantees you to always write
+*assignment expressions* in Python 3.8 flavour then compile for
+compatibility later.
+
+This man page mainly introduces the CLI options of the ``walrus`` program.
+You can also checkout the online documentation at
+https://bpc-walrus.readthedocs.io/ for more details.
 
 OPTIONS
 =======
@@ -51,6 +55,17 @@ optional arguments
 
 --dry-run             list the files to be converted without actually
                       performing conversion and archiving
+
+-s *[FILE]*, --simple *[FILE]*
+                      this option tells the program to operate in "simple mode";
+                      if a file name is provided, the program will convert the
+                      file but print conversion result to standard output
+                      instead of overwriting the file;
+                      if no file names are provided, read code for conversion
+                      from standard input and print conversion result to
+                      standard output;
+                      in "simple mode", no file names shall be provided via
+                      positional arguments
 
 archive options
 ---------------
@@ -90,14 +105,16 @@ conversion configuration
 ENVIRONMENT
 ===========
 
-``walrus`` currently supports two environment variables.
+``walrus`` currently supports these environment variables:
 
-:WALRUS_QUIET:        run in quiet mode
-:WALRUS_ENCODING:     encoding to open source files
-:WALRUS_VERSION:      convert against Python version
-:WALRUS_LINESEP:      line separator to process source files
-:WALRUS_LINTING:      lint converted codes
-:WALRUS_INDENTATION:  indentation style
+:WALRUS_QUIET:           run in quiet mode
+:WALRUS_CONCURRENCY:     the number of concurrent processes for conversion
+:WALRUS_DO_ARCHIVE:      whether to perform archiving
+:WALRUS_ARCHIVE_PATH:    path to archive original files
+:WALRUS_SOURCE_VERSION:  parse source code as this Python version
+:WALRUS_LINESEP:         line separator to read source files
+:WALRUS_INDENTATION:     code indentation style
+:WALRUS_PEP8:            whether to make code insertion **PEP 8** compliant
 
 SEE ALSO
 ========

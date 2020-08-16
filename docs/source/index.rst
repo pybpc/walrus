@@ -54,7 +54,7 @@ Or install the latest version from the `Git repository`_:
    git pull
 
 .. note::
-   Installation from `Homebrew`_ will also automatically install the
+   Installation from `Homebrew`_ will also automatically install the man page and
    `Bash Completion`_ script for you. If you are installing from `PyPI`_ or
    the `Git repository`_, you can install the completion script manually.
 

@@ -1,0 +1,38 @@
+Redefine with variable
+21
+61
+61
+Redefine with function
+22
+<class 'staticmethod'>
+Redefine with class
+23
+<class 'type'>
+Redefine with for Loop
+24
+64
+74
+64
+Redefine with import
+25
+<class 'module'>
+26
+False
+Redefine with with statement
+27
+False
+Redefine with except statement
+28
+<class 'RuntimeError'>
+None
+Class A initialized
+var = 61
+func is of type <class 'function'>
+foo called
+func execution returns: 62
+cls is of type: <class 'type'>
+loopvar = 64
+mod is of type <class 'module'>
+item is int? False
+ctx is int? False
+exc in A: None

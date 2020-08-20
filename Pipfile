@@ -15,17 +15,18 @@ verify_ssl = true
 
 [dev-packages]
 walrus = {editable = true,path = "."}
-ipython = "*"
 autopep8 = "*"
+bandit = "*"
 codecov = "*"
 coverage = "*"
 homebrew-pypi-poet = "*"
+ipython = "*"
+mypy = "*"
 pylint = "*"
 requests = "*"
-sphinx = "*"
-sphinxcontrib-napoleon = "*"
-sphinxemoji = "*"
 rstcheck = "*"
+sphinx = "*"
+sphinxemoji = "*"
 
 [packages]
 tbtrim = "*"

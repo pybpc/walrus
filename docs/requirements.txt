@@ -7,7 +7,7 @@ backcall==0.2.0
 bpc-utils==0.7.0
 certifi==2020.6.20
 chardet==3.0.4
-codecov==2.1.8
+codecov==2.1.9
 coverage==5.2.1
 decorator==4.4.2
 docutils==0.16
@@ -31,7 +31,7 @@ prompt-toolkit==3.0.6
 ptyprocess==0.6.0
 pycodestyle==2.6.0
 Pygments==2.6.1
-pylint==2.5.3
+pylint==2.6.0
 pyparsing==2.4.7
 pytz==2020.1
 requests==2.24.0

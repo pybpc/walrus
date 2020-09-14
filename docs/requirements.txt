@@ -30,7 +30,7 @@ pockets==0.9.1
 prompt-toolkit==3.0.7
 ptyprocess==0.6.0
 pycodestyle==2.6.0
-Pygments==2.6.1
+Pygments==2.7.0
 pylint==2.6.0
 pyparsing==2.4.7
 pytz==2020.1

@@ -8,7 +8,7 @@ bpc-utils==0.8.0
 certifi==2020.6.20
 chardet==3.0.4
 codecov==2.1.9
-coverage==5.2.1
+coverage==5.3
 decorator==4.4.2
 docutils==0.16
 homebrew-pypi-poet==0.10.0

@@ -16,7 +16,7 @@ idna==2.10
 imagesize==1.2.0
 ipython==7.18.1
 ipython-genutils==0.2.0
-isort==5.5.2
+isort==5.5.3
 jedi==0.17.2
 Jinja2==2.11.2
 lazy-object-proxy==1.5.1
@@ -30,7 +30,7 @@ pockets==0.9.1
 prompt-toolkit==3.0.7
 ptyprocess==0.6.0
 pycodestyle==2.6.0
-Pygments==2.7.0
+Pygments==2.7.1
 pylint==2.6.0
 pyparsing==2.4.7
 pytz==2020.1

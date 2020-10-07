@@ -36,10 +36,11 @@ release = '0.1.4'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
-    'sphinx.ext.autodoc', 'sphinx.ext.autodoc.typehints',
-    'sphinxcontrib.napoleon',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.autodoc',
+    'sphinx_autodoc_typehints',
     'sphinxemoji.sphinxemoji',
 ]
 
@@ -87,13 +88,21 @@ exclude_patterns = []
 #
 html_theme = 'alabaster'
 
-html_theme_options = {
-    'github_user': 'pybpc',
-    'github_repo': 'walrus',
-    'github_banner': True,
-}
-
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# Theme options are theme-specific and customize the look and feel of a theme
+# further.  For a list of options available for each theme, see the
+# documentation.
+html_theme_options = {
+    'show_powered_by': False,
+    'github_user': 'pybpc',
+    'github_repo': 'walrus',
+    'github_banner': True,
+    #'show_related': False,
+    #'note_bg': '#FFF59C',
+    #'travis_button': True,
+    #'codecov_button': True,
+}

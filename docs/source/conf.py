@@ -101,8 +101,5 @@ html_theme_options = {
     'github_user': 'pybpc',
     'github_repo': 'walrus',
     'github_banner': True,
-    #'show_related': False,
-    #'note_bg': '#FFF59C',
-    #'travis_button': True,
-    #'codecov_button': True,
+    #'github_type': 'star',
 }

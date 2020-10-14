@@ -105,7 +105,7 @@ class TestWalrus(unittest.TestCase):
     def test_invalid(self):
         """Test converting invalid code."""
 
-        pep572_invalid_codes = [
+        pep572_invalid_code = [
             'y := 1',
             'y0 = y1 := 2',
             'dict(x = z := 3)',
@@ -135,12 +135,15 @@ class TestWalrus(unittest.TestCase):
             '(False := 1)',
             '(None := 1)',
             '(__debug__ := 1)',
+            '(... := 1)',
+            '(1 := 1)',
             '(await a := x)',
             '(p: int := 1)',
-            '(a, b, *c := (1, 2, 3))'
+            '(a, b, *c := (1, 2, 3))',
+            'totally nonsense',
         ]
 
-        for code in pep572_invalid_codes:
+        for code in pep572_invalid_code:
             with self.subTest(test_case=code):
                 with self.assertRaises(BPCSyntaxError):
                     convert(code)

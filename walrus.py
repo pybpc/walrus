@@ -266,46 +266,48 @@ def __walrus_wrapper_lambda_%(uuid)s(%(param)s):
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 # special templates for ClassVar
-# locals dict
-LCL_DICT_TEMPLATE = '_walrus_wrapper_%(cls)s_dict = dict()'
-LCL_NAME_TEMPLATE = '_walrus_wrapper_%(cls)s_dict[%(name)r]'
-LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get(%(name)r)'
-LCL_VARS_TEMPLATE = '''\
-[setattr(%(cls)s, k, v) for k, v in _walrus_wrapper_%(cls)s_dict.items()]
-del _walrus_wrapper_%(cls)s_dict
-'''.splitlines()  # `str.splitlines` will remove trailing newline
-# class clause
-CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set(%(name)r, %(expr)s)'
-CLS_NAME_TEMPLATE = '''\
-class __WalrusWrapper%(cls)s:
-%(indentation)s"""Wrapper class for assignment expression."""
-'''.splitlines()  # `str.splitlines` will remove trailing newline
-CLS_SET_FUNC_TEMPLATE = '''\
-%(indentation)s@staticmethod
-%(indentation)sdef set(name, expr):
-%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
-%(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[name] = expr
-%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]
-'''.splitlines()  # `str.splitlines` will remove trailing newline
-CLS_GET_FUNC_TEMPLATE = '''\
-%(indentation)s@staticmethod
-%(indentation)sdef get(name):
-%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
-%(indentation)s%(indentation)sif name in _walrus_wrapper_%(cls)s_dict:
-%(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]
-%(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% name)
-'''.splitlines()  # `str.splitlines` will remove trailing newline
-CLS_EXT_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.ext_%(name)s_%(uuid)s(%(expr)s)'
-CLS_EXT_VARS_GLOBAL_TEMPLATE = '%(indentation)sglobal %(name_list)s'
-CLS_EXT_VARS_NONLOCAL_TEMPLATE = '%(indentation)snonlocal %(name_list)s'
-CLS_EXT_FUNC_TEMPLATE = '''\
-%(indentation)s@staticmethod
-%(indentation)sdef ext_%(name)s_%(uuid)s(expr):
-%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
-%(indentation)s%(indentation)s%(keyword)s %(name)s
-%(indentation)s%(indentation)s%(name)s = expr
-%(indentation)s%(indentation)sreturn %(name)s
-'''.splitlines()  # `str.splitlines` will remove trailing newline
+CLS_TEMPLATE = "(__import__('builtins').locals().__setitem__(%(name)r, %(expr)s), %(name)s)[1]"
+CLS_EXT_TEMPLATE = "(__import__('builtins').globals().__setitem__(%(name)r, %(expr)s), %(name)s)[1]"
+# # locals dict
+# LCL_DICT_TEMPLATE = '_walrus_wrapper_%(cls)s_dict = dict()'
+# LCL_NAME_TEMPLATE = '_walrus_wrapper_%(cls)s_dict[%(name)r]'
+# LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get(%(name)r)'
+# LCL_VARS_TEMPLATE = '''\
+# [setattr(%(cls)s, k, v) for k, v in _walrus_wrapper_%(cls)s_dict.items()]
+# del _walrus_wrapper_%(cls)s_dict
+# '''.splitlines()  # `str.splitlines` will remove trailing newline
+# # class clause
+# CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set(%(name)r, %(expr)s)'
+# CLS_NAME_TEMPLATE = '''\
+# class __WalrusWrapper%(cls)s:
+# %(indentation)s"""Wrapper class for assignment expression."""
+# '''.splitlines()  # `str.splitlines` will remove trailing newline
+# CLS_SET_FUNC_TEMPLATE = '''\
+# %(indentation)s@staticmethod
+# %(indentation)sdef set(name, expr):
+# %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
+# %(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[name] = expr
+# %(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]
+# '''.splitlines()  # `str.splitlines` will remove trailing newline
+# CLS_GET_FUNC_TEMPLATE = '''\
+# %(indentation)s@staticmethod
+# %(indentation)sdef get(name):
+# %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
+# %(indentation)s%(indentation)sif name in _walrus_wrapper_%(cls)s_dict:
+# %(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]
+# %(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% name)
+# '''.splitlines()  # `str.splitlines` will remove trailing newline
+# CLS_EXT_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.ext_%(name)s_%(uuid)s(%(expr)s)'
+# CLS_EXT_VARS_GLOBAL_TEMPLATE = '%(indentation)sglobal %(name_list)s'
+# CLS_EXT_VARS_NONLOCAL_TEMPLATE = '%(indentation)snonlocal %(name_list)s'
+# CLS_EXT_FUNC_TEMPLATE = '''\
+# %(indentation)s@staticmethod
+# %(indentation)sdef ext_%(name)s_%(uuid)s(expr):
+# %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
+# %(indentation)s%(indentation)s%(keyword)s %(name)s
+# %(indentation)s%(indentation)s%(name)s = expr
+# %(indentation)s%(indentation)sreturn %(name)s
+# '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 
 class Context(BaseContext):
@@ -503,7 +505,8 @@ class Context(BaseContext):
             return
 
         indent = self._indent_level + 1
-        self += self._linesep + self._indentation * indent
+        if cls_ctx is None:
+            self += self._linesep + self._indentation * indent
 
         if func:
             keyword = 'nonlocal'
@@ -620,28 +623,28 @@ class Context(BaseContext):
         local namespace dictionary.
 
         """
-        flag = self.has_expr(node)
-        code = node.get_code()
+        # flag = self.has_expr(node)
+        # code = node.get_code()
 
         # <Name: ...>
         name = node.name
-        if flag:
-            if self._pep8:
-                buffer = self._prefix if self._prefix_or_suffix else self._suffix
+        # if flag:
+        #     if self._pep8:
+        #         buffer = self._prefix if self._prefix_or_suffix else self._suffix
 
-                self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
-                                                              expected=1, linesep=self._linesep)
+        #         self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
+        #                                                       expected=1, linesep=self._linesep)
 
-            self += self._indentation * self._indent_level \
-                 + LCL_DICT_TEMPLATE % dict(cls=name.value) \
-                 + self._linesep  # noqa: E127
+        #     self += self._indentation * self._indent_level \
+        #          + LCL_DICT_TEMPLATE % dict(cls=name.value) \
+        #          + self._linesep  # noqa: E127
 
-            if self._pep8:
-                blank = 2 if self._indent_level == 0 else 1
-                buffer = self._prefix if self._prefix_or_suffix else self._suffix
+        #     if self._pep8:
+        #         blank = 2 if self._indent_level == 0 else 1
+        #         buffer = self._prefix if self._prefix_or_suffix else self._suffix
 
-                self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
-                                                              expected=1, linesep=self._linesep)
+        #         self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
+        #                                                       expected=1, linesep=self._linesep)
 
         # <Keyword: class>
         # <Name: ...>
@@ -654,30 +657,30 @@ class Context(BaseContext):
         suite = node.children[-1]
         self._process_suite_node(suite, cls_ctx=name.value)
 
-        if flag:
-            indent = self._indentation * self._indent_level
+        # if flag:
+        #     indent = self._indentation * self._indent_level
 
-            if self._pep8:
-                blank = 2 if self._indent_level == 0 else 1
-                buffer = self._prefix if self._prefix_or_suffix else self._suffix
-                self += self._linesep * self.missing_newlines(prefix=buffer, suffix='',
-                                                              expected=blank, linesep=self._linesep)
+        #     if self._pep8:
+        #         blank = 2 if self._indent_level == 0 else 1
+        #         buffer = self._prefix if self._prefix_or_suffix else self._suffix
+        #         self += self._linesep * self.missing_newlines(prefix=buffer, suffix='',
+        #                                                       expected=blank, linesep=self._linesep)
 
-            self += indent \
-                 + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) \
-                    % dict(indentation=self._indentation, cls=name.value) \
-                 + self._linesep  # noqa: E127
+        #     self += indent \
+        #          + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) \
+        #             % dict(indentation=self._indentation, cls=name.value) \
+        #          + self._linesep  # noqa: E127
 
-            if self._pep8:
-                buffer = self._prefix if self._prefix_or_suffix else self._suffix
+        #     if self._pep8:
+        #         buffer = self._prefix if self._prefix_or_suffix else self._suffix
 
-                code = ''
-                leaf = node.get_next_leaf()
-                while leaf is not None:
-                    code += leaf.get_code()
-                    leaf = leaf.get_next_leaf()
-                self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
-                                                              expected=1, linesep=self._linesep)
+        #         code = ''
+        #         leaf = node.get_next_leaf()
+        #         while leaf is not None:
+        #             code += leaf.get_code()
+        #             leaf = leaf.get_next_leaf()
+        #         self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
+        #                                                       expected=1, linesep=self._linesep)
 
     def _process_funcdef(self, node):
         """Process function definition (:token:`funcdef`).
@@ -963,7 +966,10 @@ class Context(BaseContext):
         # first, the prefix codes
         self._buffer += self._prefix + prefix
         if flag and self._pep8 and self._buffer:
-            if (self._node_before_expr is not None
+            # TODO: check if autopep8 works as expected; add _node_after_expr to BaseContext
+            if self._node_after_expr is not None and self._node_after_expr.type == 'classdef':  # patch for classdef
+                blank = 0
+            elif (self._node_before_expr is not None
                     and self._node_before_expr.type in ('funcdef', 'classdef')
                     and self._indent_level == 0):
                 blank = 2
@@ -1280,7 +1286,8 @@ class ClassContext(Context):
             return
 
         indent = self._indent_level + 1
-        self += self._linesep + self._indentation * indent
+        if func:
+            self += self._linesep + self._indentation * indent
 
         if cls_ctx is None:
             cls_ctx = self._cls_ctx
@@ -1374,9 +1381,11 @@ class ClassContext(Context):
 
         # replacing codes
         if external:
-            code = CLS_EXT_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
+            # code = CLS_EXT_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
+            code = CLS_EXT_TEMPLATE % dict(name=name, expr=expr)
         else:
-            code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=self._mangle(name), expr=expr)
+            # code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=self._mangle(name), expr=expr)
+            code = CLS_TEMPLATE % dict(name=self._mangle(name), expr=expr)
         prefix, suffix = self.extract_whitespaces(node)
         self += prefix + code + suffix
 
@@ -1424,8 +1433,9 @@ class ClassContext(Context):
         name = self._mangle(name)
         nuid = self._uuid_gen.gen()
 
-        prefix, _ = self.extract_whitespaces(node)
-        self += prefix + LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name)
+        # prefix, _ = self.extract_whitespaces(node)
+        # self += prefix + LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name)
+        self += node.get_code()
 
         self._vars.append(name)
         self._func.append(dict(name=name, uuid=nuid, keyword=self._keyword))
@@ -1469,8 +1479,9 @@ class ClassContext(Context):
         name = self._mangle(node.value)
 
         if name in self._cls_var:
-            prefix, _ = self.extract_whitespaces(node)
-            self += prefix + LCL_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name)
+            # prefix, _ = self.extract_whitespaces(node)
+            # self += prefix + LCL_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name)
+            self += node.get_code()
             return
 
         # normal processing
@@ -1568,76 +1579,77 @@ class ClassContext(Context):
         """
         flag = self.has_expr(self._root)
 
-        # strip suffix comments
-        prefix, suffix = self.split_comments(self._suffix, self._linesep)
+        self._buffer += self._prefix + self._suffix
+        # # strip suffix comments
+        # prefix, suffix = self.split_comments(self._suffix, self._linesep)
 
-        # first, the prefix codes
-        self._buffer += self._prefix + prefix
+        # # first, the prefix codes
+        # self._buffer += self._prefix + prefix
 
-        # then, the class and functions
-        indent = self._indentation * self._indent_level
-        linesep = self._linesep
-        if flag:
-            if self._pep8:
-                if (self._node_before_expr is not None
-                        and self._node_before_expr.type in ('funcdef', 'classdef')
-                        and self._indent_level == 0):
-                    blank = 2
-                else:
-                    blank = 1
-                self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix='',
-                                                                      expected=blank, linesep=self._linesep)
-            self._buffer += indent + (
-                '%s%s' % (self._linesep, indent)
-            ).join(CLS_NAME_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
+        # # then, the class and functions
+        # indent = self._indentation * self._indent_level
+        # linesep = self._linesep
+        # if flag:
+        #     if self._pep8:
+        #         if (self._node_before_expr is not None
+        #                 and self._node_before_expr.type in ('funcdef', 'classdef')
+        #                 and self._indent_level == 0):
+        #             blank = 2
+        #         else:
+        #             blank = 1
+        #         self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix='',
+        #                                                               expected=blank, linesep=self._linesep)
+        #     self._buffer += indent + (
+        #         '%s%s' % (self._linesep, indent)
+        #     ).join(CLS_NAME_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
 
-        global_list = list()
-        nonlocal_list = list()
-        for name, keyword in self._ext_vars.items():
-            if keyword == 'global':
-                global_list.append(name)
-            if keyword == 'nonlocal':
-                nonlocal_list.append(name)
-        if global_list:
-            if self._buffer:
-                self._buffer += linesep
-            name_list = ' = '.join(sorted(set(global_list)))
-            self._buffer += indent + CLS_EXT_VARS_GLOBAL_TEMPLATE % dict(
-                indentation=self._indentation, name_list=name_list
-            ) + self._linesep
-        if nonlocal_list:
-            if not global_list:
-                self._buffer += linesep
-            name_list = ' = '.join(sorted(set(nonlocal_list)))
-            self._buffer += indent + CLS_EXT_VARS_NONLOCAL_TEMPLATE % dict(
-                indentation=self._indentation, name_list=name_list
-            ) + self._linesep
+        # global_list = list()
+        # nonlocal_list = list()
+        # for name, keyword in self._ext_vars.items():
+        #     if keyword == 'global':
+        #         global_list.append(name)
+        #     if keyword == 'nonlocal':
+        #         nonlocal_list.append(name)
+        # if global_list:
+        #     if self._buffer:
+        #         self._buffer += linesep
+        #     name_list = ' = '.join(sorted(set(global_list)))
+        #     self._buffer += indent + CLS_EXT_VARS_GLOBAL_TEMPLATE % dict(
+        #         indentation=self._indentation, name_list=name_list
+        #     ) + self._linesep
+        # if nonlocal_list:
+        #     if not global_list:
+        #         self._buffer += linesep
+        #     name_list = ' = '.join(sorted(set(nonlocal_list)))
+        #     self._buffer += indent + CLS_EXT_VARS_NONLOCAL_TEMPLATE % dict(
+        #         indentation=self._indentation, name_list=name_list
+        #     ) + self._linesep
 
-        if self._buffer:
-            self._buffer += linesep
-        self._buffer += indent + (
-            '%s%s' % (self._linesep, indent)
-        ).join(CLS_GET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
+        # if self._buffer:
+        #     self._buffer += linesep
+        # self._buffer += indent + (
+        #     '%s%s' % (self._linesep, indent)
+        # ).join(CLS_GET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
 
-        if self._buffer:
-            self._buffer += linesep
-        self._buffer += indent + (
-            '%s%s' % (self._linesep, indent)
-        ).join(CLS_SET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
+        # if self._buffer:
+        #     self._buffer += linesep
+        # self._buffer += indent + (
+        #     '%s%s' % (self._linesep, indent)
+        # ).join(CLS_SET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
 
-        for func in sorted(self._ext_func, key=lambda func: func['name']):
-            if self._buffer:
-                self._buffer += linesep
-            self._buffer += indent + (
-                '%s%s' % (self._linesep, indent)
-            ).join(CLS_EXT_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
+        # for func in sorted(self._ext_func, key=lambda func: func['name']):
+        #     if self._buffer:
+        #         self._buffer += linesep
+        #     self._buffer += indent + (
+        #         '%s%s' % (self._linesep, indent)
+        #     ).join(CLS_EXT_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
 
-        # finally, the suffix codes
-        if flag and self._pep8:
-            blank = 2 if self._indent_level == 0 else 1
-            self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
-                                                                  expected=blank, linesep=self._linesep)
-        self._buffer += suffix
+        # # finally, the suffix codes
+        # if flag and self._pep8:
+        #     blank = 2 if self._indent_level == 0 else 1
+        #     self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
+        #                                                           expected=blank, linesep=self._linesep)
+        # self._buffer += suffix
 
     def _mangle(self, name):
         """Mangle variable names.

@@ -40,12 +40,17 @@ class TestWalrus(unittest.TestCase):
     """Test case."""
     all_test_cases = [fn[:-3] for fn in os.listdir(os.path.join(ROOT, 'sample')) if fn.endswith('.py')]
 
-    if sys.version_info[:2] < (3, 5):
-        all_test_cases.remove('pep572_exceptional_unpacking')  # skip unpacking test case on Python < 3.5
-    if sys.version_info[:2] < (3, 6):
-        all_test_cases.remove('pep572_exceptional_fstring')  # skip f-string test case on Python < 3.6
-    if sys.version_info[:2] < (3, 7):
-        all_test_cases.remove('annotations_pep563')  # skip test case for postponed evaluation of annotations on Python < 3.7
+    if sys.version_info[:2] < (3, 5):  # pragma: no cover
+        # skip unpacking test case on Python < 3.5
+        all_test_cases.remove('pep572_exceptional_unpacking')
+    if sys.version_info[:2] < (3, 6):  # pragma: no cover
+        # skip f-string test case on Python < 3.6
+        all_test_cases.remove('pep572_exceptional_fstring')
+        all_test_cases.remove('fstring')
+        all_test_cases.remove('debug_fstring')
+    if sys.version_info[:2] < (3, 7):  # pragma: no cover
+        # skip test case for postponed evaluation of annotations on Python < 3.7
+        all_test_cases.remove('annotations_pep563')
 
     def test_get_parser(self):  # TODO: enhance this test
         """Test the argument parser."""

@@ -11,11 +11,11 @@ API Reference
 Public Interface
 ----------------
 
-.. autofunction:: walrus.main
+.. autofunction:: walrus.convert
 
 .. autofunction:: walrus.walrus
 
-.. autofunction:: walrus.convert
+.. autofunction:: walrus.main
 
 Conversion Implementation
 -------------------------

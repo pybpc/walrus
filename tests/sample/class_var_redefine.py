@@ -12,9 +12,9 @@ class A:
     print(func := 22)
 
     @staticmethod
-    def func():
+    def func(var):
         print('foo called')
-        return 62
+        return var
 
     print(type(func))
 
@@ -62,7 +62,7 @@ class A:
 
 print('var = {}'.format(A.var))
 print('func is of type {}'.format(type(A.func)))
-print('func execution returns: {}'.format(A.func()))
+print('func execution returns: {}'.format(A.func(62)))
 print('cls is of type: {}'.format(type(A.cls)))
 print('loopvar = {}'.format(A.loopvar))
 print('mod is of type {}'.format(type(A.mod)))

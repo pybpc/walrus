@@ -1,7 +1,7 @@
 
 [run]
 branch = True
-source = walrus
+source = .
 [report]
 exclude_lines =
     if self.debug:
@@ -10,5 +10,6 @@ exclude_lines =
     if __name__ == .__main__.:
 ignore_errors = True
 omit =
-    tests/*
+    tests/sample/*
     scripts/*
+    setup.py

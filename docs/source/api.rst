@@ -118,7 +118,7 @@ rendered based on the following templates.
 .. data:: NAME_TEMPLATE
    :type: List[str]
 
-   .. code:: python
+   .. code-block:: python
 
       ['if False:',
        '%(indentation)s%(name_list)s = NotImplemented']
@@ -140,7 +140,7 @@ rendered based on the following templates.
 .. data:: CALL_TEMPLATE
    :type: str
 
-   .. code:: python
+   .. code-block:: python
 
       '__walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
 
@@ -154,7 +154,7 @@ rendered based on the following templates.
 .. data:: FUNC_TEMPLATE
    :type: List[str]
 
-   .. code:: python
+   .. code-block:: python
 
       ['def __walrus_wrapper_%(name)s_%(uuid)s(expr):',
        '%(indentation)s"""Wrapper function for assignment expression."""',
@@ -175,7 +175,7 @@ function will render based on the following templates.
 .. data:: LAMBDA_CALL_TEMPLATE
    :type: str
 
-   .. code:: python
+   .. code-block:: python
 
       '__walrus_wrapper_lambda_%(uuid)s'
 
@@ -187,7 +187,7 @@ function will render based on the following templates.
 .. data:: LAMBDA_FUNC_TEMPLATE
    :type: List[str]
 
-   .. code:: python
+   .. code-block:: python
 
       ['def __walrus_wrapper_lambda_%(uuid)s(%(param)s):',
        '%(indentation)s"""Wrapper function for lambda definitions."""',
@@ -200,188 +200,23 @@ function will render based on the following templates.
         :attr:`Config.indentation <walrus.Config.indentation>`
       * \*\*\ **kwargs** -- function record as described in :class:`Lambda`
 
-For assignment expression in *class variables* (``ClassVar``), the converted
-wrapper function will render based on the following templates.
+For assignment expression in :term:`class variables <class-variable>`
+(``ClassVar``), the converted wrapper function will render based on
+the following templates.
 
-.. data:: LCL_DICT_TEMPLATE
+.. data:: CLS_TEMPLATE
    :type: str
 
-   .. code:: python
+   .. code-block:: python
 
-      '_walrus_wrapper_%(cls)s_dict = dict()'
+      "(__import__('builtins').locals().__setitem__(%(name)r, %(expr)s), %(name)s)[1]"
 
-   Dictionary for recording declared class variables.
-
-   :Variables:
-      * **cls** -- class name
-
-.. data:: LCL_NAME_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      '_walrus_wrapper_%(cls)s_dict[%(name)r]'
-
-   Record regular assignment statements to the local dictionary.
+   *One-liner* to rewrite the original assignment expression for
+   a *regular* :term:`class variable <class-variable>` definition.
 
    :Variables:
-      * **cls** -- class name
-      * **name** -- variable name
-
-.. data:: LCL_CALL_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      '__WalrusWrapper%(cls)s.get(%(name)r)'
-
-   Fetch variable recorded in the local dictionary.
-
-   :Variables:
-      * **cls** -- class name
-      * **name** -- variable name
-
-.. data:: LCL_VARS_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      ['[setattr(%(cls)s, k, v) for k, v in _walrus_wrapper_%(cls)s_dict.items()]',
-       'del _walrus_wrapper_%(cls)s_dict']
-
-   Assign variables recorded in the local dictionary back to the class namespace.
-
-   :Variables:
-      * **cls** -- class name
-
-.. data:: CLS_CALL_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      '__WalrusWrapper%(cls)s.set(%(name)r, %(expr)s)'
-
-   Record variable in the local dictionary.
-
-   :Variables:
-      * **cls** -- class name
       * **name** -- variable name
       * **expr** -- original *right-hand-side* expression
-
-.. data:: CLS_NAME_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      ['class __WalrusWrapper%(cls)s:',
-       '%(indentation)s"""Wrapper class for assignment expression."""']
-
-   Wrapper class definition.
-
-   :Variables:
-      * **cls** -- class name
-      * **indentation** -- indentation sequence as defined in
-        :attr:`Config.indentation <walrus.Config.indentation>`
-
-.. data:: CLS_SET_FUNC_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      ['%(indentation)s@staticmethod',
-       '%(indentation)sdef set(name, expr):',
-       '%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""',
-       '%(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[name] = expr',
-       '%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]']
-
-   Classmethods for setting variables from the wrapper class context.
-
-   :Variables:
-      * **indentation** -- indentation sequence as defined in
-        :attr:`Config.indentation <walrus.Config.indentation>`
-      * **cls** -- class name
-
-.. data:: CLS_GET_FUNC_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      ['%(indentation)s@staticmethod',
-       '%(indentation)sdef get(name):',
-       '%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""',
-       '%(indentation)s%(indentation)sif name in _walrus_wrapper_%(cls)s_dict:',
-       '%(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]',
-       "%(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% name)"]
-
-   Classmethods for getting variables from the wrapper class context.
-
-   :Variables:
-      * **indentation** -- indentation sequence as defined in
-        :attr:`Config.indentation <walrus.Config.indentation>`
-      * **cls** -- class name
-
-.. data:: CLS_EXT_CALL_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      '__WalrusWrapper%(cls)s.ext_%(name)s_%(uuid)s(%(expr)s)'
-
-   Record external variable to its source scope.
-
-   :Variables:
-      * **cls** -- class name
-      * **name** -- variable name
-      * **uuid** -- UUID text
-      * **expr** -- original *right-hand-side* expression
-
-.. data:: CLS_EXT_VARS_GLOBAL_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      '%(indentation)sglobal %(name_list)s'
-
-   Declare :token:`global <global_stmt>` variables.
-
-   :Variables:
-      * **indentation** -- indentation sequence as defined in
-        :attr:`Config.indentation <walrus.Config.indentation>`
-      * **name_list** -- comma (``,``) separated list of variable names
-
-.. data:: CLS_EXT_VARS_NONLOCAL_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      '%(indentation)snonlocal %(name_list)s'
-
-   Declare :token:`nonlocal <nonlocal_stmt>` variables.
-
-   :Variables:
-      * **indentation** -- indentation sequence as defined in
-        :attr:`Config.indentation <walrus.Config.indentation>`
-      * **name_list** -- comma (``,``) separated list of variable names
-
-.. data:: CLS_EXT_FUNC_TEMPLATE
-   :type: str
-
-   .. code:: python
-
-      ['%(indentation)s@staticmethod',
-       '%(indentation)sdef ext_%(name)s_%(uuid)s(expr):',
-       '%(indentation)s%(indentation)s"""Wrapper function for assignment expression."""',
-       '%(indentation)s%(indentation)s%(keyword)s %(name)s',
-       '%(indentation)s%(indentation)s%(name)s = expr',
-       '%(indentation)s%(indentation)sreturn %(name)s']
-
-   Classmethods for injecting external variables to its source scope.
-
-   :Variables:
-      * **indentation** -- indentation sequence as defined in
-        :attr:`Config.indentation <walrus.Config.indentation>`
-      * **cls** -- class name
-      * \*\*\ **kwargs** -- function record as described in :class:`Function`
 
 .. note::
 
@@ -396,6 +231,13 @@ Conversion Contexts
    :members:
    :undoc-members:
    :private-members:
+   :show-inheritance:
+
+.. autoclass:: walrus.StringContext
+   :members:
+   :undoc-members:
+   :private-members:
+   :show-inheritance:
 
 .. autoclass:: walrus.LambdaContext
    :members:
@@ -404,6 +246,12 @@ Conversion Contexts
    :show-inheritance:
 
 .. autoclass:: walrus.ClassContext
+   :members:
+   :undoc-members:
+   :private-members:
+   :show-inheritance:
+
+.. autoclass:: walrus.ClassStringContext
    :members:
    :undoc-members:
    :private-members:

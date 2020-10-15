@@ -1162,7 +1162,7 @@ class LambdaContext(Context):
 class ClassContext(Context):
     """Class (suite) conversion context.
 
-    This class is mainly used for converting **class variables**.
+    This class is mainly used for converting *:term:`class variable <class-variable>`*.
 
     Args:
         node (parso.python.tree.Class): parso AST
@@ -1176,7 +1176,7 @@ class ClassContext(Context):
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (Literal[False]): raw context processing flag
         external (Optional[Dict[str, Literal['global', 'nonlocal']]]):
-            mapping of *class variables* declared in :token:`global <global_stmt>` and/or
+            mapping of :term:`class variable <class-variable>` declared in :token:`global <global_stmt>` and/or
             :token:`nonlocal <nonlocal_stmt>` statements
 
     Note:
@@ -1198,7 +1198,7 @@ class ClassContext(Context):
         """Assignment expression variable records (:attr:`self._ext_vars <walrus.ClassContext._ext_vars>`).
 
         The variables are the *left-hand-side* variable name of the assignment expressions
-        for *class variables* declared in :token:`global <global_stmt>` and/or
+        for :term:`class variable <class-variable>` declared in :token:`global <global_stmt>` and/or
         :token:`nonlocal <nonlocal_stmt>` statements.
 
         :rtype: Dict[str, Literal['global', 'nonlocal']]
@@ -1209,8 +1209,8 @@ class ClassContext(Context):
     @property
     def external_functions(self):
         """Assignment expression wrapper function records (:attr:`self._ext_func <walrus.ClassContext._ext_func>`)
-        for *class variables* declared in :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>`
-        statements.
+        for :term:`class variable <class-variable>` declared in :token:`global <global_stmt>` and/or
+        :token:`nonlocal <nonlocal_stmt>` statements.
 
         :rtype: List[Function]
 
@@ -1233,12 +1233,13 @@ class ClassContext(Context):
 
         #: Dict[str, Literal['global', 'nonlocal']]: Original
         #: *left-hand-side* variable names in assignment expressions for
-        #: *class variables* declared in :token:`global <global_stmt>` and/or
-        #: :token:`nonlocal <nonlocal_stmt>` statements.
+        #: :term:`class variable <class-variable>` declared in
+        #: :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>`
+        #: statements.
         self._ext_vars = external
-        #: List[Function]: Converted wrapper functions for *class variables* declared in
-        #: :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>` statements
-        #: described as :class:`Function`.
+        #: List[Function]: Converted wrapper functions for :term:`class variable <class-variable>`
+        #: declared in :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>`
+        #: statements described as :class:`Function`.
         self._ext_func = list()
 
         super().__init__(node=node, config=config, context=context,
@@ -1396,8 +1397,8 @@ class ClassContext(Context):
 
             .. _mangle: https://docs.python.org/3/reference/expressions.html?highlight=mangling#atom-identifiers
 
-        For special *class variables* declared in :token:`global <global_stmt>` and/or
-        :token:`nonlocal <nonlocal_stmt>` statements:
+        For special :term:`class variable <class-variable>` declared in :token:`global <global_stmt>`
+        and/or :token:`nonlocal <nonlocal_stmt>` statements:
 
         * The *left-hand-side* variable name will **NOT** be considered as *class variable*,
           thus shall **NOT** be recorded.
@@ -1459,7 +1460,7 @@ class ClassContext(Context):
         Args:
             node (parso.python.tree.Name): defined name node
 
-        This method processes name of defined *class variables*. The original
+        This method processes name of defined :term:`class variable <class-variable>`. The original
         variable name will be recorded in :attr:`self._vars <walrus.Context._vars>`;
         its corresponding UUID will be recorded in :attr:`self._cls_var <ClassContext._cls_var>`;
         information described as :class:`Function` will be recorded into
@@ -1584,8 +1585,7 @@ class ClassContext(Context):
 
         As in Python, adjacent string literals can be concatenated in certain
         cases, as described in the `documentation`_. Such concatenable strings
-        may contain formatted string literals (:token:`f-string <f_string>`)
-        within its scope.
+        may contain formatted string literals (:term:`f-string`) within its scope.
 
         _documentation: https://docs.python.org/3/reference/lexical_analysis.html#string-literal-concatenation
 
@@ -1609,7 +1609,7 @@ class ClassContext(Context):
         between the converted codes as :attr:`self._prefix <Context._prefix>` and
         :attr:`self._suffix <Context._suffix>`.
 
-        For special *class variables* declared in :token:`global <global_stmt>`
+        For special :term:`class variable <class-variable>` declared in :token:`global <global_stmt>`
         and/or :token:`nonlocal <nonlocal_stmt>` statements, when assigning to
         to such variables, i.e. they are on *left-hand-side* of assignment
         expressions, the expressions will be assigned with a wrapper function
@@ -1679,7 +1679,7 @@ class ClassStringContext(ClassContext):
     """String (f-string) conversion context.
 
     This class is mainly used for converting **formatted strings**
-    inside a class suite (*ClassVar*).
+    inside a class suite (:term:`ClassVar <class-variable>`).
 
     Args:
         node (parso.python.tree.Class): parso AST
@@ -1693,7 +1693,7 @@ class ClassStringContext(ClassContext):
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (Literal[True]): raw context processing flag
         external (Optional[Dict[str, Literal['global', 'nonlocal']]]):
-            mapping of *class variables* declared in :token:`global <global_stmt>` and/or
+            mapping of :term:`class variable <class-variable>` declared in :token:`global <global_stmt>` and/or
             :token:`nonlocal <nonlocal_stmt>` statements
 
     Note:

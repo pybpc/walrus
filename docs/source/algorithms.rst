@@ -14,7 +14,7 @@ make sure such variable is available from the current scope and replace the orig
 
 For example, with the samples from :pep:`572`:
 
-.. code:: python
+.. code-block:: python
 
    # Handle a matched regex
    if (match := pattern.search(data)) is not None:
@@ -22,7 +22,7 @@ For example, with the samples from :pep:`572`:
 
 it should be converted to
 
-.. code:: python
+.. code-block:: python
 
    # Handle a matched regex
    match = pattern.search(data)
@@ -33,7 +33,7 @@ However, such implementation is **NOT** generic for *assignment expressions* in 
 complex grammars and contexts, such as comprehensions per
 :pep:`Appendix B <572#appendix-b-rough-code-translations-for-comprehensions>`:
 
-.. code:: python
+.. code-block:: python
 
    a = [TARGET := EXPR for VAR in ITERABLE]
 
@@ -43,7 +43,7 @@ keywords to inject such assigned variable back into the original scope.
 
 For instance, it should convert the first example to
 
-.. code:: python
+.. code-block:: python
 
    # make sure to define ``match`` in this scope
    if False:
@@ -91,6 +91,24 @@ grammar definitions, ``walrus`` selects the keyword in the mechanism described b
 For assignment expression in :term:`lambda` functions, it shall be treated as another
 special case.
 
+Formatted String Literals
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since Python 3.6, formatted string literals (:term:`f-string`) were introduced from
+:pep:`498`. And since Python 3.8, *debug f-strings* were added to the grammar. However,
+when ``walrus`` performs the conversion on *assignment expressions* inside :term:`f-string`,
+it may break the lexical grammar and/or the original context.
+
+Therefore, we utilise :mod:`f2format` to first convert such :term:`f-string` then
+rely on ``walrus`` to perform the conversion and processing. Basically, there are
+two cases as below:
+
+1. In a string literal which contains a *debug* :term:`f-string`, as the converted
+   codes will break the original expression for self-documenting and debugging;
+2. In a :term:`class variable <class-variable>` declaration which contains any
+   :term:`f-string`, as the converted codes may break the quote level of the
+   original string.
+
 Lambda Functions
 ----------------
 
@@ -99,7 +117,7 @@ This is the foundation of converting *assignment expressions* in :term:`lambda` 
 
 For a sample :term:`lambda` function as follows:
 
-.. code:: python
+.. code-block:: python
 
    >>> foo = lambda: [x := i ** 2 for i in range(10)]
    >>> foo()
@@ -107,7 +125,7 @@ For a sample :term:`lambda` function as follows:
 
 ``walrus`` will transform the original :term:`lambda` function into a regular function first:
 
-.. code:: python
+.. code-block:: python
 
    def foo():
        return [x := i ** 2 for i in range(10)]
@@ -115,7 +133,7 @@ For a sample :term:`lambda` function as follows:
 And now, ``walrus`` can simply apply the generic conversion strategies to replace the
 *assignment expression* with a wrapper function:
 
-.. code:: python
+.. code-block:: python
 
    def foo():
        if False:
@@ -145,56 +163,32 @@ applicable to such scenarios.
 
    For :term:`method` context in the :term:`class` body, the generic conversion
    strategies are still applicable. In this section, we are generally
-   discussing conversion related to *class variables*.
+   discussing conversion related to :term:`class variables <class-variable>`.
 
 Given a :term:`class` definition as following:
 
-.. code:: python
+.. code-block:: python
 
    class A:
        bar = (foo := x ** 2)
 
-``walrus`` will rewrite all *class variables* in the current context:
+``walrus`` will rewrite all :term:`class variables <class-variable>` in the
+current context:
 
-.. code:: python
-
-   # temporary namespace for class context
-   namespace = dict()
+.. code-block:: python
 
    class A:
-       def wraps(expr):
-           """Wrapper function."""
-           namespace['foo'] = expr
-           return namespace['foo']
+       bar = ((__import__('builtins').locals().__setitem__('x', x ** 2), x)[1])
 
-       # assign to temporary namespace
-       namespace['bar'] = wraps(x ** 2)
-
-   # set attributes from temporary namespace
-   [setattr(A, k, v) for k, v in namespace.items()]
-   del namespace
-
-The major reason of doing so is that the :term:`class` is not available
-in its context, i.e. we cannot directly assign :attr:`A.foo` in the :meth:`A.wraps`
-method. Rewriting all assignments and references to *class variables* as operations
-to the ``namespace`` dictionary grants ``walrus`` an efficiently to synchronise
-all changes to such variables.
+The major reason of doing so is that :func:`locals` dictionary can (and may **only**)
+be edited directly in the :term:`class` declaration. Therefore, we can use this
+*one-liner* to rewrite the original assignment expression.
 
 However, if a variable is declared in :token:`global <global_stmt>` and/or
 :token:`nonlocal <nonlocal_stmt>` statements, it is **NOT** supposed to be assigned
-to the :term:`class` context, rather it should go to the outer scope (:term:`namespace`).
+to the :term:`class` context, rather it should go to the outer scope (:term:`namespace`),
+which will then be applicable to the *regular* conversion templates as discussed above.
 
 .. seealso::
 
-   * :data:`walrus.LCL_DICT_TEMPLATE`
-   * :data:`walrus.LCL_NAME_TEMPLATE`
-   * :data:`walrus.LCL_CALL_TEMPLATE`
-   * :data:`walrus.LCL_VARS_TEMPLATE`
-   * :data:`walrus.CLS_CALL_TEMPLATE`
-   * :data:`walrus.CLS_NAME_TEMPLATE`
-   * :data:`walrus.CLS_SET_FUNC_TEMPLATE`
-   * :data:`walrus.CLS_GET_FUNC_TEMPLATE`
-   * :data:`walrus.CLS_EXT_CALL_TEMPLATE`
-   * :data:`walrus.CLS_EXT_FUNC_TEMPLATE`
-   * :data:`walrus.CLS_EXT_VARS_GLOBAL_TEMPLATE`
-   * :data:`walrus.CLS_EXT_VARS_NONLOCAL_TEMPLATE`
+   * :data:`walrus.CLS_TEMPLATE`

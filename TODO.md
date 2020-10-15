@@ -1,3 +1,9 @@
+### October 15th, 2020
+
+- [ ] create some Jupyter notebooks for demo (maybe?)
+- [ ] revise & update usage samples in the documentation
+- [ ] reconstruct `f2format` and export APIs respectively
+
 ### November 24th, 2019
 
 - [x] resolve *classvar* conversion issue

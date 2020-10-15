@@ -48,6 +48,7 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'bpc_utils': ('https://bpc-utils.readthedocs.io/en/latest/', None),
     'parso': ('https://parso.readthedocs.io/en/latest/', None),
+    'f2format': ('https://bpc-f2format.readthedocs.io/en/latest/', None),
 }
 
 autodoc_typehints = 'description'

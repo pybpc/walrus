@@ -30,7 +30,7 @@ Installation
 
 For macOS users, ``walrus`` is available through `Homebrew`_:
 
-.. code:: shell
+.. code-block:: shell
 
    brew tap jarryshaw/tap
    brew install walrus
@@ -39,13 +39,13 @@ For macOS users, ``walrus`` is available through `Homebrew`_:
 
 You can also install from `PyPI`_ for any OS:
 
-.. code:: shell
+.. code-block:: shell
 
    pip install python-walrus
 
 Or install the latest version from the `Git repository`_:
 
-.. code:: shell
+.. code-block:: shell
 
    git clone https://github.com/pybpc/walrus.git
    cd walrus

@@ -32,6 +32,7 @@ setup(
     python_requires='>=3.4',
     zip_safe=True,
     install_requires=[
+        'f2format',          # f-string compat
         'parso>=0.6.0',      # universal AST support
         'tbtrim>=0.2.1',     # traceback trim support
         'bpc-utils>=0.7.0',  # utility library

@@ -4,9 +4,11 @@
 import argparse
 import os
 import pathlib
+import re
 import sys
 import traceback
 
+import f2format
 import parso
 import tbtrim
 from bpc_utils import (BaseContext, BPCSyntaxError, Config, TaskLock, archive_files,
@@ -267,47 +269,6 @@ def __walrus_wrapper_lambda_%(uuid)s(%(param)s):
 
 # special templates for ClassVar
 CLS_TEMPLATE = "(__import__('builtins').locals().__setitem__(%(name)r, %(expr)s), %(name)s)[1]"
-CLS_EXT_TEMPLATE = "(__import__('builtins').globals().__setitem__(%(name)r, %(expr)s), %(name)s)[1]"
-# # locals dict
-# LCL_DICT_TEMPLATE = '_walrus_wrapper_%(cls)s_dict = dict()'
-# LCL_NAME_TEMPLATE = '_walrus_wrapper_%(cls)s_dict[%(name)r]'
-# LCL_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.get(%(name)r)'
-# LCL_VARS_TEMPLATE = '''\
-# [setattr(%(cls)s, k, v) for k, v in _walrus_wrapper_%(cls)s_dict.items()]
-# del _walrus_wrapper_%(cls)s_dict
-# '''.splitlines()  # `str.splitlines` will remove trailing newline
-# # class clause
-# CLS_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.set(%(name)r, %(expr)s)'
-# CLS_NAME_TEMPLATE = '''\
-# class __WalrusWrapper%(cls)s:
-# %(indentation)s"""Wrapper class for assignment expression."""
-# '''.splitlines()  # `str.splitlines` will remove trailing newline
-# CLS_SET_FUNC_TEMPLATE = '''\
-# %(indentation)s@staticmethod
-# %(indentation)sdef set(name, expr):
-# %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
-# %(indentation)s%(indentation)s_walrus_wrapper_%(cls)s_dict[name] = expr
-# %(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]
-# '''.splitlines()  # `str.splitlines` will remove trailing newline
-# CLS_GET_FUNC_TEMPLATE = '''\
-# %(indentation)s@staticmethod
-# %(indentation)sdef get(name):
-# %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
-# %(indentation)s%(indentation)sif name in _walrus_wrapper_%(cls)s_dict:
-# %(indentation)s%(indentation)s%(indentation)sreturn _walrus_wrapper_%(cls)s_dict[name]
-# %(indentation)s%(indentation)sraise NameError('name %%r is not defined' %% name)
-# '''.splitlines()  # `str.splitlines` will remove trailing newline
-# CLS_EXT_CALL_TEMPLATE = '__WalrusWrapper%(cls)s.ext_%(name)s_%(uuid)s(%(expr)s)'
-# CLS_EXT_VARS_GLOBAL_TEMPLATE = '%(indentation)sglobal %(name_list)s'
-# CLS_EXT_VARS_NONLOCAL_TEMPLATE = '%(indentation)snonlocal %(name_list)s'
-# CLS_EXT_FUNC_TEMPLATE = '''\
-# %(indentation)s@staticmethod
-# %(indentation)sdef ext_%(name)s_%(uuid)s(expr):
-# %(indentation)s%(indentation)s"""Wrapper function for assignment expression."""
-# %(indentation)s%(indentation)s%(keyword)s %(name)s
-# %(indentation)s%(indentation)s%(name)s = expr
-# %(indentation)s%(indentation)sreturn %(name)s
-# '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 
 class Context(BaseContext):
@@ -386,12 +347,21 @@ class Context(BaseContext):
 
     * :token:`name`
 
-      - :meth:`ClassContext._process_name`
       - :meth:`ClassContext._process_defined_name`
 
     * :token:`nonlocal_stmt`
 
       - :meth:`ClassContext._process_nonlocal_stmt`
+
+    * :token:`stringliteral`
+
+      * :meth:`ClassContext._process_strings`
+      * :meth:`ClassContext._process_string_context`
+
+    * :token:`f_string`
+
+      * :meth:`ClassContext._process_fstring`
+      * :meth:`ClassContext._process_string_context`
 
     """
 
@@ -497,16 +467,13 @@ class Context(BaseContext):
             ``raw`` should be :data:`True` only if the ``node`` is in the clause of another *context*,
             where the converted wrapper functions should be inserted.
 
-            However, it seems useless in current implementation.
-
         """
         if not self.has_expr(node):
             self += node.get_code()
             return
 
         indent = self._indent_level + 1
-        if cls_ctx is None:
-            self += self._linesep + self._indentation * indent
+        self += self._linesep + self._indentation * indent
 
         if func:
             keyword = 'nonlocal'
@@ -530,6 +497,59 @@ class Context(BaseContext):
             self._lamb.extend(ctx.lambdef)
             self._vars.extend(ctx.variables)
             self._func.extend(ctx.functions)
+        self._context.extend(ctx.global_stmt)
+
+    def _process_string_context(self, node):
+        """Process string contexts (:token:`stringliteral`).
+
+        Args:
+            node (parso.python.tree.PythonNode): string literals node
+
+        This method first checks if ``node`` contains assignment expression.
+        If not, it will not perform any processing, rather just append the
+        original source code to context buffer. Later it will check if
+        ``node`` contains *debug f-string*. If not, it will process the
+        *regular* processing on each child of such ``node``.
+
+        See Also:
+            The method calls :meth:`f2format.Context.has_debug_fstring`
+            to detect *debug f-strings*.
+
+        Otherwise, it will initiate a new :class:`StringContext` instance
+        to perform the conversion process on such ``node``, which will first
+        use :mod:`f2format` to convert those formatted string literals.
+
+        Important:
+            When initialisation, ``raw`` parameter **must** be set to :data:`True`;
+            as the converted wrapper functions should be inserted in the *outer*
+            context, rather than the new :class:`StringContext` instance.
+
+        After conversion, the method will keep records of converted wrapper
+        functions (:meth:`Context.functions`), converted *lambda* statements (:meth:`Context.lambdef`)
+        and *left-hand-side* variable names (:meth:`Context.variables`) into current instance as well.
+
+        """
+        if not self.has_expr(node):
+            self += node.get_code()
+            return
+
+        # TODO: reconstruct f2format and implement such method for the case
+        # if not f2format.Context.has_debug_fstring(node):
+        if True:  # pylint: disable=using-constant-test
+            for child in node.children:
+                self._process(child)
+            return
+
+        # initiate new context
+        ctx = StringContext(node=node, config=self.config, context=self._context,
+                            indent_level=self._indent_level, keyword=self._keyword, raw=True)
+        self += ctx.string.lstrip()
+
+        # keep record
+        self._lamb.extend(ctx.lambdef)
+        self._vars.extend(ctx.variables)
+        self._func.extend(ctx.functions)
+
         self._context.extend(ctx.global_stmt)
 
     def _process_namedexpr_test(self, node):
@@ -615,36 +635,13 @@ class Context(BaseContext):
         Args:
             node (parso.python.tree.Class): class node
 
-        This method inserts the local namespace dictionary rendered from
-        :data:`LCL_DICT_TEMPLATE` before the class definition. Then it
-        converts the whole class suite context with :meth:`~Context._process_suite_node`.
-        Later, it appends the reassignment code block rendered from
-        :data:`LCL_VARS_TEMPLATE` to put back the attributes from the temporary
-        local namespace dictionary.
+        This method converts the whole class suite context with
+        :meth:`~Context._process_suite_node` through
+        :class:`ClassContext` respectively.
 
         """
-        # flag = self.has_expr(node)
-        # code = node.get_code()
-
         # <Name: ...>
         name = node.name
-        # if flag:
-        #     if self._pep8:
-        #         buffer = self._prefix if self._prefix_or_suffix else self._suffix
-
-        #         self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
-        #                                                       expected=1, linesep=self._linesep)
-
-        #     self += self._indentation * self._indent_level \
-        #          + LCL_DICT_TEMPLATE % dict(cls=name.value) \
-        #          + self._linesep  # noqa: E127
-
-        #     if self._pep8:
-        #         blank = 2 if self._indent_level == 0 else 1
-        #         buffer = self._prefix if self._prefix_or_suffix else self._suffix
-
-        #         self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
-        #                                                       expected=1, linesep=self._linesep)
 
         # <Keyword: class>
         # <Name: ...>
@@ -656,31 +653,6 @@ class Context(BaseContext):
         # PythonNode(suite, [...]) / PythonNode(simple_stmt, [...])
         suite = node.children[-1]
         self._process_suite_node(suite, cls_ctx=name.value)
-
-        # if flag:
-        #     indent = self._indentation * self._indent_level
-
-        #     if self._pep8:
-        #         blank = 2 if self._indent_level == 0 else 1
-        #         buffer = self._prefix if self._prefix_or_suffix else self._suffix
-        #         self += self._linesep * self.missing_newlines(prefix=buffer, suffix='',
-        #                                                       expected=blank, linesep=self._linesep)
-
-        #     self += indent \
-        #          + ('%s%s' % (self._linesep, indent)).join(LCL_VARS_TEMPLATE) \
-        #             % dict(indentation=self._indentation, cls=name.value) \
-        #          + self._linesep  # noqa: E127
-
-        #     if self._pep8:
-        #         buffer = self._prefix if self._prefix_or_suffix else self._suffix
-
-        #         code = ''
-        #         leaf = node.get_next_leaf()
-        #         while leaf is not None:
-        #             code += leaf.get_code()
-        #             leaf = leaf.get_next_leaf()
-        #         self += self._linesep * self.missing_newlines(prefix=buffer, suffix=code,
-        #                                                       expected=1, linesep=self._linesep)
 
     def _process_funcdef(self, node):
         """Process function definition (:token:`funcdef`).
@@ -958,18 +930,16 @@ class Context(BaseContext):
         :data:`True`, it will insert the codes in compliance with :pep:`8`.
 
         """
-        flag = self.has_expr(self._root)
+        flag = any((self._vars, self._func, self._lamb))  # if have codes to insert
 
         # strip suffix comments
         prefix, suffix = self.split_comments(self._suffix, self._linesep)
+        suffix_linesep = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII).group('linesep')
 
         # first, the prefix codes
-        self._buffer += self._prefix + prefix
+        self._buffer += self._prefix + prefix + suffix_linesep
         if flag and self._pep8 and self._buffer:
-            # TODO: check if autopep8 works as expected; add _node_after_expr to BaseContext
-            if self._node_after_expr is not None and self._node_after_expr.type == 'classdef':  # patch for classdef
-                blank = 0
-            elif (self._node_before_expr is not None
+            if (self._node_before_expr is not None
                     and self._node_before_expr.type in ('funcdef', 'classdef')
                     and self._indent_level == 0):
                 blank = 2
@@ -1007,7 +977,7 @@ class Context(BaseContext):
             blank = 2 if self._indent_level == 0 else 1
             self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
                                                                   expected=blank, linesep=self._linesep)
-        self._buffer += suffix
+        self._buffer += suffix.lstrip(self._linesep)
 
     @classmethod
     def has_expr(cls, node):
@@ -1027,6 +997,9 @@ class Context(BaseContext):
                 if cls.has_expr(child):
                     return True
         return False
+
+    # backward compatibility and auxiliary alias
+    has_walrus = has_expr
 
     @classmethod
     def guess_keyword(cls, node):
@@ -1077,6 +1050,41 @@ class Context(BaseContext):
         return False
 
 
+class StringContext(Context):
+    """String (f-string) conversion context.
+
+    This class is mainly used for converting **formatted strings**.
+
+    Args:
+        node (parso.python.tree.Lambda): parso AST
+        config (Config): conversion configurations
+
+    Keyword Args:
+        indent_level (int): current indentation level
+        keyword (Literal['nonlocal']): keyword for wrapper function
+        context (Optional[List[str]]): global context (:term:`namespace`)
+        raw (Literal[True]): raw processing flag
+
+    Note:
+        * ``raw`` should always be :data:`True`.
+
+    As the conversion in :class:`Context` changes the original expression,
+    which may change the content of *debug f-string*.
+
+    """
+
+    def __init__(self, node, config, *, indent_level=0, keyword=None, context=None, raw=False):
+        # convert using f2format first
+        prefix, suffix = self.extract_whitespaces(node)
+        code = f2format.convert(node.get_code().strip())
+        node = parso_parse(code, filename=config.filename, version=config.source_version)
+
+        # call super init
+        super().__init__(node, config, indent_level=indent_level,
+                         keyword=keyword, context=context, raw=raw)
+        self._buffer = prefix + self._buffer + suffix
+
+
 class LambdaContext(Context):
     """Lambda (suite) conversion context.
 
@@ -1090,7 +1098,7 @@ class LambdaContext(Context):
         indent_level (int): current indentation level
         keyword (Literal['nonlocal']): keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
-        raw (False): raw processing flag
+        raw (Literal[False]): raw processing flag
 
     Note:
         * ``keyword`` should always be ``'nonlocal'``.
@@ -1166,7 +1174,7 @@ class ClassContext(Context):
         indent_level (int): current indentation level
         keyword (Optional[str]): keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
-        raw (False): raw context processing flag
+        raw (Literal[False]): raw context processing flag
         external (Optional[Dict[str, Literal['global', 'nonlocal']]]):
             mapping of *class variables* declared in :token:`global <global_stmt>` and/or
             :token:`nonlocal <nonlocal_stmt>` statements
@@ -1209,11 +1217,8 @@ class ClassContext(Context):
         """
         return self._ext_func
 
-    def __init__(self, node, config, *,
-                 cls_ctx, cls_var=None,
-                 indent_level=0, keyword=None,
-                 context=None, raw=False,
-                 external=None):
+    def __init__(self, node, config, *, cls_ctx, cls_var=None, indent_level=0,
+                 keyword=None, context=None, raw=False, external=None):
         if cls_var is None:
             cls_var = dict()
         if external is None:
@@ -1278,16 +1283,13 @@ class ClassContext(Context):
             ``raw`` should be :data:`True` only if the ``node`` is in the clause of another *context*,
             where the converted wrapper functions should be inserted.
 
-            However, it seems useless in current implementation.
-
         """
         if not self.has_expr(node):
             self += node.get_code()
             return
 
         indent = self._indent_level + 1
-        if func:
-            self += self._linesep + self._indentation * indent
+        self += self._linesep + self._indentation * indent
 
         if cls_ctx is None:
             cls_ctx = self._cls_ctx
@@ -1321,6 +1323,56 @@ class ClassContext(Context):
             self._ext_func.extend(ctx.external_functions)
         self._context.extend(ctx.global_stmt)
 
+    def _process_string_context(self, node):
+        """Process string contexts (:token:`stringliteral`).
+
+        Args:
+            node (parso.python.tree.PythonNode): string literals node
+
+        This method first checks if ``node`` contains assignment expression.
+        If not, it will not perform any processing, rather just append the
+        original source code to context buffer.
+
+        If ``node`` contains assignment expression, then it will initiate a new
+        :class:`ClassStringContext` instance to perform the conversion process
+        on such ``node``, which will first use :mod:`f2format` to convert those
+        formatted string literals.
+
+        Important:
+            When initialisation, ``raw`` parameter **must** be set to :data:`True`;
+            as the converted wrapper functions should be inserted in the *outer*
+            context, rather than the new :class:`ClassStringContext` instance.
+
+        After conversion, the method will keep records of converted wrapper
+        functions (:attr:`Context.functions`), converted *lambda* statements (:attr:`Context.lambdef`)
+        and *left-hand-side* variable names (:attr:`Context.variables`), class variable
+        (:attr:`ClassContext.cls_var`), external variables (:attr:`ClassContext.external_variables`),
+        wrapper functions for external variables (:attr:`ClassContext.external_functions`) into current
+        instance as well.
+
+        """
+        if not self.has_expr(node):
+            self += node.get_code()
+            return
+
+        # initiate new context
+        ctx = ClassStringContext(node=node, config=self.config,
+                                 cls_ctx=self._cls_ctx, cls_var=self._cls_var,
+                                 context=self._context, indent_level=self._indent_level,
+                                 keyword=self._keyword, raw=True, external=self._ext_vars)
+        self += ctx.string.lstrip()
+
+        # keep record
+        self._lamb.extend(ctx.lambdef)
+        self._vars.extend(ctx.variables)
+        self._func.extend(ctx.functions)
+
+        self._cls_var.update(ctx.cls_var)
+        self._ext_vars.update(ctx.external_variables)
+        self._ext_func.extend(ctx.external_functions)
+
+        self._context.extend(ctx.global_stmt)
+
     def _process_namedexpr_test(self, node):
         """Process assignment expression (:token:`namedexpr_test`).
 
@@ -1334,8 +1386,8 @@ class ClassContext(Context):
           :attr:`self._vars <walrus.Context._vars>`; and its corresponding UUID will
           be recorded in :attr:`self._cls_var <ClassContext._cls_var>`.
         * The *right-hand-side* expression will be converted using another
-          :class:`ClassContext` instance and replaced with a wrapper function call
-          rendered from :data:`CLS_CALL_TEMPLATE`; information described as
+          :class:`ClassContext` instance and replaced with a wrapper tuple with
+          attribute setting from :data:`CLS_TEMPLATE`; information described as
           :class:`Function` will be recorded into :attr:`self._func <walrus.Context._func>`.
 
         Important:
@@ -1350,7 +1402,7 @@ class ClassContext(Context):
         * The *left-hand-side* variable name will **NOT** be considered as *class variable*,
           thus shall **NOT** be recorded.
         * The expression will be replaced with a wrapper function call rendered from
-          :data:`CLS_EXT_CALL_TEMPLATE`; information described as :class:`Function` will be
+          :data:`CALL_TEMPLATE`; information described as :class:`Function` will be
           recorded into :attr:`self._ext_func <walrus.ClassContext._ext_func>` instead.
 
         """
@@ -1381,10 +1433,8 @@ class ClassContext(Context):
 
         # replacing codes
         if external:
-            # code = CLS_EXT_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name, uuid=nuid, expr=expr)
-            code = CLS_EXT_TEMPLATE % dict(name=name, expr=expr)
+            code = CALL_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
         else:
-            # code = CLS_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=self._mangle(name), expr=expr)
             code = CLS_TEMPLATE % dict(name=self._mangle(name), expr=expr)
         prefix, suffix = self.extract_whitespaces(node)
         self += prefix + code + suffix
@@ -1410,11 +1460,9 @@ class ClassContext(Context):
             node (parso.python.tree.Name): defined name node
 
         This method processes name of defined *class variables*. The original
-        variable name will be replaced with a :obj:`dict` assignment statement
-        rendered from :data:`LCL_NAME_TEMPLATE`; and will be recorded in
-        :attr:`self._vars <walrus.Context._vars>`; its corresponding UUID will
-        be recorded in :attr:`self._cls_var <ClassContext._cls_var>`; information
-        described as :class:`Function` will be recorded into
+        variable name will be recorded in :attr:`self._vars <walrus.Context._vars>`;
+        its corresponding UUID will be recorded in :attr:`self._cls_var <ClassContext._cls_var>`;
+        information described as :class:`Function` will be recorded into
         :attr:`self._func <walrus.Context._func>`.
 
         Note:
@@ -1424,18 +1472,14 @@ class ClassContext(Context):
 
         """
         name = node.value
+        self += node.get_code()
 
         # if declared in global/nonlocal statements
         if name in self._ext_vars:
-            self += node.get_code()
             return
 
         name = self._mangle(name)
         nuid = self._uuid_gen.gen()
-
-        # prefix, _ = self.extract_whitespaces(node)
-        # self += prefix + LCL_NAME_TEMPLATE % dict(cls=self._cls_ctx, name=name)
-        self += node.get_code()
 
         self._vars.append(name)
         self._func.append(dict(name=name, uuid=nuid, keyword=self._keyword))
@@ -1464,28 +1508,6 @@ class ClassContext(Context):
                 self._process_defined_name(child)
                 continue
             self += child.get_code()
-
-    def _process_name(self, node):
-        """Process variable name (:token:`name`).
-
-        Args:
-            node (parso.python.tree.Name): variable name
-
-        This method processes the reference of variables in the class context.
-        If the variable is a defined *class variable*, then it will be replaced
-        with codes rendered from :data:`LCL_CALL_TEMPLATE`.
-
-        """
-        name = self._mangle(node.value)
-
-        if name in self._cls_var:
-            # prefix, _ = self.extract_whitespaces(node)
-            # self += prefix + LCL_CALL_TEMPLATE % dict(cls=self._cls_ctx, name=name)
-            self += node.get_code()
-            return
-
-        # normal processing
-        self += node.get_code()
 
     def _process_global_stmt(self, node):
         """Process function definition (:token:`global_stmt`).
@@ -1554,6 +1576,31 @@ class ClassContext(Context):
         # process code
         self += node.get_code()
 
+    def _process_strings(self, node):
+        """Process concatenable strings (:token:`stringliteral`).
+
+        Args:
+            node (parso.python.tree.PythonNode): concatentable strings node
+
+        As in Python, adjacent string literals can be concatenated in certain
+        cases, as described in the `documentation`_. Such concatenable strings
+        may contain formatted string literals (:token:`f-string <f_string>`)
+        within its scope.
+
+        _documentation: https://docs.python.org/3/reference/lexical_analysis.html#string-literal-concatenation
+
+        """
+        self._process_string_context(node)
+
+    def _process_fstring(self, node):
+        """Process formatted strings (:token:`f_string`).
+
+        Args:
+            node (parso.python.tree.PythonNode): formatted strings node
+
+        """
+        self._process_string_context(node)
+
     def _concat(self):
         """Concatenate final string.
 
@@ -1562,94 +1609,48 @@ class ClassContext(Context):
         between the converted codes as :attr:`self._prefix <Context._prefix>` and
         :attr:`self._suffix <Context._suffix>`.
 
-        The inserted codes include wrapper namespace class declaration rendered from
-        :data:`CLS_NAME_TEMPLATE` and wrapper function definitions rendered from
-        :data:`CLS_GET_FUNC_TEMPLATE` and :data:`CLS_SET_FUNC_TEMPLATE`. If
-        :attr:`self._pep8 <Context._pep8>` is :data:`True`, it will insert the codes
-        in compliance with :pep:`8`.
-
-        Also, for special *class variables* declared in :token:`global <global_stmt>`
-        and/or :token:`nonlocal <nonlocal_stmt>` statements, they will be declared again
-        with its original keyword in the wrapper class context rendered from
-        :data:`CLS_EXT_VARS_GLOBAL_TEMPLATE` and :data:`CLS_EXT_VARS_NONLOCAL_TEMPLATE`.
-        When assigning to to such variables, i.e. they are on *left-hand-side* of
-        assignment expressions, the expressions will be assigned with a wrapper function
-        rendered from :data:`CLS_EXT_FUNC_TEMPLATE`.
+        For special *class variables* declared in :token:`global <global_stmt>`
+        and/or :token:`nonlocal <nonlocal_stmt>` statements, when assigning to
+        to such variables, i.e. they are on *left-hand-side* of assignment
+        expressions, the expressions will be assigned with a wrapper function
+        rendered from :data:`FUNC_TEMPLATE`.
 
         """
         flag = self.has_expr(self._root)
 
-        self._buffer += self._prefix + self._suffix
-        # # strip suffix comments
-        # prefix, suffix = self.split_comments(self._suffix, self._linesep)
+        # strip suffix comments
+        prefix, suffix = self.split_comments(self._suffix, self._linesep)
+        suffix_linesep = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII).group('linesep')
 
-        # # first, the prefix codes
-        # self._buffer += self._prefix + prefix
+        # first, the prefix codes
+        self._buffer += self._prefix + prefix + suffix_linesep
 
-        # # then, the class and functions
-        # indent = self._indentation * self._indent_level
-        # linesep = self._linesep
-        # if flag:
-        #     if self._pep8:
-        #         if (self._node_before_expr is not None
-        #                 and self._node_before_expr.type in ('funcdef', 'classdef')
-        #                 and self._indent_level == 0):
-        #             blank = 2
-        #         else:
-        #             blank = 1
-        #         self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix='',
-        #                                                               expected=blank, linesep=self._linesep)
-        #     self._buffer += indent + (
-        #         '%s%s' % (self._linesep, indent)
-        #     ).join(CLS_NAME_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
+        # then, the class and functions
+        indent = self._indentation * self._indent_level
+        linesep = self._linesep
+        if flag and self._pep8:
+            if (self._node_before_expr is not None
+                    and self._node_before_expr.type in ('funcdef', 'classdef')
+                    and self._indent_level == 0):
+                blank = 2
+            else:
+                blank = 1
+            self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix='',
+                                                                  expected=blank, linesep=self._linesep)
 
-        # global_list = list()
-        # nonlocal_list = list()
-        # for name, keyword in self._ext_vars.items():
-        #     if keyword == 'global':
-        #         global_list.append(name)
-        #     if keyword == 'nonlocal':
-        #         nonlocal_list.append(name)
-        # if global_list:
-        #     if self._buffer:
-        #         self._buffer += linesep
-        #     name_list = ' = '.join(sorted(set(global_list)))
-        #     self._buffer += indent + CLS_EXT_VARS_GLOBAL_TEMPLATE % dict(
-        #         indentation=self._indentation, name_list=name_list
-        #     ) + self._linesep
-        # if nonlocal_list:
-        #     if not global_list:
-        #         self._buffer += linesep
-        #     name_list = ' = '.join(sorted(set(nonlocal_list)))
-        #     self._buffer += indent + CLS_EXT_VARS_NONLOCAL_TEMPLATE % dict(
-        #         indentation=self._indentation, name_list=name_list
-        #     ) + self._linesep
+        for index, func in enumerate(sorted(self._ext_func, key=lambda func: func['name'])):
+            if index > 0:
+                self._buffer += linesep
+            self._buffer += indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
 
-        # if self._buffer:
-        #     self._buffer += linesep
-        # self._buffer += indent + (
-        #     '%s%s' % (self._linesep, indent)
-        # ).join(CLS_GET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
-
-        # if self._buffer:
-        #     self._buffer += linesep
-        # self._buffer += indent + (
-        #     '%s%s' % (self._linesep, indent)
-        # ).join(CLS_SET_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx) + linesep
-
-        # for func in sorted(self._ext_func, key=lambda func: func['name']):
-        #     if self._buffer:
-        #         self._buffer += linesep
-        #     self._buffer += indent + (
-        #         '%s%s' % (self._linesep, indent)
-        #     ).join(CLS_EXT_FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
-
-        # # finally, the suffix codes
-        # if flag and self._pep8:
-        #     blank = 2 if self._indent_level == 0 else 1
-        #     self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
-        #                                                           expected=blank, linesep=self._linesep)
-        # self._buffer += suffix
+        # finally, the suffix codes
+        if flag and self._pep8:
+            blank = 2 if self._indent_level == 0 else 1
+            self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
+                                                                  expected=blank, linesep=self._linesep)
+        self._buffer += suffix.lstrip(self._linesep)
 
     def _mangle(self, name):
         """Mangle variable names.
@@ -1672,6 +1673,54 @@ class ClassContext(Context):
 
         # perform mangling, remove leading underscores from the class name when inserting
         return '_%(cls)s%(name)s' % dict(cls=self._cls_ctx.lstrip('_'), name=name)
+
+
+class ClassStringContext(ClassContext):
+    """String (f-string) conversion context.
+
+    This class is mainly used for converting **formatted strings**
+    inside a class suite (*ClassVar*).
+
+    Args:
+        node (parso.python.tree.Class): parso AST
+        config (Config): conversion configurations
+
+    Keyword Args:
+        cls_ctx (str): class context name
+        cls_var (Dict[str, str]): mapping for assignment variable and its UUID
+        indent_level (int): current indentation level
+        keyword (Optional[str]): keyword for wrapper function
+        context (Optional[List[str]]): global context (:term:`namespace`)
+        raw (Literal[True]): raw context processing flag
+        external (Optional[Dict[str, Literal['global', 'nonlocal']]]):
+            mapping of *class variables* declared in :token:`global <global_stmt>` and/or
+            :token:`nonlocal <nonlocal_stmt>` statements
+
+    Note:
+        ``raw`` should always be :data:`True`.
+
+    As the conversion in :class:`ClassContext` introduced quotes (``'``)
+    into the converted codes, it may cause conflicts on the string parsing
+    if the assignment expression was inside a formatted string.
+
+    Therefore, we will use :mod:`f2format` ahead to convert such formatted
+    strings into normat :func:`str.format` calls then convert any assignment
+    expressions it may contain.
+
+    """
+
+    def __init__(self, node, config, *, cls_ctx, cls_var=None, indent_level=0,
+                 keyword=None, context=None, raw=False, external=None):
+        # convert using f2format first
+        prefix, suffix = self.extract_whitespaces(node)
+        code = f2format.convert(node.get_code().strip())
+        node = parso_parse(code, filename=config.filename, version=config.source_version)
+
+        # call super init
+        super().__init__(node=node, config=config, cls_ctx=cls_ctx, cls_var=cls_var,
+                         context=context, indent_level=indent_level, keyword=keyword,
+                         raw=raw, external=external)
+        self._buffer = prefix + self._buffer + suffix
 
 
 ###############################################################################
@@ -1716,7 +1765,8 @@ def convert(code, filename=None, *, source_version=None, linesep=None, indentati
     pep8 = _get_pep8_option(pep8)
 
     # pack conversion configuration
-    config = Config(linesep=linesep, indentation=indentation, pep8=pep8)
+    config = Config(linesep=linesep, indentation=indentation, pep8=pep8,
+                    filename=filename, source_version=source_version)
 
     # convert source string
     result = Context(module, config).string

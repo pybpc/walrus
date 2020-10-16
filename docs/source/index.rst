@@ -41,7 +41,7 @@ You can also install from `PyPI`_ for any OS:
 
 .. code-block:: shell
 
-   pip install python-walrus
+   pip install bpc-walrus
 
 Or install the latest version from the `Git repository`_:
 

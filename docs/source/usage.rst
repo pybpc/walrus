@@ -189,3 +189,63 @@ API Usage
 If you want to programmatically invoke ``walrus``, you may want to look at
 :doc:`api`. The :func:`walrus.convert` and :func:`walrus.walrus`
 functions should be most commonly used.
+
+Disutils/Setuptools Integration
+-------------------------------
+
+``walrus`` can also be directly integrated within your ``setup.py`` script
+to dynamically convert *assignment expressions* upon installation:
+
+.. code-block:: python
+   :emphasize-lines: 21,33,36
+
+   import subprocess
+   import sys
+
+   try:
+       from setuptools import setup
+       from setuptools.command.build_py import build_py
+   except ImportError:
+       from distutils.core import setup
+       from distutils.command.build_py import build_py
+
+   version_info = sys.version_info[:2]
+
+
+   class build(build_py):
+       """Add on-build backport code conversion."""
+
+       def run(self):
+           if version_info < (3, 8):
+               try:
+                   subprocess.check_call(  # nosec
+                       [sys.executable, '-m', 'walrus', '--no-archive', 'PACKAGENAME']
+                   )
+               except subprocess.CalledProcessError as error:
+                   print('Failed to perform assignment expression backport compiling.'
+                         'Please consider manually install `bpc-walrus` and try again.', file=sys.stderr)
+                   sys.exit(error.returncode)
+           build_py.run(self)
+
+
+   setup(
+       ...
+       setup_requires=[
+           'bpc-walrus; python_version < "3.8"',
+       ],
+       cmdclass={
+           'build_py': build,
+       },
+   )
+
+Or, as :pep:`518` proposed, you may simply add ``bpc-walrus`` to
+the ``requires`` list from the ``[build-system]`` section in the
+``pyproject.toml`` file:
+
+.. code-block:: toml
+   :emphasize-lines: 3
+
+   [built-system]
+   # Minimum requirements for the build system to execute.
+   requires = ["setuptools", "wheel", "bpc-walrus"]  # PEP 508 specifications.
+   ...

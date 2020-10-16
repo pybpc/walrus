@@ -27,6 +27,7 @@ requests = "*"
 rstcheck = "*"
 sphinx = "*"
 sphinxemoji = "*"
+sphinx-autodoc-typehints = "*"
 
 [packages]
 tbtrim = "*"

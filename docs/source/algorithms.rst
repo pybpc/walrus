@@ -104,7 +104,7 @@ rely on ``walrus`` to perform the conversion and processing. Basically, there ar
 two cases as below:
 
 1. In a string literal which contains a *debug* :term:`f-string`, as the converted
-   codes will break the original expression for self-documenting and debugging;
+   codes will change the original expression for self-documenting and debugging;
 2. In a :term:`class variable <class-variable>` declaration which contains any
    :term:`f-string`, as the converted codes may break the quote level of the
    original string.

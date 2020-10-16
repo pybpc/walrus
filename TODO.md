@@ -1,7 +1,7 @@
 ### October 15th, 2020
 
-- [ ] create some Jupyter notebooks for demo (maybe?)
-- [ ] revise & update usage samples in the documentation
+- [ ] ~create some Jupyter notebooks for demo (maybe?)~
+- [x] revise & update usage samples in the documentation
 - [ ] reconstruct `f2format` and export APIs respectively
 
 ### November 24th, 2019

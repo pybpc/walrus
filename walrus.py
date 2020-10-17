@@ -355,13 +355,15 @@ class Context(BaseContext):
 
     * :token:`stringliteral`
 
+      * :meth:`Context._process_strings`
+      * :meth:`Context._process_string_context`
       * :meth:`ClassContext._process_strings`
       * :meth:`ClassContext._process_string_context`
 
     * :token:`f_string`
 
+      * :meth:`Context._process_fstring`
       * :meth:`ClassContext._process_fstring`
-      * :meth:`ClassContext._process_string_context`
 
     """
 
@@ -559,7 +561,7 @@ class Context(BaseContext):
             node (parso.python.tree.PythonNode): assignment expression node
 
         This method converts the assignment expression into wrapper function
-        and extracts related records for inserting converted codes.
+        and extracts related records for inserting converted code.
 
         * The *left-hand-side* variable name will be recorded in
           :attr:`self._vars <walrus.Context._vars>`.
@@ -582,7 +584,7 @@ class Context(BaseContext):
         self._vars.extend(ctx.variables)
         self._func.extend(ctx.functions)
 
-        # replacing codes
+        # replacing code
         code = CALL_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
         prefix, suffix = self.extract_whitespaces(node)
         self += prefix + code + suffix
@@ -920,23 +922,23 @@ class Context(BaseContext):
 
         This method tries to inserted the recorded wrapper functions and variables
         at the very location where starts to contain assignment expressions, i.e.
-        between the converted codes as :attr:`self._prefix <Context._prefix>` and
+        between the converted code as :attr:`self._prefix <Context._prefix>` and
         :attr:`self._suffix <Context._suffix>`.
 
-        The inserted codes include variable declaration rendered from
+        The inserted code include variable declaration rendered from
         :data:`NAME_TEMPLATE`, wrapper function definitions rendered from
         :data:`FUNC_TEMPLATE` and extracted *lambda* statements rendered from
         :data:`LAMBDA_FUNC_TEMPLATE`. If :attr:`self._pep8 <Context._pep8>` is
-        :data:`True`, it will insert the codes in compliance with :pep:`8`.
+        :data:`True`, it will insert the code in compliance with :pep:`8`.
 
         """
-        flag = any((self._vars, self._func, self._lamb))  # if have codes to insert
+        flag = any((self._vars, self._func, self._lamb))  # if have code to insert
 
         # strip suffix comments
         prefix, suffix = self.split_comments(self._suffix, self._linesep)
         suffix_linesep = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII).group('linesep')
 
-        # first, the prefix codes
+        # first, the prefix code
         self._buffer += self._prefix + prefix + suffix_linesep
         if flag and self._pep8 and self._buffer:
             if (self._node_before_expr is not None
@@ -972,7 +974,7 @@ class Context(BaseContext):
                 '%s%s' % (self._linesep, indent)
             ).join(LAMBDA_FUNC_TEMPLATE) % dict(indentation=self._indentation, **lamb) + self._linesep
 
-        # finally, the suffix codes
+        # finally, the suffix code
         if flag and self._pep8:
             blank = 2 if self._indent_level == 0 else 1
             self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
@@ -1110,16 +1112,16 @@ class LambdaContext(Context):
         """Concatenate final string.
 
         Since conversion of *lambda* statements doesn't involve inserting
-        points, this method first simply adds wrapper codes to the buffer
+        points, this method first simply adds wrapper code to the buffer
         (:data:`self._buffer <Context._buffer>`); then it adds a *return*
         statement yielding the converted *lambda* suite stored in
         :data:`self._prefix <Context._prefix>` and :data:`self._suffix <Context._suffix>`.
 
-        The wrapper codes include variable declaration rendered from
+        The wrapper code include variable declaration rendered from
         :data:`NAME_TEMPLATE`, wrapper function definitions rendered from
         :data:`FUNC_TEMPLATE` and extracted *lambda* statements rendered from
         :data:`LAMBDA_FUNC_TEMPLATE`. If :attr:`self._pep8 <Context._pep8>` is
-        :data:`True`, it will insert the codes in compliance with :pep:`8`.
+        :data:`True`, it will insert the code in compliance with :pep:`8`.
 
         """
         flag = self.has_expr(self._root)
@@ -1155,7 +1157,7 @@ class LambdaContext(Context):
         # then, the `return` statement
         self._buffer += indent + 'return'
 
-        # finally, the source codes
+        # finally, the source code
         self._buffer += self._prefix + self._suffix
 
 
@@ -1381,7 +1383,7 @@ class ClassContext(Context):
             node (parso.python.tree.PythonNode): assignment expression node
 
         This method converts the assignment expression into wrapper function
-        and extracts related records for inserting converted codes.
+        and extracts related records for inserting converted code.
 
         * The *left-hand-side* variable name will be recorded in
           :attr:`self._vars <walrus.Context._vars>`; and its corresponding UUID will
@@ -1432,7 +1434,7 @@ class ClassContext(Context):
         # if declared in global/nonlocal statements
         external = name in self._ext_vars
 
-        # replacing codes
+        # replacing code
         if external:
             code = CALL_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
         else:
@@ -1606,7 +1608,7 @@ class ClassContext(Context):
 
         This method tries to inserted the recorded wrapper functions and variables
         at the very location where starts to contain assignment expressions, i.e.
-        between the converted codes as :attr:`self._prefix <Context._prefix>` and
+        between the converted code as :attr:`self._prefix <Context._prefix>` and
         :attr:`self._suffix <Context._suffix>`.
 
         For special :term:`class variable <class-variable>` declared in :token:`global <global_stmt>`
@@ -1622,7 +1624,7 @@ class ClassContext(Context):
         prefix, suffix = self.split_comments(self._suffix, self._linesep)
         suffix_linesep = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII).group('linesep')
 
-        # first, the prefix codes
+        # first, the prefix code
         self._buffer += self._prefix + prefix + suffix_linesep
 
         # then, the class and functions
@@ -1645,7 +1647,7 @@ class ClassContext(Context):
                 '%s%s' % (self._linesep, indent)
             ).join(FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
 
-        # finally, the suffix codes
+        # finally, the suffix code
         if flag and self._pep8:
             blank = 2 if self._indent_level == 0 else 1
             self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
@@ -1700,7 +1702,7 @@ class ClassStringContext(ClassContext):
         ``raw`` should always be :data:`True`.
 
     As the conversion in :class:`ClassContext` introduced quotes (``'``)
-    into the converted codes, it may cause conflicts on the string parsing
+    into the converted code, it may cause conflicts on the string parsing
     if the assignment expression was inside a formatted string.
 
     Therefore, we will use :mod:`f2format` ahead to convert such formatted

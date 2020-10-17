@@ -1058,7 +1058,7 @@ class StringContext(Context):
     This class is mainly used for converting **formatted strings**.
 
     Args:
-        node (parso.python.tree.Lambda): parso AST
+        node (parso.python.tree.PythonNode): parso AST
         config (Config): conversion configurations
 
     Keyword Args:
@@ -1684,7 +1684,7 @@ class ClassStringContext(ClassContext):
     inside a class suite (:term:`ClassVar <class-variable>`).
 
     Args:
-        node (parso.python.tree.Class): parso AST
+        node (parso.python.tree.PythonNode): parso AST
         config (Config): conversion configurations
 
     Keyword Args:

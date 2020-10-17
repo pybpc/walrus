@@ -169,8 +169,8 @@ rendered based on the following templates.
         :attr:`Config.indentation <walrus.Config.indentation>`
       * \*\*\ **kwargs** -- function record as described in :class:`Function`
 
-For assignment expression in *lambda* statements, the converted wrapper
-function will render based on the following templates.
+For assignment expression in *lambda* expressions, the converted wrapper
+function will be rendered based on the following templates.
 
 .. data:: LAMBDA_CALL_TEMPLATE
    :type: str
@@ -201,7 +201,7 @@ function will render based on the following templates.
       * \*\*\ **kwargs** -- function record as described in :class:`Lambda`
 
 For assignment expression in :term:`class variables <class-variable>`
-(``ClassVar``), the converted wrapper function will render based on
+(``ClassVar``), the converted wrapper function will be rendered based on
 the following templates.
 
 .. data:: CLS_TEMPLATE

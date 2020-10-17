@@ -94,20 +94,19 @@ special case.
 Formatted String Literals
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Since Python 3.6, formatted string literals (:term:`f-string`) were introduced from
-:pep:`498`. And since Python 3.8, *debug f-strings* were added to the grammar. However,
-when ``walrus`` performs the conversion on *assignment expressions* inside :term:`f-string`,
+Since Python 3.6, formatted string literals (:term:`f-string`) were introduced in
+:pep:`498`. And since Python 3.8, *f-string debugging syntax* were added to the grammar. However,
+when ``walrus`` performs the conversion on *assignment expressions* inside :term:`f-string`s,
 it may break the lexical grammar and/or the original context.
 
-Therefore, we utilise :mod:`f2format` to first convert such :term:`f-string` then
-rely on ``walrus`` to perform the conversion and processing. Basically, there are
+Therefore, we utilise :mod:`f2format` to first expand such :term:`f-string`s into :meth:`str.format` calls,
+then rely on ``walrus`` to perform the conversion and processing. Basically, there are
 two cases as below:
 
-1. In a string literal which contains a *debug* :term:`f-string`, as the converted
-   codes will change the original expression for self-documenting and debugging;
-2. In a :term:`class variable <class-variable>` declaration which contains any
-   :term:`f-string`, as the converted codes may break the quote level of the
-   original string.
+1. When an *assignment expression* is in a *debug* :term:`f-string`. (To prevent the converted
+   code from changing the original expression for self-documenting and debugging.)
+2. When an *assignment expression* is in an :term:`f-string` inside a class scope.
+   (To prevent the converted code from breaking the quotes of the original string.)
 
 Lambda Functions
 ----------------
@@ -178,7 +177,7 @@ current context:
 .. code-block:: python
 
    class A:
-       bar = ((__import__('builtins').locals().__setitem__('x', x ** 2), x)[1])
+       bar = ((__import__('builtins').locals().__setitem__('foo', x ** 2), foo)[1])
 
 The major reason of doing so is that :func:`locals` dictionary can (and may **only**)
 be edited directly in the :term:`class` declaration. Therefore, we can use this

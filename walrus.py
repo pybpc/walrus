@@ -425,7 +425,7 @@ class Context(BaseContext):
 
         #: List[str]: Original *left-hand-side* variable names in assignment expressions.
         self._vars = list()
-        #: List[Lambda]: Converted *lambda* statements described as :class:`Lambda`.
+        #: List[Lambda]: Converted *lambda* expressions described as :class:`Lambda`.
         self._lamb = list()
         #: List[Function]: Converted wrapper functions described as :class:`Function`.
         self._func = list()
@@ -446,9 +446,9 @@ class Context(BaseContext):
         If not, it will not perform any processing, rather just append the
         original source code to context buffer.
 
-        If ``node`` contains assignment expression, then it will initiate another
+        If ``node`` contains assignment expression, then it will initialise another
         :class:`Context` instance to perform the conversion process on such
-        ``node``; whilst if ``cls_ctx`` is provided, then it will initiate a
+        ``node``; whilst if ``cls_ctx`` is provided, then it will initialise a
         :class:`ClassContext` instance instead.
 
         Note:
@@ -462,7 +462,7 @@ class Context(BaseContext):
         current instance.
 
         And if ``raw`` is set as :data:`True`, the method will keep records of converted wrapper
-        functions (:meth:`Context.functions`), converted *lambda* statements (:meth:`Context.lambdef`)
+        functions (:meth:`Context.functions`), converted *lambda* expressions (:meth:`Context.lambdef`)
         and *left-hand-side* variable names (:meth:`Context.variables`) into current instance as well.
 
         Important:
@@ -517,7 +517,7 @@ class Context(BaseContext):
             The method calls :meth:`f2format.Context.has_debug_fstring`
             to detect *debug f-strings*.
 
-        Otherwise, it will initiate a new :class:`StringContext` instance
+        Otherwise, it will initialise a new :class:`StringContext` instance
         to perform the conversion process on such ``node``, which will first
         use :mod:`f2format` to convert those formatted string literals.
 
@@ -527,7 +527,7 @@ class Context(BaseContext):
             context, rather than the new :class:`StringContext` instance.
 
         After conversion, the method will keep records of converted wrapper
-        functions (:meth:`Context.functions`), converted *lambda* statements (:meth:`Context.lambdef`)
+        functions (:meth:`Context.functions`), converted *lambda* expressions (:meth:`Context.lambdef`)
         and *left-hand-side* variable names (:meth:`Context.variables`) into current instance as well.
 
         """
@@ -542,7 +542,7 @@ class Context(BaseContext):
                 self._process(child)
             return
 
-        # initiate new context
+        # initialise new context
         ctx = StringContext(node=node, config=self.config, context=self._context,
                             indent_level=self._indent_level, keyword=self._keyword, raw=True)
         self += ctx.string.lstrip()
@@ -680,14 +680,14 @@ class Context(BaseContext):
         This method first checks if ``node`` contains assignment expressions.
         If not, it will append the original source code directly to the buffer.
 
-        For *lambda* statements with assignment expressions, this method
-        will extract the parameter list and initiate a :class:`LambdaContext`
+        For *lambda* expressions with assignment expressions, this method
+        will extract the parameter list and initialise a :class:`LambdaContext`
         instance to convert the lambda suite. Such information will be recorded
         as :class:`Lambda` in :attr:`self._lamb <Context._lamb>`.
 
         .. note:: For :class:`LambdaContext`, ``keyword`` should always be ``'nonlocal'``.
 
-        Then it will replace the original lambda statement with a wrapper function
+        Then it will replace the original lambda expression with a wrapper function
         call rendered from :data:`LAMBDA_CALL_TEMPLATE`.
 
         """
@@ -927,7 +927,7 @@ class Context(BaseContext):
 
         The inserted code include variable declaration rendered from
         :data:`NAME_TEMPLATE`, wrapper function definitions rendered from
-        :data:`FUNC_TEMPLATE` and extracted *lambda* statements rendered from
+        :data:`FUNC_TEMPLATE` and extracted *lambda* expressions rendered from
         :data:`LAMBDA_FUNC_TEMPLATE`. If :attr:`self._pep8 <Context._pep8>` is
         :data:`True`, it will insert the code in compliance with :pep:`8`.
 
@@ -1055,7 +1055,7 @@ class Context(BaseContext):
 class StringContext(Context):
     """String (f-string) conversion context.
 
-    This class is mainly used for converting **formatted strings**.
+    This class is mainly used for converting **formatted string literals**.
 
     Args:
         node (parso.python.tree.PythonNode): parso AST
@@ -1090,7 +1090,7 @@ class StringContext(Context):
 class LambdaContext(Context):
     """Lambda (suite) conversion context.
 
-    This class is mainly used for converting **lambda statements**.
+    This class is mainly used for converting **lambda expressions**.
 
     Args:
         node (parso.python.tree.Lambda): parso AST
@@ -1111,7 +1111,7 @@ class LambdaContext(Context):
     def _concat(self):
         """Concatenate final string.
 
-        Since conversion of *lambda* statements doesn't involve inserting
+        Since conversion of *lambda* expressions doesn't involve inserting
         points, this method first simply adds wrapper code to the buffer
         (:data:`self._buffer <Context._buffer>`); then it adds a *return*
         statement yielding the converted *lambda* suite stored in
@@ -1119,7 +1119,7 @@ class LambdaContext(Context):
 
         The wrapper code include variable declaration rendered from
         :data:`NAME_TEMPLATE`, wrapper function definitions rendered from
-        :data:`FUNC_TEMPLATE` and extracted *lambda* statements rendered from
+        :data:`FUNC_TEMPLATE` and extracted *lambda* expressions rendered from
         :data:`LAMBDA_FUNC_TEMPLATE`. If :attr:`self._pep8 <Context._pep8>` is
         :data:`True`, it will insert the code in compliance with :pep:`8`.
 
@@ -1260,9 +1260,9 @@ class ClassContext(Context):
         If not, it will not perform any processing, rather just append the
         original source code to context buffer.
 
-        If ``node`` contains assignment expression, then it will initiate another
+        If ``node`` contains assignment expression, then it will initialise another
         :class:`ClassContext` instance to perform the conversion process on such
-        ``node``; whilst if ``func`` is provided, then it will initiate a
+        ``node``; whilst if ``func`` is provided, then it will initialise a
         :class:`Context` instance instead.
 
         Note:
@@ -1276,7 +1276,7 @@ class ClassContext(Context):
         current instance.
 
         And if ``raw`` is set as :data:`True`, the method will keep records of converted wrapper
-        functions (:meth:`Context.functions`), converted *lambda* statements (:meth:`Context.lambdef`)
+        functions (:meth:`Context.functions`), converted *lambda* expressions (:meth:`Context.lambdef`)
         and *left-hand-side* variable names (:meth:`Context.variables`), class variable
         (:meth:`ClassContext.cls_var`), external variables (:meth:`ClassContext.external_variables`),
         wrapper functions for external variables (:meth:`ClassContext.external_functions`) into current
@@ -1336,7 +1336,7 @@ class ClassContext(Context):
         If not, it will not perform any processing, rather just append the
         original source code to context buffer.
 
-        If ``node`` contains assignment expression, then it will initiate a new
+        If ``node`` contains assignment expression, then it will initialise a new
         :class:`ClassStringContext` instance to perform the conversion process
         on such ``node``, which will first use :mod:`f2format` to convert those
         formatted string literals.
@@ -1347,7 +1347,7 @@ class ClassContext(Context):
             context, rather than the new :class:`ClassStringContext` instance.
 
         After conversion, the method will keep records of converted wrapper
-        functions (:attr:`Context.functions`), converted *lambda* statements (:attr:`Context.lambdef`)
+        functions (:attr:`Context.functions`), converted *lambda* expressions (:attr:`Context.lambdef`)
         and *left-hand-side* variable names (:attr:`Context.variables`), class variable
         (:attr:`ClassContext.cls_var`), external variables (:attr:`ClassContext.external_variables`),
         wrapper functions for external variables (:attr:`ClassContext.external_functions`) into current
@@ -1358,7 +1358,7 @@ class ClassContext(Context):
             self += node.get_code()
             return
 
-        # initiate new context
+        # initialise new context
         ctx = ClassStringContext(node=node, config=self.config,
                                  cls_ctx=self._cls_ctx, cls_var=self._cls_var,
                                  context=self._context, indent_level=self._indent_level,
@@ -1595,10 +1595,10 @@ class ClassContext(Context):
         self._process_string_context(node)
 
     def _process_fstring(self, node):
-        """Process formatted strings (:token:`f_string`).
+        """Process formatted string literals (:token:`f_string`).
 
         Args:
-            node (parso.python.tree.PythonNode): formatted strings node
+            node (parso.python.tree.PythonNode): f-string node
 
         """
         self._process_string_context(node)
@@ -1680,7 +1680,7 @@ class ClassContext(Context):
 class ClassStringContext(ClassContext):
     """String (f-string) conversion context.
 
-    This class is mainly used for converting **formatted strings**
+    This class is mainly used for converting **formatted string literals**
     inside a class suite (:term:`ClassVar <class-variable>`).
 
     Args:
@@ -1703,10 +1703,10 @@ class ClassStringContext(ClassContext):
 
     As the conversion in :class:`ClassContext` introduced quotes (``'``)
     into the converted code, it may cause conflicts on the string parsing
-    if the assignment expression was inside a formatted string.
+    if the assignment expression was inside a formatted string literal.
 
     Therefore, we will use :mod:`f2format` ahead to convert such formatted
-    strings into normat :func:`str.format` calls then convert any assignment
+    string literals into normal :func:`str.format` calls then convert any assignment
     expressions it may contain.
 
     """

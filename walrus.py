@@ -586,7 +586,7 @@ class Context(BaseContext):
 
         # replacing code
         code = CALL_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
-        prefix, suffix = self.extract_whitespaces(node)
+        prefix, suffix = self.extract_whitespaces(node.get_code())
         self += prefix + code + suffix
 
         self._context.extend(ctx.global_stmt)
@@ -1077,7 +1077,7 @@ class StringContext(Context):
 
     def __init__(self, node, config, *, indent_level=0, keyword=None, context=None, raw=False):
         # convert using f2format first
-        prefix, suffix = self.extract_whitespaces(node)
+        prefix, suffix = self.extract_whitespaces(node.get_code())
         code = f2format.convert(node.get_code().strip())
         node = parso_parse(code, filename=config.filename, version=config.source_version)
 
@@ -1439,7 +1439,7 @@ class ClassContext(Context):
             code = CALL_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
         else:
             code = CLS_TEMPLATE % dict(name=self._mangle(name), expr=expr)
-        prefix, suffix = self.extract_whitespaces(node)
+        prefix, suffix = self.extract_whitespaces(node.get_code())
         self += prefix + code + suffix
 
         if external:
@@ -1714,7 +1714,7 @@ class ClassStringContext(ClassContext):
     def __init__(self, node, config, *, cls_ctx, cls_var=None, indent_level=0,
                  keyword=None, context=None, raw=False, external=None):
         # convert using f2format first
-        prefix, suffix = self.extract_whitespaces(node)
+        prefix, suffix = self.extract_whitespaces(node.get_code())
         code = f2format.convert(node.get_code().strip())
         node = parso_parse(code, filename=config.filename, version=config.source_version)
 

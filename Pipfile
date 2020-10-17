@@ -32,8 +32,8 @@ sphinx-autodoc-typehints = "*"
 [packages]
 tbtrim = "*"
 parso = ">=0.6.0"
+bpc-f2format= {git = "https://github.com/pybpc/f2format.git"}
 bpc-utils = {git = "https://github.com/pybpc/bpc-utils.git"}
-f2format= {git = "https://github.com/pybpc/f2format.git"}
 
 [requires]
 python_version = "3.8"

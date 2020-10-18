@@ -1603,30 +1603,6 @@ class ClassContext(Context):
         # process code
         self += node.get_code()
 
-    def _process_strings(self, node):
-        """Process concatenable strings (:token:`stringliteral`).
-
-        Args:
-            node (parso.python.tree.PythonNode): concatentable strings node
-
-        As in Python, adjacent string literals can be concatenated in certain
-        cases, as described in the `documentation`_. Such concatenable strings
-        may contain formatted string literals (:term:`f-string`) within its scope.
-
-        _documentation: https://docs.python.org/3/reference/lexical_analysis.html#string-literal-concatenation
-
-        """
-        self._process_string_context(node)
-
-    def _process_fstring(self, node):
-        """Process formatted string literals (:token:`f_string`).
-
-        Args:
-            node (parso.python.tree.PythonNode): f-string node
-
-        """
-        self._process_string_context(node)
-
     def _concat(self):
         """Concatenate final string.
 

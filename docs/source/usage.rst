@@ -190,7 +190,7 @@ If you want to programmatically invoke ``walrus``, you may want to look at
 :doc:`api`. The :func:`walrus.convert` and :func:`walrus.walrus`
 functions should be most commonly used.
 
-Disutils/Setuptools Integration
+Distutils/Setuptools Integration
 -------------------------------
 
 ``walrus`` can also be directly integrated within your ``setup.py`` script
@@ -245,7 +245,7 @@ the ``requires`` list from the ``[build-system]`` section in the
 .. code-block:: toml
    :emphasize-lines: 3
 
-   [built-system]
+   [build-system]
    # Minimum requirements for the build system to execute.
    requires = ["setuptools", "wheel", "bpc-walrus"]  # PEP 508 specifications.
    ...

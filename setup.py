@@ -34,8 +34,8 @@ setup(
     install_requires=[
         'parso>=0.6.0',         # universal AST support
         'tbtrim>=0.2.1',        # traceback trim support
-        'bpc-f2format>=0.8.6',  # f-string compat
-        'bpc-utils>=0.7.0',     # utility library
+        'f2format>=0.8.6',      # f-string compatibility
+        'bpc-utils>=0.8.0',     # utility library
     ],
     py_modules=['walrus'],
     entry_points={

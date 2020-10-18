@@ -545,7 +545,7 @@ class Context(BaseContext):
         # initiate new context
         ctx = StringContext(node=node, config=self.config, context=self._context,
                             indent_level=self._indent_level, keyword=self._keyword, raw=True)
-        self += ctx.string.lstrip()
+        self += ctx.string
 
         # keep record
         self._lamb.extend(ctx.lambdef)
@@ -916,6 +916,30 @@ class Context(BaseContext):
         self._process(op)
         for child in children:
             self._process(child)
+
+    def _process_strings(self, node):
+        """Process concatenable strings (:token:`stringliteral`).
+
+        Args:
+            node (parso.python.tree.PythonNode): concatentable strings node
+
+        As in Python, adjacent string literals can be concatenated in certain
+        cases, as described in the `documentation`_. Such concatenable strings
+        may contain formatted string literals (:term:`f-string`) within its scope.
+
+        _documentation: https://docs.python.org/3/reference/lexical_analysis.html#string-literal-concatenation
+
+        """
+        self._process_string_context(node)
+
+    def _process_fstring(self, node):
+        """Process formatted strings (:token:`f_string`).
+
+        Args:
+            node (parso.python.tree.PythonNode): formatted strings node
+
+        """
+        self._process_string_context(node)
 
     def _concat(self):
         """Concatenate final string.
@@ -1363,7 +1387,7 @@ class ClassContext(Context):
                                  cls_ctx=self._cls_ctx, cls_var=self._cls_var,
                                  context=self._context, indent_level=self._indent_level,
                                  keyword=self._keyword, raw=True, external=self._ext_vars)
-        self += ctx.string.lstrip()
+        self += ctx.string
 
         # keep record
         self._lamb.extend(ctx.lambdef)
@@ -1997,6 +2021,7 @@ def main(argv=None):
     # terminate if no valid Python source files detected
     if not filelist:
         if not args.quiet:
+            # TODO: maybe use parser.error?
             print('Warning: no valid Python source files found in %r' % args.files, file=sys.stderr)
         return
 

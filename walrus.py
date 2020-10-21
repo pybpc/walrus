@@ -535,9 +535,7 @@ class Context(BaseContext):
             self += node.get_code()
             return
 
-        # TODO: reconstruct f2format and implement such method for the case
-        # if not f2format.Context.has_debug_fstring(node):
-        if True:  # pylint: disable=using-constant-test
+        if not f2format.Context.has_debug_fstring(node):
             for child in node.children:
                 self._process(child)
             return
@@ -1462,7 +1460,7 @@ class ClassContext(Context):
         if external:
             code = CALL_TEMPLATE % dict(name=name, uuid=nuid, expr=expr)
         else:
-            code = CLS_TEMPLATE % dict(name=self._mangle(name), expr=expr)
+            code = CLS_TEMPLATE % dict(name=self.mangle(self._cls_ctx, name), expr=expr)
         prefix, suffix = self.extract_whitespaces(node.get_code())
         self += prefix + code + suffix
 
@@ -1653,28 +1651,6 @@ class ClassContext(Context):
             self._buffer += self._linesep * self.missing_newlines(prefix=self._buffer, suffix=suffix,
                                                                   expected=blank, linesep=self._linesep)
         self._buffer += suffix.lstrip(self._linesep)
-
-    def _mangle(self, name):
-        """Mangle variable names.
-
-        The method mangles variable names as described in `Python documentation`_.
-
-        Args:
-            name (str): variable name
-
-        Returns:
-            str: mangled variable name
-
-        .. _Python documentation: https://docs.python.org/3/reference/expressions.html#atom-identifiers
-
-        """
-        # should only perform mangling if variable name begins with two or more underscores
-        # and does not end in two or more underscores
-        if not name.startswith('__') or name.endswith('__'):
-            return name
-
-        # perform mangling, remove leading underscores from the class name when inserting
-        return '_%(cls)s%(name)s' % dict(cls=self._cls_ctx.lstrip('_'), name=name)
 
 
 class ClassStringContext(ClassContext):

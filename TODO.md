@@ -4,7 +4,7 @@
 
 - [ ] ~create some Jupyter notebooks for demo (maybe?)~
 - [x] revise & update usage samples in the documentation
-- [ ] reconstruct `f2format` and export APIs respectively
+- [x] reconstruct `f2format` and export APIs respectively
 
 ## November 24th, 2019
 

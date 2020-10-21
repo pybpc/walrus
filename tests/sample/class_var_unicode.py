@@ -12,10 +12,10 @@ print(A.Ç)
 
 class Ḑ:
     class Ȩ:
-        print(Ģ := 888)
-        print(Ģ)
-        print(Ģ)
-        print(Ģ := 999)
-        print(Ģ)
-    print(Ȩ.__dict__.get('Ģ'))
-    print(Ȩ.Ģ)
+        print(__Ģ := 888)
+        print(__Ģ)
+        print(_Ȩ__Ģ)
+        print(_Ȩ__Ģ := 999)
+        print(__Ģ)
+    print(Ȩ.__dict__.get('__Ģ'))
+    print(Ȩ._Ȩ__Ģ)

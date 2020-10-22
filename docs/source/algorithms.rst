@@ -191,3 +191,7 @@ which will then be applicable to the *regular* conversion templates as discussed
 .. seealso::
 
    * :data:`walrus.CLS_TEMPLATE`
+
+In some corner cases, as the identifiers must be *mangled* and *normalised* in a
+:term:`class` context, the ``__setitem__`` call will have to process the variable
+names instead of using them directly.

@@ -40,17 +40,27 @@ be as following:
    .. attribute:: indentation
       :type: str
 
-      indentation sequence
+      Indentation sequence.
 
    .. attribute:: linesep
       :type: Literal[\'\\n\', \'\\r\\n\', \'\\r\']
 
-      line separator
+      Line separator.
 
    .. attribute:: pep8
       :type: bool
 
-      :pep:`8` compliant conversion flag
+      :pep:`8` compliant conversion flag.
+
+   .. attribute:: filename
+      :type: Optional[str]
+
+      An optional source file name to provide a context in case of error.
+
+   .. attribute:: source_version
+      :type: Optional[str]
+
+      Parse the code as this Python version (uses the latest version by default).
 
 Since conversion of assignment expressions in different statements has different
 processing logics and templates, we hereby describe two data structures representing

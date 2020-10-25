@@ -1042,7 +1042,6 @@ class Context(BaseContext):
                                                                   expected=blank, linesep=self._linesep)
         self._buffer += suffix.lstrip(self._linesep)
 
-
     @final
     @classmethod
     def has_expr(cls, node: parso.tree.NodeOrLeaf) -> bool:

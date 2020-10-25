@@ -10,7 +10,6 @@ import traceback
 from typing import Dict, Generator, List, Optional, Union
 
 import f2format
-import parso
 import parso.python.tree
 import parso.tree
 import tbtrim

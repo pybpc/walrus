@@ -36,6 +36,8 @@ setup(
         'tbtrim>=0.2.1',        # traceback trim support
         'f2format>=0.8.6',      # f-string compatibility
         'bpc-utils>=0.9.0',     # utility library
+        'typing;python_version<"3.5"',
+        'typing_extensions',
     ],
     py_modules=['walrus'],
     entry_points={
@@ -66,5 +68,5 @@ setup(
         'Programming Language :: Python :: 3 :: Only',
         'Topic :: Software Development',
         'Topic :: Utilities',
-    ]
+    ],
 )

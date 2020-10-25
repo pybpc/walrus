@@ -10,8 +10,8 @@ back-port compiler for Python 3.8 assignment expression
 :Date: April 19, 2020
 :Manual section: 1
 :Author:
-    Jarry Shaw, a newbie programmer, is the author, owner and maintainer
-    of *walrus*. Please contact me at *jarryshaw@icloud.com*.
+    Contributors of the Python Backport Compiler project.
+    See https://github.com/pybpc
 :Copyright:
     *walrus* is licensed under the **MIT License**.
 
@@ -41,66 +41,57 @@ OPTIONS
 positional arguments
 --------------------
 
-:SOURCE:              Python source files and directories to be converted
+:SOURCE:                Python source files and directories to be converted
 
 optional arguments
 ------------------
 
--h, --help            show this help message and exit
--V, --version         show program's version number and exit
--q, --quiet           run in quiet mode
+-h, --help              show this help message and exit
+-V, --version           show program's version number and exit
+-q, --quiet             run in quiet mode
 
 -C *N*, --concurrency *N*
-                      the number of concurrent processes for conversion
+                        the number of concurrent processes for conversion
 
---dry-run             list the files to be converted without actually
-                      performing conversion and archiving
+--dry-run               list the files to be converted without actually performing conversion and archiving
 
 -s *[FILE]*, --simple *[FILE]*
-                      this option tells the program to operate in "simple mode";
-                      if a file name is provided, the program will convert the
-                      file but print conversion result to standard output
-                      instead of overwriting the file;
-                      if no file names are provided, read code for conversion
-                      from standard input and print conversion result to
-                      standard output;
-                      in "simple mode", no file names shall be provided via
-                      positional arguments
+                        this option tells the program to operate in "simple mode"; if a file name is provided, the program will convert
+                        the file but print conversion result to standard output instead of overwriting the file; if no file names are
+                        provided, read code for conversion from standard input and print conversion result to standard output; in
+                        "simple mode", no file names shall be provided via positional arguments
 
 archive options
 ---------------
 
 backup original files in case there're any issues
 
--na, --no-archive     do not archive original files
+-na, --no-archive       do not archive original files
 
 -k *PATH*, --archive-path *PATH*
-                      path to archive original files
+                        path to archive original files
 
 -r *ARCHIVE_FILE*, --recover *ARCHIVE_FILE*
-                      recover files from a given archive file
+                        recover files from a given archive file
 
--r2                   remove the archive file after recovery
-
--r3                   remove the archive file after recovery, and remove
-                      the archive directory if it becomes empty
+-r2                     remove the archive file after recovery
+-r3                     remove the archive file after recovery, and remove the archive directory if it becomes empty
 
 convert options
 ---------------
 
 conversion configuration
 
--vs *VERSION*, -vf *VERSION*, --source-version *VERSION*, -from-version *VERSION*
-                      parse source code as this Python version
+-vs *VERSION*, --vf *VERSION*, --source-version *VERSION*, --from-version *VERSION*
+                        parse source code as this Python version
 
 -l *LINESEP*, --linesep *LINESEP*
-                      line separator (**LF**, **CRLF**, **CR**) to read source files
+                        line separator (**LF**, **CRLF**, **CR**) to read source files
 
 -t *INDENT*, --indentation *INDENT*
-                      code indentation style, specify an integer for the number of
-                      spaces, or ``'t'``/``'tab'`` for tabs
+                        code indentation style, specify an integer for the number of spaces, or ``'t'``/``'tab'`` for tabs
 
--n8, --no-pep8        do not make code insertion **PEP 8** compliant
+-n8, --no-pep8          do not make code insertion **PEP 8** compliant
 
 ENVIRONMENT
 ===========

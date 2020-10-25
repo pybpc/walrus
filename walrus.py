@@ -995,7 +995,7 @@ class Context(BaseContext):
 
         # strip suffix comments
         prefix, suffix = self.split_comments(self._suffix, self._linesep)
-        match = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII)
+        match = re.match(r'^(?P<linesep>(%s)*)' % self._linesep, suffix, flags=re.ASCII)
         suffix_linesep = match.group('linesep') if match is not None else ''
 
         # first, the prefix code
@@ -1682,7 +1682,7 @@ class ClassContext(Context):
 
         # strip suffix comments
         prefix, suffix = self.split_comments(self._suffix, self._linesep)
-        match = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII)
+        match = re.match(r'^(?P<linesep>(%s)*)' % self._linesep, suffix, flags=re.ASCII)
         suffix_linesep = match.group('linesep') if match is not None else ''
 
         # first, the prefix code

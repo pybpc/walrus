@@ -1,18 +1,11 @@
 # pyup: ignore file
 tbtrim
 parso>=0.6.0
-bpc-utils>=0.7.0
+bpc-utils>=0.9.0
 #f2format  # need to specify version
 -e .
-autopep8
 codecov
 coverage
-doc8
-homebrew-pypi-poet
-pylint
-requests
-sphinx
-ipython
 
 # temporary solution for f2format dependency
 git+https://github.com/pybpc/f2format.git

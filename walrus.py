@@ -7,20 +7,51 @@ import pathlib
 import re
 import sys
 import traceback
+from typing import Dict, Generator, List, Optional, Union
 
 import f2format
 import parso
+import parso.python.tree
+import parso.tree
 import tbtrim
 from bpc_utils import (BaseContext, BPCSyntaxError, Config, TaskLock, archive_files,
                        detect_encoding, detect_files, detect_indentation, detect_linesep,
                        first_non_none, get_parso_grammar_versions, map_tasks, parse_boolean_state,
                        parse_indentation, parse_linesep, parse_positive_integer, parso_parse,
                        recover_files)
+from bpc_utils.typing import Linesep
+from typing_extensions import Literal, TypedDict, final
 
 __all__ = ['main', 'walrus', 'convert']
 
 # version string
 __version__ = '0.1.4'
+
+###############################################################################
+# Typings
+
+Keyword = Literal['global', 'nonlocal']
+
+
+class WalrusConfig(Config):
+    indentation = ''  # type: str
+    linesep = '\n'  # type: Literal[Linesep]
+    pep8 = True  # type: bool
+    filename = None  # Optional[str]
+    source_version = None  # Optional[str]
+
+
+Function = TypedDict('Function', {
+    'name': str,
+    'uuid': str,
+    'keyword': Keyword,
+})
+
+Lambda = TypedDict('Lambda', {
+    'param': str,
+    'suite': str,
+    'uuid': str,
+})
 
 ###############################################################################
 # Auxiliaries
@@ -52,7 +83,7 @@ _default_pep8 = True
 # option value precedence is: explicit value (CLI/API arguments) > environment variable > default value
 
 
-def _get_quiet_option(explicit=None):
+def _get_quiet_option(explicit: Optional[bool] = None) -> Optional[bool]:
     """Get the value for the ``quiet`` option.
 
     Args:
@@ -71,14 +102,14 @@ def _get_quiet_option(explicit=None):
     """
     # We need lazy evaluation, so first_non_none(a, b, c) does not work here
     # with PEP 505 we can simply write a ?? b ?? c
-    def _option_layers():
+    def _option_layers() -> Generator[Optional[bool], None, None]:
         yield explicit
         yield parse_boolean_state(os.getenv('WALRUS_QUIET'))
         yield _default_quiet
     return first_non_none(_option_layers())
 
 
-def _get_concurrency_option(explicit=None):
+def _get_concurrency_option(explicit: Optional[int] = None) -> Optional[int]:
     """Get the value for the ``concurrency`` option.
 
     Args:
@@ -99,7 +130,7 @@ def _get_concurrency_option(explicit=None):
     return parse_positive_integer(explicit or os.getenv('WALRUS_CONCURRENCY') or _default_concurrency)
 
 
-def _get_do_archive_option(explicit=None):
+def _get_do_archive_option(explicit: Optional[bool] = None) -> Optional[bool]:
     """Get the value for the ``do_archive`` option.
 
     Args:
@@ -116,14 +147,14 @@ def _get_do_archive_option(explicit=None):
         :data:`_default_do_archive`
 
     """
-    def _option_layers():
+    def _option_layers() -> Generator[Optional[bool], None, None]:
         yield explicit
         yield parse_boolean_state(os.getenv('WALRUS_DO_ARCHIVE'))
         yield _default_do_archive
     return first_non_none(_option_layers())
 
 
-def _get_archive_path_option(explicit=None):
+def _get_archive_path_option(explicit: Optional[str] = None) ->  str:
     """Get the value for the ``archive_path`` option.
 
     Args:
@@ -143,7 +174,7 @@ def _get_archive_path_option(explicit=None):
     return explicit or os.getenv('WALRUS_ARCHIVE_PATH') or _default_archive_path
 
 
-def _get_source_version_option(explicit=None):
+def _get_source_version_option(explicit: Optional[str] = None) -> Optional[str]:
     """Get the value for the ``source_version`` option.
 
     Args:
@@ -163,7 +194,7 @@ def _get_source_version_option(explicit=None):
     return explicit or os.getenv('WALRUS_SOURCE_VERSION') or _default_source_version
 
 
-def _get_linesep_option(explicit=None):
+def _get_linesep_option(explicit: Optional[str] = None) -> Optional[Linesep]:
     r"""Get the value for the ``linesep`` option.
 
     Args:
@@ -184,7 +215,7 @@ def _get_linesep_option(explicit=None):
     return parse_linesep(explicit or os.getenv('WALRUS_LINESEP') or _default_linesep)
 
 
-def _get_indentation_option(explicit=None):
+def _get_indentation_option(explicit: Optional[Union[str, int]] = None) -> Optional[str]:
     """Get the value for the ``indentation`` option.
 
     Args:
@@ -205,7 +236,7 @@ def _get_indentation_option(explicit=None):
     return parse_indentation(explicit or os.getenv('WALRUS_INDENTATION') or _default_indentation)
 
 
-def _get_pep8_option(explicit=None):
+def _get_pep8_option(explicit: Optional[bool] = None) -> Optional[bool]:
     """Get the value for the ``pep8`` option.
 
     Args:
@@ -222,7 +253,7 @@ def _get_pep8_option(explicit=None):
         :data:`_default_pep8`
 
     """
-    def _option_layers():
+    def _option_layers() -> Generator[Optional[bool], None, None]:
         yield explicit
         yield parse_boolean_state(os.getenv('WALRUS_PEP8'))
         yield _default_pep8
@@ -236,7 +267,7 @@ def _get_pep8_option(explicit=None):
 ROOT = pathlib.Path(__file__).resolve().parent
 
 
-def predicate(filename):
+def predicate(filename: str) -> bool:
     return pathlib.Path(filename).parent == ROOT
 
 
@@ -367,8 +398,9 @@ class Context(BaseContext):
 
     """
 
+    @final
     @property
-    def lambdef(self):
+    def lambdef(self) -> List[Lambda]:
         """Lambda definitions (:attr:`self._lamb <walrus.Context._lamb>`).
 
         :rtype: List[Lambda]
@@ -376,8 +408,9 @@ class Context(BaseContext):
         """
         return self._lamb
 
+    @final
     @property
-    def variables(self):
+    def variables(self) -> List[str]:
         """Assignment expression variable records (:attr:`self._vars <walrus.Context._vars>`).
 
         The variables are the *left-hand-side* variable name of the assignment expressions.
@@ -387,8 +420,9 @@ class Context(BaseContext):
         """
         return self._vars
 
+    @final
     @property
-    def functions(self):
+    def functions(self) -> List[Function]:
         """Assignment expression wrapper function records (:attr:`self._func <walrus.ontext._func>`).
 
         :rtype: List[Function]
@@ -396,8 +430,9 @@ class Context(BaseContext):
         """
         return self._func
 
+    @final
     @property
-    def global_stmt(self):
+    def global_stmt(self) -> List[str]:
         """List of variables declared in the :token:`global <global_stmt>` statements.
 
         If current root node (:attr:`self._root <walrus.Context._root>`) is a function definition
@@ -408,32 +443,35 @@ class Context(BaseContext):
 
         """
         if self._root.type == 'funcdef':
-            return list()
+            return []
         return self._context
 
-    def __init__(self, node, config, *, indent_level=0, keyword=None, context=None, raw=False):
+    def __init__(self, node: parso.tree.NodeOrLeaf, config: WalrusConfig, *,
+                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 context: Optional[List[str]] = None, raw: bool = False):
         if keyword is None:
             keyword = self.guess_keyword(node)
         if context is None:
-            context = list()
+            context = []
 
         #: Literal['global', 'nonlocal']:
         #: The :token:`global <global_stmt>` / :token:`nonlocal <nonlocal_stmt>` keyword.
-        self._keyword = keyword
+        self._keyword = keyword  # type: Keyword
         #: List[str]: Variable names in :token:`global <global_stmt>` statements.
-        self._context = list(context)
+        self._context = list(context)  # type: List[str]
 
         #: List[str]: Original *left-hand-side* variable names in assignment expressions.
-        self._vars = list()
+        self._vars = []  # type: List[str]
         #: List[Lambda]: Converted *lambda* expressions described as :class:`Lambda`.
-        self._lamb = list()
+        self._lamb = []  # type: List[Lambda]
         #: List[Function]: Converted wrapper functions described as :class:`Function`.
-        self._func = list()
+        self._func = []  # type: List[Function]
 
         # call super init
         super().__init__(node, config, indent_level=indent_level, raw=raw)
 
-    def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
+    def _process_suite_node(self, node: parso.tree.NodeOrLeaf, func: bool = False,
+                            raw: bool = False, cls_ctx: Optional[str] = None) -> None:
         """Process indented suite (:token:`suite` or others).
 
         Args:
@@ -478,18 +516,18 @@ class Context(BaseContext):
         self += self._linesep + self._indentation * indent
 
         if func:
-            keyword = 'nonlocal'
+            keyword = 'nonlocal'  # type: Keyword
         else:
             keyword = self._keyword
 
         # process suite
         if cls_ctx is None:
-            ctx = Context(node=node, config=self.config,
+            ctx = Context(node=node, config=self.config,  # type: ignore[arg-type]
                           context=self._context, indent_level=indent,
                           keyword=keyword, raw=raw)
         else:
             ctx = ClassContext(cls_ctx=cls_ctx,
-                               node=node, config=self.config,
+                               node=node, config=self.config,  # type: ignore[arg-type]
                                context=self._context, indent_level=indent,
                                keyword=keyword, raw=raw)
         self += ctx.string.lstrip()
@@ -501,7 +539,7 @@ class Context(BaseContext):
             self._func.extend(ctx.functions)
         self._context.extend(ctx.global_stmt)
 
-    def _process_string_context(self, node):
+    def _process_string_context(self, node: parso.python.tree.PythonNode) -> None:
         """Process string contexts (:token:`stringliteral`).
 
         Args:
@@ -541,7 +579,7 @@ class Context(BaseContext):
             return
 
         # initialise new context
-        ctx = StringContext(node=node, config=self.config, context=self._context,
+        ctx = StringContext(node=node, config=self.config, context=self._context,  # type: ignore[arg-type]
                             indent_level=self._indent_level, keyword=self._keyword, raw=True)
         self += ctx.string
 
@@ -552,7 +590,7 @@ class Context(BaseContext):
 
         self._context.extend(ctx.global_stmt)
 
-    def _process_namedexpr_test(self, node):
+    def _process_namedexpr_test(self, node: parso.python.tree.PythonNode) -> None:
         """Process assignment expression (:token:`namedexpr_test`).
 
         Args:
@@ -575,7 +613,7 @@ class Context(BaseContext):
         nuid = self._uuid_gen.gen()
 
         # calculate expression string
-        ctx = Context(node=node_expr, config=self.config,
+        ctx = Context(node=node_expr, config=self.config,  # type: ignore[arg-type]
                       context=self._context, indent_level=self._indent_level,
                       keyword=self._keyword, raw=True)
         expr = ctx.string.strip()
@@ -589,7 +627,7 @@ class Context(BaseContext):
 
         self._context.extend(ctx.global_stmt)
         if name in self._context:
-            keyword = 'global'
+            keyword = 'global'  # type: Keyword
         else:
             keyword = self._keyword
 
@@ -597,7 +635,7 @@ class Context(BaseContext):
         self._vars.append(name)
         self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
 
-    def _process_global_stmt(self, node):
+    def _process_global_stmt(self, node: parso.python.tree.GlobalStmt) -> None:
         """Process function definition (:token:`global_stmt`).
 
         Args:
@@ -629,7 +667,7 @@ class Context(BaseContext):
         # process code
         self += node.get_code()
 
-    def _process_classdef(self, node):
+    def _process_classdef(self, node: parso.python.tree.Class) -> None:
         """Process class definition (:token:`classdef`).
 
         Args:
@@ -654,7 +692,7 @@ class Context(BaseContext):
         suite = node.children[-1]
         self._process_suite_node(suite, cls_ctx=name.value)
 
-    def _process_funcdef(self, node):
+    def _process_funcdef(self, node: parso.python.tree.Function) -> None:
         """Process function definition (:token:`funcdef`).
 
         Args:
@@ -669,7 +707,7 @@ class Context(BaseContext):
             self._process(child)
         self._process_suite_node(node.children[-1], func=True)
 
-    def _process_lambdef(self, node):
+    def _process_lambdef(self, node: parso.python.tree.Lambda) -> None:
         """Process lambda definition (``lambdef``).
 
         Args:
@@ -699,7 +737,7 @@ class Context(BaseContext):
         next(children)
 
         # vararglist
-        para_list = list()
+        para_list = []
         for child in children:
             if child.type == 'operator' and child.value == ':':
                 break
@@ -708,7 +746,7 @@ class Context(BaseContext):
 
         # test_nocond | test
         indent = self._indent_level + 1
-        ctx = LambdaContext(node=next(children), config=self.config,
+        ctx = LambdaContext(node=next(children), config=self.config,  # type: ignore[arg-type]
                             context=self._context, indent_level=indent,
                             keyword='nonlocal')
         suite = ctx.string.strip()
@@ -720,7 +758,7 @@ class Context(BaseContext):
         # replacing lambda
         self += LAMBDA_CALL_TEMPLATE % dict(uuid=nuid)
 
-    def _process_if_stmt(self, node):
+    def _process_if_stmt(self, node: parso.python.tree.IfStmt) -> None:
         """Process if statement (:token:`if_stmt`).
 
         Args:
@@ -764,7 +802,7 @@ class Context(BaseContext):
                 self._process_suite_node(next(children))
                 continue
 
-    def _process_while_stmt(self, node):
+    def _process_while_stmt(self, node: parso.python.tree.WhileStmt) -> None:
         """Process while statement (:token:`while_stmt`).
 
         Args:
@@ -797,7 +835,7 @@ class Context(BaseContext):
         # suite
         self._process_suite_node(next(children))
 
-    def _process_for_stmt(self, node):
+    def _process_for_stmt(self, node: parso.python.tree.ForStmt) -> None:
         """Process for statement (:token:`for_stmt`).
 
         Args:
@@ -834,7 +872,7 @@ class Context(BaseContext):
         # suite
         self._process_suite_node(next(children))
 
-    def _process_with_stmt(self, node):
+    def _process_with_stmt(self, node: parso.python.tree.WithStmt) -> None:
         """Process with statement (:token:`with_stmt`).
 
         Args:
@@ -860,7 +898,7 @@ class Context(BaseContext):
         # suite
         self._process_suite_node(next(children))
 
-    def _process_try_stmt(self, node):
+    def _process_try_stmt(self, node: parso.python.tree.TryStmt) -> None:
         """Process try statement (:token:`try_stmt`).
 
         Args:
@@ -885,7 +923,7 @@ class Context(BaseContext):
             # suite
             self._process_suite_node(next(children))
 
-    def _process_argument(self, node):
+    def _process_argument(self, node: parso.python.tree.PythonNode) -> None:
         """Process function argument (:token:`argument`).
 
         Args:
@@ -915,7 +953,7 @@ class Context(BaseContext):
         for child in children:
             self._process(child)
 
-    def _process_strings(self, node):
+    def _process_strings(self, node: parso.python.tree.PythonNode) -> None:
         """Process concatenable strings (:token:`stringliteral`).
 
         Args:
@@ -930,7 +968,7 @@ class Context(BaseContext):
         """
         self._process_string_context(node)
 
-    def _process_fstring(self, node):
+    def _process_fstring(self, node: parso.python.tree.PythonNode) -> None:
         """Process formatted strings (:token:`f_string`).
 
         Args:
@@ -939,7 +977,7 @@ class Context(BaseContext):
         """
         self._process_string_context(node)
 
-    def _concat(self):
+    def _concat(self) -> None:
         """Concatenate final string.
 
         This method tries to inserted the recorded wrapper functions and variables
@@ -958,7 +996,8 @@ class Context(BaseContext):
 
         # strip suffix comments
         prefix, suffix = self.split_comments(self._suffix, self._linesep)
-        suffix_linesep = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII).group('linesep')
+        match = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII)
+        suffix_linesep = match.group('linesep') if match is not None else ''
 
         # first, the prefix code
         self._buffer += self._prefix + prefix + suffix_linesep
@@ -1003,8 +1042,10 @@ class Context(BaseContext):
                                                                   expected=blank, linesep=self._linesep)
         self._buffer += suffix.lstrip(self._linesep)
 
+
+    @final
     @classmethod
-    def has_expr(cls, node):
+    def has_expr(cls, node: parso.tree.NodeOrLeaf) -> bool:
         """Check if node has assignment expression (:token:`namedexpr_test`).
 
         Args:
@@ -1017,7 +1058,7 @@ class Context(BaseContext):
         if cls.is_walrus(node):
             return True
         if hasattr(node, 'children'):
-            for child in node.children:
+            for child in node.children:  # type: ignore[attr-defined]
                 if cls.has_expr(child):
                     return True
         return False
@@ -1025,8 +1066,9 @@ class Context(BaseContext):
     # backward compatibility and auxiliary alias
     has_walrus = has_expr
 
+    @final
     @classmethod
-    def guess_keyword(cls, node):
+    def guess_keyword(cls, node: parso.tree.NodeOrLeaf) -> Keyword:
         """Guess keyword based on node position.
 
         Args:
@@ -1049,15 +1091,16 @@ class Context(BaseContext):
         if isinstance(node, parso.python.tree.Module):
             return 'global'
 
-        parent = node.parent
+        parent = node.parent  # type: ignore[attr-defined]
         if isinstance(parent, parso.python.tree.Module):
             return 'global'
         if parent.type in ['funcdef', 'classdef']:
             return 'nonlocal'
         return cls.guess_keyword(parent)
 
+    @final
     @staticmethod
-    def is_walrus(node):
+    def is_walrus(node: parso.tree.NodeOrLeaf) -> bool:
         """Check if ``node`` is assignment expression.
 
         Args:
@@ -1069,7 +1112,7 @@ class Context(BaseContext):
         """
         if node.type == 'namedexpr_test':
             return True
-        if node.type == 'operator' and node.value == ':=':
+        if node.type == 'operator' and node.value == ':=':  # type: ignore[attr-defined]
             return True
         return False
 
@@ -1097,11 +1140,13 @@ class StringContext(Context):
 
     """
 
-    def __init__(self, node, config, *, indent_level=0, keyword=None, context=None, raw=False):
+    def __init__(self, node: parso.python.tree.PythonNode, config: WalrusConfig, *,
+                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 context: Optional[List[str]] = None, raw: Literal[True] = True):
         # convert using f2format first
         prefix, suffix = self.extract_whitespaces(node.get_code())
         code = f2format.convert(node.get_code().strip())
-        node = parso_parse(code, filename=config.filename, version=config.source_version)
+        node = parso_parse(code, filename=config.filename, version=config.source_version)  # type: ignore[assignment]
 
         # call super init
         super().__init__(node, config, indent_level=indent_level,
@@ -1130,7 +1175,14 @@ class LambdaContext(Context):
 
     """
 
-    def _concat(self):
+    # pylint: disable=useless-super-delegation
+    def __init__(self, node: parso.tree.NodeOrLeaf, config: WalrusConfig, *,
+                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 context: Optional[List[str]] = None, raw: Literal[False] = False):
+        super().__init__(node, config,  indent_level=indent_level,
+                         keyword=keyword, context=context, raw=raw)
+
+    def _concat(self) -> None:
         """Concatenate final string.
 
         Since conversion of *lambda* expressions doesn't involve inserting
@@ -1196,20 +1248,25 @@ class ClassContext(Context):
         cls_ctx (str): class context name
         cls_var (Dict[str, str]): mapping for assignment variable and its UUID
         indent_level (int): current indentation level
-        keyword (Optional[str]): keyword for wrapper function
+        keyword (Optional[Literal['global', 'nonlocal']]): keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (Literal[False]): raw context processing flag
         external (Optional[Dict[str, Literal['global', 'nonlocal']]]):
             mapping of :term:`class variable <class-variable>` declared in :token:`global <global_stmt>` and/or
             :token:`nonlocal <nonlocal_stmt>` statements
 
-    Note:
-        ``raw`` should always be :data:`False`.
+    Important:
+        ``raw`` should be :data:`True` only if the ``node`` is in the clause of another *context*,
+        where the converted wrapper functions should be inserted.
+
+        Typically, only if ``node`` is an assignment expression (:token:`namedexpr_test`) node,
+        ``raw`` will be set as :data:`True`, in consideration of nesting assignment expressions.
 
     """
 
+    @final
     @property
-    def cls_var(self):
+    def cls_var(self) -> Dict[str, str]:
         """Mapping for assignment variable and its UUID (:attr:`self._cls_var <walrus.Context._cls_var>`).
 
         :rtype: Dict[str, str]
@@ -1217,8 +1274,9 @@ class ClassContext(Context):
         """
         return self._cls_var
 
+    @final
     @property
-    def external_variables(self):
+    def external_variables(self) -> Dict[str, Keyword]:
         """Assignment expression variable records (:attr:`self._ext_vars <walrus.ClassContext._ext_vars>`).
 
         The variables are the *left-hand-side* variable name of the assignment expressions
@@ -1230,8 +1288,9 @@ class ClassContext(Context):
         """
         return self._ext_vars
 
+    @final
     @property
-    def external_functions(self):
+    def external_functions(self) -> List[Function]:
         """Assignment expression wrapper function records (:attr:`self._ext_func <walrus.ClassContext._ext_func>`)
         for :term:`class variable <class-variable>` declared in :token:`global <global_stmt>` and/or
         :token:`nonlocal <nonlocal_stmt>` statements.
@@ -1241,35 +1300,39 @@ class ClassContext(Context):
         """
         return self._ext_func
 
-    def __init__(self, node, config, *, cls_ctx, cls_var=None, indent_level=0,
-                 keyword=None, context=None, raw=False, external=None):
+    def __init__(self, node: parso.python.tree.Class, config: WalrusConfig, *,
+                 cls_ctx: str, cls_var: Optional[Dict[str, str]] = None,
+                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 context: Optional[List[str]] = None, raw: bool = False,
+                 external: Optional[Dict[str, Keyword]] = None):
         if cls_var is None:
-            cls_var = dict()
+            cls_var = {}
         if external is None:
-            external = dict()
+            external = {}
 
         #: bool: Raw context processing flag.
-        self._cls_raw = raw
+        self._cls_raw = raw  # type: bool
         #: Dict[str, str]: Mapping for assignment variable and its UUID.
-        self._cls_var = cls_var
+        self._cls_var = cls_var  # type: Dict[str, str]
         #: str: Class context name.
-        self._cls_ctx = cls_ctx
+        self._cls_ctx = cls_ctx  # type: str
 
         #: Dict[str, Literal['global', 'nonlocal']]: Original
         #: *left-hand-side* variable names in assignment expressions for
         #: :term:`class variable <class-variable>` declared in
         #: :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>`
         #: statements.
-        self._ext_vars = external
+        self._ext_vars = external  # type: Dict[str, Keyword]
         #: List[Function]: Converted wrapper functions for :term:`class variable <class-variable>`
         #: declared in :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>`
         #: statements described as :class:`Function`.
-        self._ext_func = list()
+        self._ext_func = []  # type: List[Function]
 
         super().__init__(node=node, config=config, context=context,
                          indent_level=indent_level, keyword=keyword, raw=raw)
 
-    def _process_suite_node(self, node, func=False, raw=False, cls_ctx=None):
+    def _process_suite_node(self, node: parso.tree.NodeOrLeaf, func: bool = False,
+                            raw: bool = False, cls_ctx: Optional[str] = None) -> None:
         """Process indented suite (:token:`suite` or others).
 
         Args:
@@ -1321,17 +1384,17 @@ class ClassContext(Context):
         cls_var = self._cls_var
 
         if func:
-            keyword = 'nonlocal'
+            keyword = 'nonlocal'  # type: Keyword
 
             # process suite
-            ctx = Context(node=node, config=self.config,
+            ctx = Context(node=node, config=self.config,  # type: ignore[arg-type]
                           context=self._context, indent_level=indent,
                           keyword=keyword, raw=raw)
         else:
             keyword = self._keyword
 
             # process suite
-            ctx = ClassContext(node=node, config=self.config,
+            ctx = ClassContext(node=node, config=self.config,  # type: ignore[arg-type]
                                cls_ctx=cls_ctx, cls_var=cls_var,
                                context=self._context, indent_level=indent,
                                keyword=keyword, raw=raw, external=self._ext_vars)
@@ -1343,12 +1406,13 @@ class ClassContext(Context):
             self._vars.extend(ctx.variables)
             self._func.extend(ctx.functions)
 
-            self._cls_var.update(ctx.cls_var)
-            self._ext_vars.update(ctx.external_variables)
-            self._ext_func.extend(ctx.external_functions)
+            if not func:
+                self._cls_var.update(ctx.cls_var)  # type: ignore[attr-defined]
+                self._ext_vars.update(ctx.external_variables)  # type: ignore[attr-defined]
+                self._ext_func.extend(ctx.external_functions)  # type: ignore[attr-defined]
         self._context.extend(ctx.global_stmt)
 
-    def _process_string_context(self, node):
+    def _process_string_context(self, node: parso.python.tree.PythonNode) -> None:
         """Process string contexts (:token:`stringliteral`).
 
         Args:
@@ -1381,7 +1445,7 @@ class ClassContext(Context):
             return
 
         # initialise new context
-        ctx = ClassStringContext(node=node, config=self.config,
+        ctx = ClassStringContext(node=node, config=self.config,  # type: ignore[arg-type]
                                  cls_ctx=self._cls_ctx, cls_var=self._cls_var,
                                  context=self._context, indent_level=self._indent_level,
                                  keyword=self._keyword, raw=True, external=self._ext_vars)
@@ -1398,7 +1462,7 @@ class ClassContext(Context):
 
         self._context.extend(ctx.global_stmt)
 
-    def _process_namedexpr_test(self, node):
+    def _process_namedexpr_test(self, node: parso.python.tree.PythonNode) -> None:
         """Process assignment expression (:token:`namedexpr_test`).
 
         Args:
@@ -1417,7 +1481,7 @@ class ClassContext(Context):
 
         Important:
             :class:`~walrus.ClassContext` will `mangle`_ *left-hand-side* variable name
-            through :meth:`self._mangle <walrus.ClassContext._mangle>` when converting.
+            through :meth:`self.mangle <bpc_utils.BaseContext.mangle>` when converting.
 
             .. _mangle: https://docs.python.org/3/reference/expressions.html?highlight=mangling#atom-identifiers
 
@@ -1437,7 +1501,7 @@ class ClassContext(Context):
         nuid = self._uuid_gen.gen()
 
         # calculate expression string
-        ctx = ClassContext(node=node_expr, config=self.config,
+        ctx = ClassContext(node=node_expr, config=self.config,  # type: ignore[arg-type]
                            cls_ctx=self._cls_ctx, cls_var=self._cls_var,
                            context=self._context, indent_level=self._indent_level,
                            keyword=self._keyword, raw=True,
@@ -1469,16 +1533,16 @@ class ClassContext(Context):
             return
 
         if name in self._context:
-            keyword = 'global'
+            keyword = 'global'  # type: Keyword
         else:
             keyword = self._keyword
 
         # keep records
         self._vars.append(name)
         self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
-        self._cls_var[self._mangle(name)] = nuid
+        self._cls_var[self.mangle(self._cls_ctx, name)] = nuid
 
-    def _process_defined_name(self, node):
+    def _process_defined_name(self, node: parso.python.tree.Name) -> None:
         """Process defined name (:token:`name`).
 
         Args:
@@ -1503,14 +1567,14 @@ class ClassContext(Context):
         if name in self._ext_vars:
             return
 
-        name = self._mangle(name)
+        name = self.mangle(self._cls_ctx, name)
         nuid = self._uuid_gen.gen()
 
         self._vars.append(name)
         self._func.append(dict(name=name, uuid=nuid, keyword=self._keyword))
-        self._cls_var[self._mangle(name)] = nuid
+        self._cls_var[self.mangle(self._cls_ctx, name)] = nuid
 
-    def _process_expr_stmt(self, node):
+    def _process_expr_stmt(self, node: parso.python.tree.ExprStmt) -> None:
         """Process variable name (:token:`expr_stmt`).
 
         Args:
@@ -1534,7 +1598,7 @@ class ClassContext(Context):
                 continue
             self += child.get_code()
 
-    def _process_global_stmt(self, node):
+    def _process_global_stmt(self, node: parso.python.tree.GlobalStmt) -> None:
         """Process function definition (:token:`global_stmt`).
 
         Args:
@@ -1569,11 +1633,11 @@ class ClassContext(Context):
         # process code
         self += node.get_code()
 
-    def _process_nonlocal_stmt(self, node):
+    def _process_nonlocal_stmt(self, node: parso.python.tree.KeywordStatement) -> None:
         """Process function definition (:token:`nonlocal_stmt`).
 
         Args:
-            node (parso.python.tree.GlobalStmt): nonlocal statement node
+            node (parso.python.tree.KeywordStatement): nonlocal statement node
 
         This method records all variables declared in a *nonlocal* statement
         into :attr:`self._ext_vars <walrus.ClassContext._ext_vars>`.
@@ -1601,7 +1665,7 @@ class ClassContext(Context):
         # process code
         self += node.get_code()
 
-    def _concat(self):
+    def _concat(self) -> None:
         """Concatenate final string.
 
         This method tries to inserted the recorded wrapper functions and variables
@@ -1620,7 +1684,8 @@ class ClassContext(Context):
 
         # strip suffix comments
         prefix, suffix = self.split_comments(self._suffix, self._linesep)
-        suffix_linesep = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII).group('linesep')
+        match = re.match(rf'^(?P<linesep>({self._linesep})*)', suffix, flags=re.ASCII)
+        suffix_linesep = match.group('linesep') if match is not None else ''
 
         # first, the prefix code
         self._buffer += self._prefix + prefix + suffix_linesep
@@ -1667,7 +1732,7 @@ class ClassStringContext(ClassContext):
         cls_ctx (str): class context name
         cls_var (Dict[str, str]): mapping for assignment variable and its UUID
         indent_level (int): current indentation level
-        keyword (Optional[str]): keyword for wrapper function
+        keyword (Optional[Literal['global', 'nonlocal']]): keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (Literal[True]): raw context processing flag
         external (Optional[Dict[str, Literal['global', 'nonlocal']]]):
@@ -1687,15 +1752,18 @@ class ClassStringContext(ClassContext):
 
     """
 
-    def __init__(self, node, config, *, cls_ctx, cls_var=None, indent_level=0,
-                 keyword=None, context=None, raw=False, external=None):
+    def __init__(self, node: parso.python.tree.PythonNode, config: WalrusConfig, *,
+                 cls_ctx: str, cls_var: Optional[Dict[str, str]] = None,
+                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 context: Optional[List[str]] = None, raw: Literal[True] = True,
+                 external: Optional[Dict[str, Keyword]]=None):
         # convert using f2format first
         prefix, suffix = self.extract_whitespaces(node.get_code())
         code = f2format.convert(node.get_code().strip())
-        node = parso_parse(code, filename=config.filename, version=config.source_version)
+        node = parso_parse(code, filename=config.filename, version=config.source_version)  # type: ignore[assignment]
 
         # call super init
-        super().__init__(node=node, config=config, cls_ctx=cls_ctx, cls_var=cls_var,
+        super().__init__(node=node, config=config, cls_ctx=cls_ctx, cls_var=cls_var,  # type: ignore[arg-type]
                          context=context, indent_level=indent_level, keyword=keyword,
                          raw=raw, external=external)
         self._buffer = prefix + self._buffer + suffix
@@ -1704,7 +1772,9 @@ class ClassStringContext(ClassContext):
 ###############################################################################
 # Public Interface
 
-def convert(code, filename=None, *, source_version=None, linesep=None, indentation=None, pep8=None):
+def convert(code: Union[str, bytes], filename: Optional[str] = None, *,
+            source_version: Optional[str] = None, linesep: Optional[Linesep] = None,
+            indentation: Optional[Union[int, str]] = None, pep8: Optional[bool] = None) -> str:
     """Convert the given Python source code string.
 
     Args:
@@ -1713,7 +1783,8 @@ def convert(code, filename=None, *, source_version=None, linesep=None, indentati
 
     Keyword Args:
         source_version (Optional[str]): parse the code as this Python version (uses the latest version by default)
-        linesep (Optional[str]): line separator of code (``LF``, ``CRLF``, ``CR``) (auto detect by default)
+        linesep (Optional[:data:`~bpc_utils.Linesep`]): line separator of code (``LF``, ``CRLF``, ``CR``)
+            (auto detect by default)
         indentation (Optional[Union[int, str]]): code indentation style, specify an integer for the number of spaces,
             or ``'t'``/``'tab'`` for tabs (auto detect by default)
         pep8 (Optional[bool]): whether to make code insertion :pep:`8` compliant
@@ -1747,13 +1818,15 @@ def convert(code, filename=None, *, source_version=None, linesep=None, indentati
                     filename=filename, source_version=source_version)
 
     # convert source string
-    result = Context(module, config).string
+    result = Context(module, config).string  # type: ignore[arg-type]
 
     # return conversion result
     return result
 
 
-def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep8=None, quiet=None, dry_run=False):
+def walrus(filename: str, *, source_version: Optional[str] = None, linesep: Optional[Linesep] = None,
+           indentation: Optional[Union[int, str]] = None, pep8: Optional[bool] = None,
+           quiet: Optional[bool] = None, dry_run: bool = False) -> None:
     """Convert the given Python source code file. The file will be overwritten.
 
     Args:
@@ -1761,7 +1834,8 @@ def walrus(filename, *, source_version=None, linesep=None, indentation=None, pep
 
     Keyword Args:
         source_version (Optional[str]): parse the code as this Python version (uses the latest version by default)
-        linesep (Optional[str]): line separator of code (``LF``, ``CRLF``, ``CR``) (auto detect by default)
+        linesep (Optional[:data:`~bpc_utils.Linesep`]): line separator of code (``LF``, ``CRLF``, ``CR``)
+            (auto detect by default)
         indentation (Optional[Union[int, str]]): code indentation style, specify an integer for the number of spaces,
             or ``'t'``/``'tab'`` for tabs (auto detect by default)
         pep8 (Optional[bool]): whether to make code insertion :pep:`8` compliant
@@ -1838,7 +1912,7 @@ else:
 __walrus_pep8__ = 'will conform to PEP 8' if _get_pep8_option() else 'will not conform to PEP 8'
 
 
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     """Generate CLI parser.
 
     Returns:
@@ -1894,21 +1968,24 @@ def get_parser():
     return parser
 
 
-def do_walrus(filename, **kwargs):
+def do_walrus(filename: str, **kwargs: object) -> None:
     """Wrapper function to catch exceptions."""
     try:
-        walrus(filename, **kwargs)
+        walrus(filename, **kwargs)  # type: ignore[arg-type]
     except Exception:  # pylint: disable=broad-except
         with TaskLock():
             print('Failed to convert file: %r' % filename, file=sys.stderr)
             traceback.print_exc()
 
 
-def main(argv=None):
+def main(argv: Optional[List[str]] = None) -> int:
     """Entry point for walrus.
 
     Args:
         argv (Optional[List[str]]): CLI arguments
+
+    Returns:
+        int: program exit code
 
     :Environment Variables:
      - :envvar:`WALRUS_QUIET` -- same as the ``--quiet`` option in CLI
@@ -1943,7 +2020,7 @@ def main(argv=None):
             with open(filename, 'rb') as file:
                 code = file.read()
         sys.stdout.write(convert(code, **options))  # print conversion result to stdout
-        return
+        return 0
 
     # get options
     quiet = _get_quiet_option(args.quiet)
@@ -1963,7 +2040,7 @@ def main(argv=None):
                 archive_dir = os.path.dirname(os.path.realpath(args.recover_file))
                 if not os.listdir(archive_dir):
                     os.rmdir(archive_dir)
-        return
+        return 0
 
     # fetch file list
     if not args.files:
@@ -1975,7 +2052,7 @@ def main(argv=None):
         if not args.quiet:
             # TODO: maybe use parser.error?
             print('Warning: no valid Python source files found in %r' % args.files, file=sys.stderr)
-        return
+        return 1
 
     # make archive
     if do_archive and not args.dry_run:
@@ -1987,6 +2064,8 @@ def main(argv=None):
         'dry_run': args.dry_run,
     })
     map_tasks(do_walrus, filelist, kwargs=options, processes=processes)
+
+    return 0
 
 
 if __name__ == '__main__':

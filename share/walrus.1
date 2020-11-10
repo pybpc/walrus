@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH WALRUS 1 "March 09, 2020" "v0.1.4" ""
+.TH WALRUS 1 "April 19, 2020" "v0.1.5rc1" ""
 .SH NAME
 walrus \- back-port compiler for Python 3.8 assignment expression
 .
@@ -32,22 +32,26 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 ..
 .SH SYNOPSIS
 .sp
-walrus [\fIoptions\fP] <\fIpython source files and folders\fP> ...
+walrus [\fIoptions\fP] <\fIPython source files and directories...\fP>
 .SH DESCRIPTION
 .sp
 Since PEP 572, Python introduced \fIassignment expressions\fP syntax in
 version __3.8__. For those who wish to use \fIassignment expressions\fP
-in their code, \fIwalrus\fP provides an intelligent, yet imperfect,
+in their code, \fBwalrus\fP provides an intelligent, yet imperfect,
 solution of a \fBbackport compiler\fP by replacing \fIassignment expressions\fP
-syntax with old\-fashioned assignment\-then\-conditional syntax, which
-guarantees you to always write \fIassignment expressions\fP in Python 3.8
-flavour then compile for compatibility later.
+syntax with old\-fashioned syntax, which guarantees you to always write
+\fIassignment expressions\fP in Python 3.8 flavour then compile for
+compatibility later.
+.sp
+This man page mainly introduces the CLI options of the \fBwalrus\fP program.
+You can also checkout the online documentation at
+\fI\%https://bpc\-walrus.readthedocs.io/\fP for more details.
 .SH OPTIONS
 .SS positional arguments
 .INDENT 0.0
 .TP
 .B SOURCE
-python source files and folders to be converted
+Python source files and directories to be converted
 .UNINDENT
 .SS optional arguments
 .INDENT 0.0
@@ -61,9 +65,27 @@ show program\(aqs version number and exit
 .B \-q\fP,\fB  \-\-quiet
 run in quiet mode
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-C \fIN\fP, \-\-concurrency \fIN\fP
+the number of concurrent processes for conversion
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-dry\-run
+list the files to be converted without actually performing conversion and archiving
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-s \fI[FILE]\fP, \-\-simple \fI[FILE]\fP
+this option tells the program to operate in "simple mode"; if a file name is provided, the program will convert
+the file but print conversion result to standard output instead of overwriting the file; if no file names are
+provided, read code for conversion from standard input and print conversion result to standard output; in
+"simple mode", no file names shall be provided via positional arguments
+.UNINDENT
 .SS archive options
 .sp
-duplicate original files in case there\(aqs any issue
+backup original files in case there\(aqre any issues
 .INDENT 0.0
 .TP
 .BI \-n\fB a\fR,\fB \ \-\-no\-archive
@@ -71,62 +93,66 @@ do not archive original files
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-p \fIPATH\fP, \-\-archive\-path \fIPATH\fP
+.B \-k \fIPATH\fP, \-\-archive\-path \fIPATH\fP
 path to archive original files
+.TP
+.B \-r \fIARCHIVE_FILE\fP, \-\-recover \fIARCHIVE_FILE\fP
+recover files from a given archive file
 .UNINDENT
+.sp
+\-r2                     remove the archive file after recovery
+\-r3                     remove the archive file after recovery, and remove the archive directory if it becomes empty
 .SS convert options
 .sp
-compatibility configuration for non\-unicode files
+conversion configuration
 .INDENT 0.0
 .TP
-.B \-c \fICODING\fP, \-\-encoding \fICODING\fP
-encoding to open source files
+.B \-vs \fIVERSION\fP, \-\-vf \fIVERSION\fP, \-\-source\-version \fIVERSION\fP, \-\-from\-version \fIVERSION\fP
+parse source code as this Python version
 .TP
-.B \-v \fIVERSION\fP, \-\-python \fIVERSION\fP
-convert against Python version
+.B \-l \fILINESEP\fP, \-\-linesep \fILINESEP\fP
+line separator (\fBLF\fP, \fBCRLF\fP, \fBCR\fP) to read source files
 .TP
-.B \-s \fISEP\fP, \-\-linesep \fISEP\fP
-line separator to process source files
+.B \-t \fIINDENT\fP, \-\-indentation \fIINDENT\fP
+code indentation style, specify an integer for the number of spaces, or \fB\(aqt\(aq\fP/\fB\(aqtab\(aq\fP for tabs
 .UNINDENT
-.INDENT 0.0
-.TP
-.BI \-n\fB l\fR,\fB \ \-\-no\-linting
-do not lint converted codes
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-t \fIINDENT\fP, \-\-tabsize \fIINDENT\fP
-indentation tab size
-.UNINDENT
+.sp
+\-n8, \-\-no\-pep8          do not make code insertion \fBPEP 8\fP compliant
 .SH ENVIRONMENT
 .sp
-\fBwalrus\fP currently supports two environment variables.
+\fBwalrus\fP currently supports these environment variables:
 .INDENT 0.0
 .TP
 .B WALRUS_QUIET
 run in quiet mode
 .TP
-.B WALRUS_ENCODING
-encoding to open source files
+.B WALRUS_CONCURRENCY
+the number of concurrent processes for conversion
 .TP
-.B WALRUS_VERSION
-convert against Python version
+.B WALRUS_DO_ARCHIVE
+whether to perform archiving
+.TP
+.B WALRUS_ARCHIVE_PATH
+path to archive original files
+.TP
+.B WALRUS_SOURCE_VERSION
+parse source code as this Python version
 .TP
 .B WALRUS_LINESEP
-line separator to process source files
+line separator to read source files
 .TP
-.B WALRUS_LINTING
-lint converted codes
+.B WALRUS_INDENTATION
+code indentation style
 .TP
-.B WALRUS_TABSIZE
-indentation tab size
+.B WALRUS_PEP8
+whether to make code insertion \fBPEP 8\fP compliant
 .UNINDENT
 .SH SEE ALSO
 .sp
 pybpc(1), f2format(1), poseur(1), vermin(1)
 .SH AUTHOR
-Jarry Shaw, a newbie programmer, is the author, owner and maintainer
-of walrus. Please contact me at jarryshaw@icloud.com.
+Contributors of the Python Backport Compiler project.
+See https://github.com/pybpc
 .SH COPYRIGHT
 walrus is licensed under the MIT License.
 .\" Generated by docutils manpage writer.

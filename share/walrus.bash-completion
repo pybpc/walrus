@@ -42,20 +42,39 @@ _walrus() {
   local cur prev opts cmds
   cur="${COMP_WORDS[COMP_CWORD]}"
   prev="${COMP_WORDS[COMP_CWORD-1]}"
-  opts="--help --version --no-archive --dismiss --no-linting"
-  cmds="--archive-path --encoding --python --linesep --tabsize"
+  opts="--help --version --quiet --dry-run --no-archive"
+  cmds="--concurrency --simple --archive-path --recover --source-version --from-version --linesep  --indentation"
 
-  if [[ ${prev} =~ "--help|--version|--no-archive" ]]
+  if [[ ${prev} =~ "--help|--version|--quiet|--dry-run|--no-archive" ]]
   then
     __walrus_comp_null
     return
-  elif [[ ${prev} =~ "--archive-path|--encoding|--linesep|--tabsize" ]]
+  elif [[ ${prev} =~ "--concurrency" ]]
+  then
+    __walrus_comp "${WALRUS_CONCURRENCY=$(python -c 'print(__import__("os").cpu_count())')}"
+    return
+  elif [[ ${prev} =~ "--simple" ]]
   then
     __walrus_comp_null
     return
-  elif [[ ${prev} =~ "--python" ]]
+  elif [[ ${prev} =~ "--archive-path" ]]
+    __walrus_comp "archive"
+    return
+  elif [[ ${prev} =~ "--recover" ]]
   then
-    __walrus_comp "3.8"
+    __walrus_comp "archive"
+    return
+  elif [[ ${prev} =~ "--source-version|--from-version" ]]
+  then
+    __walrus_comp "3.8 3.9 3.10"
+    return
+  elif [[ ${prev} =~ "--linsep" ]]
+  then
+    __walrus_comp "LF CRLF CR"
+    return
+  elif [[ ${prev} =~ "--indentation" ]]
+  then
+    __walrus_comp "4 t tab"
     return
   fi
 
@@ -65,7 +84,7 @@ _walrus() {
     return
   elif [[ ${cur} == * ]]
   then
-    __walrus_comp "$(ls *.py *.pyw 2>/dev/null | xargs)"
+    __walrus_comp "$(ls . 2>/dev/null | xargs)"
     return
   fi
 }

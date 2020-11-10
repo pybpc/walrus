@@ -27,7 +27,7 @@ copyright = '2020, Python Backport Compiler Project'
 author = 'Python Backport Compiler Project'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.4'
+release = '0.1.5rc1'
 
 
 # -- General configuration ---------------------------------------------------

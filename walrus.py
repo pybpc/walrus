@@ -24,7 +24,7 @@ from typing_extensions import Literal, TypedDict, final
 __all__ = ['main', 'walrus', 'convert']
 
 # version string
-__version__ = '0.1.4'
+__version__ = '0.1.5rc1'
 
 ###############################################################################
 # Typings

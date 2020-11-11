@@ -145,6 +145,9 @@ class TestWalrus(unittest.TestCase):
             '(await a := x)',
             '(p: int := 1)',
             '(a, b, *c := (1, 2, 3))',
+            '(x := 1) = 1',
+            '((x := 1) := 1)',
+            '(x[0:1] := 1)',
             'totally nonsense',
         ]
 

@@ -73,12 +73,12 @@ we were using an *assignment expression*.
    * wrapper function call -- :data:`walrus.CALL_TEMPLATE`
    * wrapper function definition -- :data:`walrus.FUNC_TEMPLATE`
 
-Keyword Selection
-~~~~~~~~~~~~~~~~~
+Scope Keyword Selection
+~~~~~~~~~~~~~~~~~~~~~~~
 
 Python provides :token:`global <global_stmt>` and :token:`nonlocal <nonlocal_stmt>`
 keywords for interacting with variables not in the current namespace. Following the Python
-grammar definitions, ``walrus`` selects the keyword in the mechanism described below:
+grammar definitions, ``walrus`` selects the scope keyword in the mechanism described below:
 
 1. If current context is at :term:`module` level, i.e. neither inside a :term:`function`
    nor a :term:`class` definition, then :token:`global <global_stmt>` should be used.
@@ -192,6 +192,6 @@ which will then be applicable to the *regular* conversion templates as discussed
 
    * :data:`walrus.CLS_TEMPLATE`
 
-In some corner cases, as the identifiers must be *mangled* and *normalised* in a
-:term:`class` context, the ``__setitem__`` call will have to process the variable
-names instead of using them directly.
+In some corner cases, the first argument (variable name) to the ``__setitem__`` call
+must be *mangled* and *normalised* instead of used directly. See
+:meth:`bpc_utils.BaseContext.mangle` for more information.

@@ -18,7 +18,7 @@ from bpc_utils import (BaseContext, BPCSyntaxError, Config, TaskLock, archive_fi
                        first_non_none, get_parso_grammar_versions, map_tasks, parse_boolean_state,
                        parse_indentation, parse_linesep, parse_positive_integer, parso_parse,
                        recover_files)
-from bpc_utils.typing import Linesep
+from bpc_utils import Linesep
 from typing_extensions import Literal, TypedDict, final
 
 __all__ = ['main', 'walrus', 'convert']
@@ -27,9 +27,9 @@ __all__ = ['main', 'walrus', 'convert']
 __version__ = '0.1.5rc1'
 
 ###############################################################################
-# Typings
+# Types for annotation
 
-Keyword = Literal['global', 'nonlocal']
+ScopeKeyword = Literal['global', 'nonlocal']
 
 
 class WalrusConfig(Config):
@@ -40,13 +40,13 @@ class WalrusConfig(Config):
     source_version = None  # Optional[str]
 
 
-Function = TypedDict('Function', {
+FunctionEntry = TypedDict('FunctionEntry', {
     'name': str,
     'uuid': str,
-    'keyword': Keyword,
+    'scope_keyword': ScopeKeyword,
 })
 
-Lambda = TypedDict('Lambda', {
+LambdaEntry = TypedDict('LambdaEntry', {
     'param': str,
     'suite': str,
     'uuid': str,
@@ -99,7 +99,7 @@ def _get_quiet_option(explicit: Optional[bool] = None) -> Optional[bool]:
         :data:`_default_quiet`
 
     """
-    # We need lazy evaluation, so first_non_none(a, b, c) does not work here
+    # We need short circuit evaluation, so first_non_none(a, b, c) does not work here
     # with PEP 505 we can simply write a ?? b ?? c
     def _option_layers() -> Generator[Optional[bool], None, None]:
         yield explicit
@@ -284,7 +284,7 @@ CALL_TEMPLATE = '__walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
 FUNC_TEMPLATE = '''\
 def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 %(indentation)s"""Wrapper function for assignment expression."""
-%(indentation)s%(keyword)s %(name)s
+%(indentation)s%(scope_keyword)s %(name)s
 %(indentation)s%(name)s = expr
 %(indentation)sreturn %(name)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
@@ -310,7 +310,7 @@ class Context(BaseContext):
 
     Keyword Args:
         indent_level (int): current indentation level
-        keyword (Optional[Literal['global', 'nonlocal']]): keyword for wrapper function
+        scope_keyword (Optional[Literal['global', 'nonlocal']]): scope keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (bool): raw processing flag
 
@@ -399,10 +399,10 @@ class Context(BaseContext):
 
     @final
     @property
-    def lambdef(self) -> List[Lambda]:
+    def lambdef(self) -> List[LambdaEntry]:
         """Lambda definitions (:attr:`self._lamb <walrus.Context._lamb>`).
 
-        :rtype: List[Lambda]
+        :rtype: List[LambdaEntry]
 
         """
         return self._lamb
@@ -421,10 +421,10 @@ class Context(BaseContext):
 
     @final
     @property
-    def functions(self) -> List[Function]:
+    def functions(self) -> List[FunctionEntry]:
         """Assignment expression wrapper function records (:attr:`self._func <walrus.ontext._func>`).
 
-        :rtype: List[Function]
+        :rtype: List[FunctionEntry]
 
         """
         return self._func
@@ -446,25 +446,25 @@ class Context(BaseContext):
         return self._context
 
     def __init__(self, node: parso.tree.NodeOrLeaf, config: WalrusConfig, *,
-                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 indent_level: int = 0, scope_keyword: Optional[ScopeKeyword] = None,
                  context: Optional[List[str]] = None, raw: bool = False):
-        if keyword is None:
-            keyword = self.guess_keyword(node)
+        if scope_keyword is None:
+            scope_keyword = self.determine_scope_keyword(node)
         if context is None:
             context = []
 
         #: Literal['global', 'nonlocal']:
         #: The :token:`global <global_stmt>` / :token:`nonlocal <nonlocal_stmt>` keyword.
-        self._keyword = keyword  # type: Keyword
+        self._scope_keyword = scope_keyword  # type: ScopeKeyword
         #: List[str]: Variable names in :token:`global <global_stmt>` statements.
         self._context = list(context)  # type: List[str]
 
         #: List[str]: Original *left-hand-side* variable names in assignment expressions.
         self._vars = []  # type: List[str]
-        #: List[Lambda]: Converted *lambda* expressions described as :class:`Lambda`.
-        self._lamb = []  # type: List[Lambda]
-        #: List[Function]: Converted wrapper functions described as :class:`Function`.
-        self._func = []  # type: List[Function]
+        #: List[LambdaEntry]: Converted *lambda* expressions described as :class:`LambdaEntry`.
+        self._lamb = []  # type: List[LambdaEntry]
+        #: List[FunctionEntry]: Converted wrapper functions described as :class:`FunctionEntry`.
+        self._func = []  # type: List[FunctionEntry]
 
         # call super init
         super().__init__(node, config, indent_level=indent_level, raw=raw)
@@ -490,7 +490,7 @@ class Context(BaseContext):
 
         Note:
             If ``func`` is True, when initiating the :class:`Context` instance,
-            ``keyword`` will be set as ``'nonlocal'``, as in the wrapper function
+            ``scope_keyword`` will be set as ``'nonlocal'``, as in the wrapper function
             it will refer the original *left-hand-side* variable from the outer
             function scope rather than global namespace.
 
@@ -515,20 +515,20 @@ class Context(BaseContext):
         self += self._linesep + self._indentation * indent
 
         if func:
-            keyword = 'nonlocal'  # type: Keyword
+            scope_keyword = 'nonlocal'  # type: ScopeKeyword
         else:
-            keyword = self._keyword
+            scope_keyword = self._scope_keyword
 
         # process suite
         if cls_ctx is None:
             ctx = Context(node=node, config=self.config,  # type: ignore[arg-type]
                           context=self._context, indent_level=indent,
-                          keyword=keyword, raw=raw)
+                          scope_keyword=scope_keyword, raw=raw)
         else:
             ctx = ClassContext(cls_ctx=cls_ctx,
                                node=node, config=self.config,  # type: ignore[arg-type]
                                context=self._context, indent_level=indent,
-                               keyword=keyword, raw=raw)
+                               scope_keyword=scope_keyword, raw=raw)
         self += ctx.string.lstrip()
 
         # keep records
@@ -579,7 +579,7 @@ class Context(BaseContext):
 
         # initialise new context
         ctx = StringContext(node=node, config=self.config, context=self._context,  # type: ignore[arg-type]
-                            indent_level=self._indent_level, keyword=self._keyword, raw=True)
+                            indent_level=self._indent_level, scope_keyword=self._scope_keyword, raw=True)
         self += ctx.string
 
         # keep record
@@ -603,7 +603,7 @@ class Context(BaseContext):
         * The *right-hand-side* expression will be converted using another
           :class:`Context` instance and replaced with a wrapper function call
           rendered from :data:`CALL_TEMPLATE`; information described as
-          :class:`Function` will be recorded into :attr:`self._func <walrus.Context._func>`.
+          :class:`FunctionEntry` will be recorded into :attr:`self._func <walrus.Context._func>`.
 
         """
         # split assignment expression
@@ -614,7 +614,7 @@ class Context(BaseContext):
         # calculate expression string
         ctx = Context(node=node_expr, config=self.config,  # type: ignore[arg-type]
                       context=self._context, indent_level=self._indent_level,
-                      keyword=self._keyword, raw=True)
+                      scope_keyword=self._scope_keyword, raw=True)
         expr = ctx.string.strip()
         self._vars.extend(ctx.variables)
         self._func.extend(ctx.functions)
@@ -626,13 +626,13 @@ class Context(BaseContext):
 
         self._context.extend(ctx.global_stmt)
         if name in self._context:
-            keyword = 'global'  # type: Keyword
+            scope_keyword = 'global'  # type: ScopeKeyword
         else:
-            keyword = self._keyword
+            scope_keyword = self._scope_keyword
 
         # keep records
         self._vars.append(name)
-        self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
+        self._func.append(dict(name=name, uuid=nuid, scope_keyword=scope_keyword))
 
     def _process_global_stmt(self, node: parso.python.tree.GlobalStmt) -> None:
         """Process function definition (:token:`global_stmt`).
@@ -718,9 +718,9 @@ class Context(BaseContext):
         For *lambda* expressions with assignment expressions, this method
         will extract the parameter list and initialise a :class:`LambdaContext`
         instance to convert the lambda suite. Such information will be recorded
-        as :class:`Lambda` in :attr:`self._lamb <Context._lamb>`.
+        as :class:`LambdaEntry` in :attr:`self._lamb <Context._lamb>`.
 
-        .. note:: For :class:`LambdaContext`, ``keyword`` should always be ``'nonlocal'``.
+        .. note:: For :class:`LambdaContext`, ``scope_keyword`` should always be ``'nonlocal'``.
 
         Then it will replace the original lambda expression with a wrapper function
         call rendered from :data:`LAMBDA_CALL_TEMPLATE`.
@@ -747,7 +747,7 @@ class Context(BaseContext):
         indent = self._indent_level + 1
         ctx = LambdaContext(node=next(children), config=self.config,  # type: ignore[arg-type]
                             context=self._context, indent_level=indent,
-                            keyword='nonlocal')
+                            scope_keyword='nonlocal')
         suite = ctx.string.strip()
 
         # keep record
@@ -1066,14 +1066,14 @@ class Context(BaseContext):
 
     @final
     @classmethod
-    def guess_keyword(cls, node: parso.tree.NodeOrLeaf) -> Keyword:
-        """Guess keyword based on node position.
+    def determine_scope_keyword(cls, node: parso.tree.NodeOrLeaf) -> ScopeKeyword:
+        """Determine scope keyword based on node position.
 
         Args:
             node (parso.tree.NodeOrLeaf): parso AST
 
         Returns:
-            Literal['global', 'nonlocal']: keyword
+            Literal['global', 'nonlocal']: scope keyword
 
         This method recursively perform the following checks on the parents
         of ``node``:
@@ -1094,7 +1094,7 @@ class Context(BaseContext):
             return 'global'
         if parent.type in ['funcdef', 'classdef']:
             return 'nonlocal'
-        return cls.guess_keyword(parent)
+        return cls.determine_scope_keyword(parent)
 
     @final
     @staticmethod
@@ -1126,7 +1126,7 @@ class StringContext(Context):
 
     Keyword Args:
         indent_level (int): current indentation level
-        keyword (Literal['nonlocal']): keyword for wrapper function
+        scope_keyword (Literal['nonlocal']): scope keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (Literal[True]): raw processing flag
 
@@ -1139,7 +1139,7 @@ class StringContext(Context):
     """
 
     def __init__(self, node: parso.python.tree.PythonNode, config: WalrusConfig, *,
-                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 indent_level: int = 0, scope_keyword: Optional[ScopeKeyword] = None,
                  context: Optional[List[str]] = None, raw: Literal[True] = True):
         # convert using f2format first
         prefix, suffix = self.extract_whitespaces(node.get_code())
@@ -1148,7 +1148,7 @@ class StringContext(Context):
 
         # call super init
         super().__init__(node, config, indent_level=indent_level,
-                         keyword=keyword, context=context, raw=raw)
+                         scope_keyword=scope_keyword, context=context, raw=raw)
         self._buffer = prefix + self._buffer + suffix
 
 
@@ -1163,22 +1163,22 @@ class LambdaContext(Context):
 
     Keyword Args:
         indent_level (int): current indentation level
-        keyword (Literal['nonlocal']): keyword for wrapper function
+        scope_keyword (Literal['nonlocal']): scope keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (Literal[False]): raw processing flag
 
     Note:
-        * ``keyword`` should always be ``'nonlocal'``.
+        * ``scope_keyword`` should always be ``'nonlocal'``.
         * ``raw`` should always be :data:`False`.
 
     """
 
     # pylint: disable=useless-super-delegation
     def __init__(self, node: parso.tree.NodeOrLeaf, config: WalrusConfig, *,
-                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 indent_level: int = 0, scope_keyword: Optional[ScopeKeyword] = None,
                  context: Optional[List[str]] = None, raw: Literal[False] = False):
         super().__init__(node, config,  indent_level=indent_level,
-                         keyword=keyword, context=context, raw=raw)
+                         scope_keyword=scope_keyword, context=context, raw=raw)
 
     def _concat(self) -> None:
         """Concatenate final string.
@@ -1246,7 +1246,7 @@ class ClassContext(Context):
         cls_ctx (str): class context name
         cls_var (Dict[str, str]): mapping for assignment variable and its UUID
         indent_level (int): current indentation level
-        keyword (Optional[Literal['global', 'nonlocal']]): keyword for wrapper function
+        scope_keyword (Optional[Literal['global', 'nonlocal']]): scope keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (Literal[False]): raw context processing flag
         external (Optional[Dict[str, Literal['global', 'nonlocal']]]):
@@ -1274,7 +1274,7 @@ class ClassContext(Context):
 
     @final
     @property
-    def external_variables(self) -> Dict[str, Keyword]:
+    def external_variables(self) -> Dict[str, ScopeKeyword]:
         """Assignment expression variable records (:attr:`self._ext_vars <walrus.ClassContext._ext_vars>`).
 
         The variables are the *left-hand-side* variable name of the assignment expressions
@@ -1288,21 +1288,21 @@ class ClassContext(Context):
 
     @final
     @property
-    def external_functions(self) -> List[Function]:
+    def external_functions(self) -> List[FunctionEntry]:
         """Assignment expression wrapper function records (:attr:`self._ext_func <walrus.ClassContext._ext_func>`)
         for :term:`class variable <class-variable>` declared in :token:`global <global_stmt>` and/or
         :token:`nonlocal <nonlocal_stmt>` statements.
 
-        :rtype: List[Function]
+        :rtype: List[FunctionEntry]
 
         """
         return self._ext_func
 
     def __init__(self, node: parso.python.tree.Class, config: WalrusConfig, *,
                  cls_ctx: str, cls_var: Optional[Dict[str, str]] = None,
-                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 indent_level: int = 0, scope_keyword: Optional[ScopeKeyword] = None,
                  context: Optional[List[str]] = None, raw: bool = False,
-                 external: Optional[Dict[str, Keyword]] = None):
+                 external: Optional[Dict[str, ScopeKeyword]] = None):
         if cls_var is None:
             cls_var = {}
         if external is None:
@@ -1320,14 +1320,14 @@ class ClassContext(Context):
         #: :term:`class variable <class-variable>` declared in
         #: :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>`
         #: statements.
-        self._ext_vars = external  # type: Dict[str, Keyword]
-        #: List[Function]: Converted wrapper functions for :term:`class variable <class-variable>`
+        self._ext_vars = external  # type: Dict[str, ScopeKeyword]
+        #: List[FunctionEntry]: Converted wrapper functions for :term:`class variable <class-variable>`
         #: declared in :token:`global <global_stmt>` and/or :token:`nonlocal <nonlocal_stmt>`
-        #: statements described as :class:`Function`.
-        self._ext_func = []  # type: List[Function]
+        #: statements described as :class:`FunctionEntry`.
+        self._ext_func = []  # type: List[FunctionEntry]
 
         super().__init__(node=node, config=config, context=context,
-                         indent_level=indent_level, keyword=keyword, raw=raw)
+                         indent_level=indent_level, scope_keyword=scope_keyword, raw=raw)
 
     def _process_suite_node(self, node: parso.tree.NodeOrLeaf, func: bool = False,
                             raw: bool = False, cls_ctx: Optional[str] = None) -> None:
@@ -1350,7 +1350,7 @@ class ClassContext(Context):
 
         Note:
             If ``func`` is True, when initiating the :class:`Context` instance,
-            ``keyword`` will be set as ``'nonlocal'``, as in the wrapper function
+            ``scope_keyword`` will be set as ``'nonlocal'``, as in the wrapper function
             it will refer the original *left-hand-side* variable from the outer
             function scope rather than global namespace.
 
@@ -1382,20 +1382,20 @@ class ClassContext(Context):
         cls_var = self._cls_var
 
         if func:
-            keyword = 'nonlocal'  # type: Keyword
+            scope_keyword = 'nonlocal'  # type: ScopeKeyword
 
             # process suite
             ctx = Context(node=node, config=self.config,  # type: ignore[arg-type]
                           context=self._context, indent_level=indent,
-                          keyword=keyword, raw=raw)
+                          scope_keyword=scope_keyword, raw=raw)
         else:
-            keyword = self._keyword
+            scope_keyword = self._scope_keyword
 
             # process suite
             ctx = ClassContext(node=node, config=self.config,  # type: ignore[arg-type]
                                cls_ctx=cls_ctx, cls_var=cls_var,
                                context=self._context, indent_level=indent,
-                               keyword=keyword, raw=raw, external=self._ext_vars)
+                               scope_keyword=scope_keyword, raw=raw, external=self._ext_vars)
         self += ctx.string.lstrip()
 
         # keep record
@@ -1446,7 +1446,7 @@ class ClassContext(Context):
         ctx = ClassStringContext(node=node, config=self.config,  # type: ignore[arg-type]
                                  cls_ctx=self._cls_ctx, cls_var=self._cls_var,
                                  context=self._context, indent_level=self._indent_level,
-                                 keyword=self._keyword, raw=True, external=self._ext_vars)
+                                 scope_keyword=self._scope_keyword, raw=True, external=self._ext_vars)
         self += ctx.string
 
         # keep record
@@ -1475,7 +1475,7 @@ class ClassContext(Context):
         * The *right-hand-side* expression will be converted using another
           :class:`ClassContext` instance and replaced with a wrapper tuple with
           attribute setting from :data:`CLS_TEMPLATE`; information described as
-          :class:`Function` will be recorded into :attr:`self._func <walrus.Context._func>`.
+          :class:`FunctionEntry` will be recorded into :attr:`self._func <walrus.Context._func>`.
 
         Important:
             :class:`~walrus.ClassContext` will `mangle`_ *left-hand-side* variable name
@@ -1489,7 +1489,7 @@ class ClassContext(Context):
         * The *left-hand-side* variable name will **NOT** be considered as *class variable*,
           thus shall **NOT** be recorded.
         * The expression will be replaced with a wrapper function call rendered from
-          :data:`CALL_TEMPLATE`; information described as :class:`Function` will be
+          :data:`CALL_TEMPLATE`; information described as :class:`FunctionEntry` will be
           recorded into :attr:`self._ext_func <walrus.ClassContext._ext_func>` instead.
 
         """
@@ -1502,7 +1502,7 @@ class ClassContext(Context):
         ctx = ClassContext(node=node_expr, config=self.config,  # type: ignore[arg-type]
                            cls_ctx=self._cls_ctx, cls_var=self._cls_var,
                            context=self._context, indent_level=self._indent_level,
-                           keyword=self._keyword, raw=True,
+                           scope_keyword=self._scope_keyword, raw=True,
                            external=self._ext_vars)
         expr = ctx.string.strip()
 
@@ -1527,17 +1527,17 @@ class ClassContext(Context):
         self += prefix + code + suffix
 
         if external:
-            self._ext_func.append(dict(name=name, uuid=nuid, keyword=self._ext_vars[name]))
+            self._ext_func.append(dict(name=name, uuid=nuid, scope_keyword=self._ext_vars[name]))
             return
 
         if name in self._context:
-            keyword = 'global'  # type: Keyword
+            scope_keyword = 'global'  # type: ScopeKeyword
         else:
-            keyword = self._keyword
+            scope_keyword = self._scope_keyword
 
         # keep records
         self._vars.append(name)
-        self._func.append(dict(name=name, uuid=nuid, keyword=keyword))
+        self._func.append(dict(name=name, uuid=nuid, scope_keyword=scope_keyword))
         self._cls_var[self.mangle(self._cls_ctx, name)] = nuid
 
     def _process_defined_name(self, node: parso.python.tree.Name) -> None:
@@ -1549,7 +1549,7 @@ class ClassContext(Context):
         This method processes name of defined :term:`class variable <class-variable>`. The original
         variable name will be recorded in :attr:`self._vars <walrus.Context._vars>`;
         its corresponding UUID will be recorded in :attr:`self._cls_var <ClassContext._cls_var>`;
-        information described as :class:`Function` will be recorded into
+        information described as :class:`FunctionEntry` will be recorded into
         :attr:`self._func <walrus.Context._func>`.
 
         Note:
@@ -1569,7 +1569,7 @@ class ClassContext(Context):
         nuid = self._uuid_gen.gen()
 
         self._vars.append(name)
-        self._func.append(dict(name=name, uuid=nuid, keyword=self._keyword))
+        self._func.append(dict(name=name, uuid=nuid, scope_keyword=self._scope_keyword))
         self._cls_var[self.mangle(self._cls_ctx, name)] = nuid
 
     def _process_expr_stmt(self, node: parso.python.tree.ExprStmt) -> None:
@@ -1730,7 +1730,7 @@ class ClassStringContext(ClassContext):
         cls_ctx (str): class context name
         cls_var (Dict[str, str]): mapping for assignment variable and its UUID
         indent_level (int): current indentation level
-        keyword (Optional[Literal['global', 'nonlocal']]): keyword for wrapper function
+        scope_keyword (Optional[Literal['global', 'nonlocal']]): scope keyword for wrapper function
         context (Optional[List[str]]): global context (:term:`namespace`)
         raw (Literal[True]): raw context processing flag
         external (Optional[Dict[str, Literal['global', 'nonlocal']]]):
@@ -1752,9 +1752,9 @@ class ClassStringContext(ClassContext):
 
     def __init__(self, node: parso.python.tree.PythonNode, config: WalrusConfig, *,
                  cls_ctx: str, cls_var: Optional[Dict[str, str]] = None,
-                 indent_level: int = 0, keyword: Optional[Keyword] = None,
+                 indent_level: int = 0, scope_keyword: Optional[ScopeKeyword] = None,
                  context: Optional[List[str]] = None, raw: Literal[True] = True,
-                 external: Optional[Dict[str, Keyword]]=None):
+                 external: Optional[Dict[str, ScopeKeyword]] = None):
         # convert using f2format first
         prefix, suffix = self.extract_whitespaces(node.get_code())
         code = f2format.convert(node.get_code().strip())
@@ -1762,7 +1762,7 @@ class ClassStringContext(ClassContext):
 
         # call super init
         super().__init__(node=node, config=config, cls_ctx=cls_ctx, cls_var=cls_var,  # type: ignore[arg-type]
-                         context=context, indent_level=indent_level, keyword=keyword,
+                         context=context, indent_level=indent_level, scope_keyword=scope_keyword,
                          raw=raw, external=external)
         self._buffer = prefix + self._buffer + suffix
 

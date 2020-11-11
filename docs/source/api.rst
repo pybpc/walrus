@@ -66,11 +66,11 @@ Since conversion of assignment expressions in different statements has different
 processing logics and templates, we hereby describe two data structures representing
 such information.
 
-The :class:`Function` represents an assignment expression at most circumstances. It
+The :class:`FunctionEntry` represents an assignment expression at most circumstances. It
 will be provided to :data:`~walrus.FUNC_TEMPLATE` to render the wrapper function for
 the conversion.
 
-.. class:: Function
+.. class:: FunctionEntry
 
    :bases: :class:`typing.TypedDict`
 
@@ -85,7 +85,7 @@ the conversion.
 
       UUID text in the function name to avoid name collision with existing functions.
 
-   .. attribute:: keyword
+   .. attribute:: scope_keyword
       :type: Literal[\'global\', \'nonlocal\']
 
       Scope manipulation keyword. If :attr:`name` is declared in *global*
@@ -94,13 +94,13 @@ the conversion.
       .. note::
          If the *left-hand-side* variable name is recorded in the global context
          (:attr:`Context.global_stmt`), then the converted function should use
-         ``'global'`` as keyword.
+         ``'global'`` as its scope keyword.
 
-The :class:`Lambda` represents an assignment expression declared in *lambda*
+The :class:`LambdaEntry` represents an assignment expression declared in *lambda*
 statements. It will be provided to :data:`~walrus.LAMBDA_FUNC_TEMPLATE` to render
 the wrapper function for the conversion.
 
-.. class:: Lambda
+.. class:: LambdaEntry
 
    :bases: :class:`typing.TypedDict`
 
@@ -168,7 +168,7 @@ rendered based on the following templates.
 
       ['def __walrus_wrapper_%(name)s_%(uuid)s(expr):',
        '%(indentation)s"""Wrapper function for assignment expression."""',
-       '%(indentation)s%(keyword)s %(name)s',
+       '%(indentation)s%(scope_keyword)s %(name)s',
        '%(indentation)s%(name)s = expr',
        '%(indentation)sreturn %(name)s']
 
@@ -208,7 +208,7 @@ function will be rendered based on the following templates.
    :Variables:
       * **indentation** -- indentation sequence as defined in
         :attr:`Config.indentation <walrus.Config.indentation>`
-      * \*\*\ **kwargs** -- function record as described in :class:`Lambda`
+      * \*\*\ **kwargs** -- function record as described in :class:`LambdaEntry`
 
 For assignment expression in :term:`class variables <class-variable>`
 (``ClassVar``), the converted wrapper function will be rendered based on

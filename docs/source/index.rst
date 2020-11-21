@@ -24,6 +24,11 @@ you to always write *assignment expressions* in Python 3.8 flavour then compile 
 Installation
 ------------
 
+.. warning::
+
+   ``walrus`` is currently under reconstruction. It is highly recommended to directly 
+   install from the git repo or the pre-release distributions.
+
 .. note::
 
    ``walrus`` only supports Python versions **since 3.4** |:snake:|

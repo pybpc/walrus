@@ -1,3 +1,7 @@
+# NB: walrus is currently under reconstruction. It is highly recommended to directly install from the git repo or the pre-release distributions.
+
+---
+
 # walrus
 
 [![PyPI - Downloads](https://pepy.tech/badge/python-walrus)](https://pepy.tech/count/python-walrus)

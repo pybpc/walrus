@@ -1,0 +1,297 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Algorithms &#8212; walrus 0.1.5rc1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="API Reference" href="api.html" />
+    <link rel="prev" title="Usage" href="usage.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="algorithms">
+<h1>Algorithms<a class="headerlink" href="#algorithms" title="Permalink to this headline">¶</a></h1>
+<p>As discussed in <span class="target" id="index-0"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0572"><strong>PEP 572</strong></a>, <em>assignment expression</em> is a way to assign to variables within
+an expression using the notation <code class="docutils literal notranslate"><span class="pre">NAME</span> <span class="pre">:=</span> <span class="pre">expr</span></code>. It is roughly equivalent to first assigning
+<code class="docutils literal notranslate"><span class="pre">expr</span></code> to the variable <code class="docutils literal notranslate"><span class="pre">NAME</span></code>, then referencing such variable <code class="docutils literal notranslate"><span class="pre">NAME</span></code> at the current scope.</p>
+<div class="section" id="basic-concepts">
+<h2>Basic Concepts<a class="headerlink" href="#basic-concepts" title="Permalink to this headline">¶</a></h2>
+<p>To convert, <code class="docutils literal notranslate"><span class="pre">walrus</span></code> will need to evaluate the expression, assign to the variable,
+make sure such variable is available from the current scope and replace the original
+<em>assignment expression</em> with code using pre-3.8 syntax.</p>
+<p>For example, with the samples from <span class="target" id="index-1"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0572"><strong>PEP 572</strong></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Handle a matched regex</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">match</span> <span class="o">:=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">data</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Do something with match</span>
+</pre></div>
+</div>
+<p>it should be converted to</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Handle a matched regex</span>
+<span class="n">match</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">match</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Do something with match</span>
+</pre></div>
+</div>
+<p>However, such implementation is <strong>NOT</strong> generic for <em>assignment expressions</em> in more
+complex grammars and contexts, such as comprehensions per
+<span class="target" id="index-2"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0572#appendix-b-rough-code-translations-for-comprehensions"><strong>Appendix B</strong></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="n">TARGET</span> <span class="o">:=</span> <span class="n">EXPR</span> <span class="k">for</span> <span class="n">VAR</span> <span class="ow">in</span> <span class="n">ITERABLE</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>For a more <em>generic</em> implementation, <code class="docutils literal notranslate"><span class="pre">walrus</span></code> wraps the assignment operation as a
+function, and utilises <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-global-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">global</span></code></a> and <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-nonlocal-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">nonlocal</span></code></a>
+keywords to inject such assigned variable back into the original scope.</p>
+<p>For instance, it should convert the first example to</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># make sure to define ``match`` in this scope</span>
+<span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="bp">NotImplemented</span>
+
+<span class="k">def</span> <span class="nf">wraps</span><span class="p">(</span><span class="n">expr</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Wrapper function.&quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">match</span>  <span class="c1"># assume we&#39;re at module level</span>
+    <span class="n">match</span> <span class="o">=</span> <span class="n">expr</span>
+    <span class="k">return</span> <span class="n">match</span>
+
+<span class="c1"># Handle a matched regex</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">wraps</span><span class="p">(</span><span class="n">pattern</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">data</span><span class="p">)))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="c1"># Do something with match</span>
+</pre></div>
+</div>
+<p>The original <em>assignment expression</em> is replaced with a wrapper function call, which
+takes the original expression part as a parameter. And in the wrapper function, it
+assigns the value of the expression to the original variable, and then injects such variable
+into outer scope (<a class="reference external" href="https://docs.python.org/3/glossary.html#term-namespace" title="(in Python v3.9)"><span class="xref std std-term">namespace</span></a>) with <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-global-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">global</span></code></a> and/or
+<a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-nonlocal-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">nonlocal</span></code></a> keyword depending on current context, and finally
+returns the assigned variable so that the wrapper function call works exactly as if
+we were using an <em>assignment expression</em>.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<ul class="simple">
+<li><p>variable declaration – <a class="reference internal" href="api.html#walrus.NAME_TEMPLATE" title="walrus.NAME_TEMPLATE"><code class="xref py py-data docutils literal notranslate"><span class="pre">walrus.NAME_TEMPLATE</span></code></a></p></li>
+<li><p>wrapper function call – <a class="reference internal" href="api.html#walrus.CALL_TEMPLATE" title="walrus.CALL_TEMPLATE"><code class="xref py py-data docutils literal notranslate"><span class="pre">walrus.CALL_TEMPLATE</span></code></a></p></li>
+<li><p>wrapper function definition – <a class="reference internal" href="api.html#walrus.FUNC_TEMPLATE" title="walrus.FUNC_TEMPLATE"><code class="xref py py-data docutils literal notranslate"><span class="pre">walrus.FUNC_TEMPLATE</span></code></a></p></li>
+</ul>
+</div>
+<div class="section" id="scope-keyword-selection">
+<h3>Scope Keyword Selection<a class="headerlink" href="#scope-keyword-selection" title="Permalink to this headline">¶</a></h3>
+<p>Python provides <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-global-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">global</span></code></a> and <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-nonlocal-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">nonlocal</span></code></a>
+keywords for interacting with variables not in the current namespace. Following the Python
+grammar definitions, <code class="docutils literal notranslate"><span class="pre">walrus</span></code> selects the scope keyword in the mechanism described below:</p>
+<ol class="arabic simple">
+<li><p>If current context is at <a class="reference external" href="https://docs.python.org/3/glossary.html#term-module" title="(in Python v3.9)"><span class="xref std std-term">module</span></a> level, i.e. neither inside a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-function" title="(in Python v3.9)"><span class="xref std std-term">function</span></a>
+nor a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-class" title="(in Python v3.9)"><span class="xref std std-term">class</span></a> definition, then <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-global-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">global</span></code></a> should be used.</p></li>
+<li><p>If current context is at <a class="reference external" href="https://docs.python.org/3/glossary.html#term-function" title="(in Python v3.9)"><span class="xref std std-term">function</span></a> level and the variable is not declared in
+any <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-global-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">global</span></code></a> statements, then <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-nonlocal-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">nonlocal</span></code></a>
+should be used; otherwise <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-global-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">global</span></code></a> should be used.</p></li>
+<li><p>If current context is at <a class="reference external" href="https://docs.python.org/3/glossary.html#term-class" title="(in Python v3.9)"><span class="xref std std-term">class</span></a> level and not in its <a class="reference external" href="https://docs.python.org/3/glossary.html#term-method" title="(in Python v3.9)"><span class="xref std std-term">method</span></a> definition,
+i.e. in the <a class="reference external" href="https://docs.python.org/3/glossary.html#term-class" title="(in Python v3.9)"><span class="xref std std-term">class</span></a> body, it shall be treated as a special case.</p></li>
+</ol>
+<p>For assignment expression in <a class="reference external" href="https://docs.python.org/3/glossary.html#term-lambda" title="(in Python v3.9)"><span class="xref std std-term">lambda</span></a> functions, it shall be treated as another
+special case.</p>
+</div>
+<div class="section" id="formatted-string-literals">
+<h3>Formatted String Literals<a class="headerlink" href="#formatted-string-literals" title="Permalink to this headline">¶</a></h3>
+<p>Since Python 3.6, formatted string literals (<a class="reference external" href="https://docs.python.org/3/glossary.html#term-f-string" title="(in Python v3.9)"><span class="xref std std-term">f-string</span></a>) were introduced in
+<span class="target" id="index-3"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0498"><strong>PEP 498</strong></a>. And since Python 3.8, <em>f-string debugging syntax</em> were added to the grammar. However,
+when <code class="docutils literal notranslate"><span class="pre">walrus</span></code> performs the conversion on <em>assignment expressions</em> inside <a class="reference external" href="https://docs.python.org/3/glossary.html#term-f-string" title="(in Python v3.9)"><span class="xref std std-term">f-string</span></a>,
+it may break the lexical grammar and/or the original context.</p>
+<p>Therefore, we utilise <a class="reference external" href="https://bpc-f2format.readthedocs.io/en/latest/api.html#module-f2format" title="(in f2format)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">f2format</span></code></a> to first expand such <a class="reference external" href="https://docs.python.org/3/glossary.html#term-f-string" title="(in Python v3.9)"><span class="xref std std-term">f-string</span></a> into <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str.format" title="(in Python v3.9)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">str.format()</span></code></a> calls,
+then rely on <code class="docutils literal notranslate"><span class="pre">walrus</span></code> to perform the conversion and processing. Basically, there are
+two cases as below:</p>
+<ol class="arabic simple">
+<li><p>When an <em>assignment expression</em> is in a <em>debug</em> <a class="reference external" href="https://docs.python.org/3/glossary.html#term-f-string" title="(in Python v3.9)"><span class="xref std std-term">f-string</span></a>. (To prevent the converted
+code from changing the original expression for self-documenting and debugging.)</p></li>
+<li><p>When an <em>assignment expression</em> is in an <a class="reference external" href="https://docs.python.org/3/glossary.html#term-f-string" title="(in Python v3.9)"><span class="xref std std-term">f-string</span></a> inside a class scope.
+(To prevent the converted code from breaking the quotes of the original string.)</p></li>
+</ol>
+</div>
+</div>
+<div class="section" id="lambda-functions">
+<h2>Lambda Functions<a class="headerlink" href="#lambda-functions" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference external" href="https://docs.python.org/3/glossary.html#term-lambda" title="(in Python v3.9)"><span class="xref std std-term">lambda</span></a> functions can always be transformed into a regular <a class="reference external" href="https://docs.python.org/3/glossary.html#term-function" title="(in Python v3.9)"><span class="xref std std-term">function</span></a>.
+This is the foundation of converting <em>assignment expressions</em> in <a class="reference external" href="https://docs.python.org/3/glossary.html#term-lambda" title="(in Python v3.9)"><span class="xref std std-term">lambda</span></a> functions.</p>
+<p>For a sample <a class="reference external" href="https://docs.python.org/3/glossary.html#term-lambda" title="(in Python v3.9)"><span class="xref std std-term">lambda</span></a> function as follows:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">foo</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="p">[</span><span class="n">x</span> <span class="o">:=</span> <span class="n">i</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">foo</span><span class="p">()</span>
+<span class="go">[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">walrus</span></code> will transform the original <a class="reference external" href="https://docs.python.org/3/glossary.html#term-lambda" title="(in Python v3.9)"><span class="xref std std-term">lambda</span></a> function into a regular function first:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">foo</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">x</span> <span class="o">:=</span> <span class="n">i</span> <span class="o">**</span> <span class="mi">2</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>And now, <code class="docutils literal notranslate"><span class="pre">walrus</span></code> can simply apply the generic conversion strategies to replace the
+<em>assignment expression</em> with a wrapper function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">foo</span><span class="p">():</span>
+    <span class="k">if</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">def</span> <span class="nf">wraps</span><span class="p">(</span><span class="n">expr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Wrapper function.&quot;&quot;&quot;</span>
+        <span class="k">nonlocal</span> <span class="n">x</span>  <span class="c1"># assume that ``x`` was not declared as ``global``</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">expr</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+    <span class="k">return</span> <span class="p">[</span><span class="n">wraps</span><span class="p">(</span><span class="n">i</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)]</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#walrus.LAMBDA_CALL_TEMPLATE" title="walrus.LAMBDA_CALL_TEMPLATE"><code class="xref py py-data docutils literal notranslate"><span class="pre">walrus.LAMBDA_CALL_TEMPLATE</span></code></a></p></li>
+<li><p><a class="reference internal" href="api.html#walrus.LAMBDA_FUNC_TEMPLATE" title="walrus.LAMBDA_FUNC_TEMPLATE"><code class="xref py py-data docutils literal notranslate"><span class="pre">walrus.LAMBDA_FUNC_TEMPLATE</span></code></a></p></li>
+</ul>
+</div>
+</div>
+<div class="section" id="class-definitions">
+<h2>Class Definitions<a class="headerlink" href="#class-definitions" title="Permalink to this headline">¶</a></h2>
+<p>As the <a class="reference external" href="https://docs.python.org/3/glossary.html#term-class" title="(in Python v3.9)"><span class="xref std std-term">class</span></a> context is slightly different from regular <a class="reference external" href="https://docs.python.org/3/glossary.html#term-module" title="(in Python v3.9)"><span class="xref std std-term">module</span></a>
+and/or <a class="reference external" href="https://docs.python.org/3/glossary.html#term-function" title="(in Python v3.9)"><span class="xref std std-term">function</span></a> contexts, the generic conversion strategies are <strong>NOT</strong>
+applicable to such scenarios.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For <a class="reference external" href="https://docs.python.org/3/glossary.html#term-method" title="(in Python v3.9)"><span class="xref std std-term">method</span></a> context in the <a class="reference external" href="https://docs.python.org/3/glossary.html#term-class" title="(in Python v3.9)"><span class="xref std std-term">class</span></a> body, the generic conversion
+strategies are still applicable. In this section, we are generally
+discussing conversion related to <span class="xref std std-term">class variables</span>.</p>
+</div>
+<p>Given a <a class="reference external" href="https://docs.python.org/3/glossary.html#term-class" title="(in Python v3.9)"><span class="xref std std-term">class</span></a> definition as following:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="n">bar</span> <span class="o">=</span> <span class="p">(</span><span class="n">foo</span> <span class="o">:=</span> <span class="n">x</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">walrus</span></code> will rewrite all <span class="xref std std-term">class variables</span> in the
+current context:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">A</span><span class="p">:</span>
+    <span class="n">bar</span> <span class="o">=</span> <span class="p">((</span><span class="nb">__import__</span><span class="p">(</span><span class="s1">&#39;builtins&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">locals</span><span class="p">()</span><span class="o">.</span><span class="fm">__setitem__</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">,</span> <span class="n">x</span> <span class="o">**</span> <span class="mi">2</span><span class="p">),</span> <span class="n">foo</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The major reason of doing so is that <a class="reference external" href="https://docs.python.org/3/library/functions.html#locals" title="(in Python v3.9)"><code class="xref py py-func docutils literal notranslate"><span class="pre">locals()</span></code></a> dictionary can (and may <strong>only</strong>)
+be edited directly in the <a class="reference external" href="https://docs.python.org/3/glossary.html#term-class" title="(in Python v3.9)"><span class="xref std std-term">class</span></a> declaration. Therefore, we can use this
+<em>one-liner</em> to rewrite the original assignment expression.</p>
+<p>However, if a variable is declared in <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-global-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">global</span></code></a> and/or
+<a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-nonlocal-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">nonlocal</span></code></a> statements, it is <strong>NOT</strong> supposed to be assigned
+to the <a class="reference external" href="https://docs.python.org/3/glossary.html#term-class" title="(in Python v3.9)"><span class="xref std std-term">class</span></a> context, rather it should go to the outer scope (<a class="reference external" href="https://docs.python.org/3/glossary.html#term-namespace" title="(in Python v3.9)"><span class="xref std std-term">namespace</span></a>),
+which will then be applicable to the <em>regular</em> conversion templates as discussed above.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="api.html#walrus.CLS_TEMPLATE" title="walrus.CLS_TEMPLATE"><code class="xref py py-data docutils literal notranslate"><span class="pre">walrus.CLS_TEMPLATE</span></code></a></p></li>
+</ul>
+</div>
+<p>In some corner cases, the first argument (variable name) to the <code class="docutils literal notranslate"><span class="pre">__setitem__</span></code> call
+must be <em>mangled</em> and <em>normalised</em> instead of used directly. See
+<a class="reference external" href="https://bpc-utils.readthedocs.io/en/latest/index.html#bpc_utils.BaseContext.mangle" title="(in bpc-utils)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">bpc_utils.BaseContext.mangle()</span></code></a> for more information.</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">walrus</a></h1>
+
+
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=pybpc&repo=walrus&type=watch&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Algorithms</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-concepts">Basic Concepts</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#scope-keyword-selection">Scope Keyword Selection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#formatted-string-literals">Formatted String Literals</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#lambda-functions">Lambda Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#class-definitions">Class Definitions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="usage.html" title="previous chapter">Usage</a></li>
+      <li>Next: <a href="api.html" title="next chapter">API Reference</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Python Backport Compiler Project.
+      
+      |
+      <a href="_sources/algorithms.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/pybpc/walrus" class="github">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"  class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>

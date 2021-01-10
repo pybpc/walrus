@@ -96,10 +96,10 @@ Formatted String Literals
 
 Since Python 3.6, formatted string literals (:term:`f-string`) were introduced in
 :pep:`498`. And since Python 3.8, *f-string debugging syntax* were added to the grammar. However,
-when ``walrus`` performs the conversion on *assignment expressions* inside :term:`f-string`s,
+when ``walrus`` performs the conversion on *assignment expressions* inside :term:`f-string`,
 it may break the lexical grammar and/or the original context.
 
-Therefore, we utilise :mod:`f2format` to first expand such :term:`f-string`s into :meth:`str.format` calls,
+Therefore, we utilise :mod:`f2format` to first expand such :term:`f-string` into :meth:`str.format` calls,
 then rely on ``walrus`` to perform the conversion and processing. Basically, there are
 two cases as below:
 

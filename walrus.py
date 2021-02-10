@@ -1861,17 +1861,10 @@ def walrus(filename: str, *, source_version: Optional[str] = None, linesep: Opti
         content = file.read()
 
     # detect source code encoding
-    encoding = detect_encoding(content)
-
-    # get linesep and indentation
-    linesep = _get_linesep_option(linesep)
-    indentation = _get_indentation_option(indentation)
-    if linesep is None or indentation is None:
-        with open(filename, 'r', encoding=encoding) as file:
-            if linesep is None:
-                linesep = detect_linesep(file)
-            if indentation is None:
-                indentation = detect_indentation(file)
+    try:
+        encoding = detect_encoding(content)
+    except SyntaxError as e:
+        raise BPCSyntaxError('failed to detect encoding for source file %r: %s' % (filename, e)) from None
 
     # do the dirty things
     result = convert(content, filename=filename, source_version=source_version,

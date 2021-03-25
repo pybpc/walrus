@@ -313,9 +313,9 @@
 <span class="s1">if False:</span>
 <span class="si">%(indentation)s%(name_list)s</span><span class="s1"> = NotImplemented</span>
 <span class="s1">&#39;&#39;&#39;</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>  <span class="c1"># `str.splitlines` will remove trailing newline</span>
-<span class="n">CALL_TEMPLATE</span> <span class="o">=</span> <span class="s1">&#39;__walrus_wrapper_</span><span class="si">%(name)s</span><span class="s1">_</span><span class="si">%(uuid)s</span><span class="s1">(</span><span class="si">%(expr)s</span><span class="s1">)&#39;</span>
+<span class="n">CALL_TEMPLATE</span> <span class="o">=</span> <span class="s1">&#39;_walrus_wrapper_</span><span class="si">%(name)s</span><span class="s1">_</span><span class="si">%(uuid)s</span><span class="s1">(</span><span class="si">%(expr)s</span><span class="s1">)&#39;</span>
 <span class="n">FUNC_TEMPLATE</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span><span class="se">\</span>
-<span class="s1">def __walrus_wrapper_</span><span class="si">%(name)s</span><span class="s1">_</span><span class="si">%(uuid)s</span><span class="s1">(expr):</span>
+<span class="s1">def _walrus_wrapper_</span><span class="si">%(name)s</span><span class="s1">_</span><span class="si">%(uuid)s</span><span class="s1">(expr):</span>
 <span class="si">%(indentation)s</span><span class="s1">&quot;&quot;&quot;Wrapper function for assignment expression.&quot;&quot;&quot;</span>
 <span class="si">%(indentation)s%(scope_keyword)s</span><span class="s1"> </span><span class="si">%(name)s</span><span class="s1"></span>
 <span class="si">%(indentation)s%(name)s</span><span class="s1"> = expr</span>
@@ -323,9 +323,9 @@
 <span class="s1">&#39;&#39;&#39;</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>  <span class="c1"># `str.splitlines` will remove trailing newline</span>
 
 <span class="c1"># special template for lambda</span>
-<span class="n">LAMBDA_CALL_TEMPLATE</span> <span class="o">=</span> <span class="s1">&#39;__walrus_wrapper_lambda_</span><span class="si">%(uuid)s</span><span class="s1">&#39;</span>
+<span class="n">LAMBDA_CALL_TEMPLATE</span> <span class="o">=</span> <span class="s1">&#39;_walrus_wrapper_lambda_</span><span class="si">%(uuid)s</span><span class="s1">&#39;</span>
 <span class="n">LAMBDA_FUNC_TEMPLATE</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span><span class="se">\</span>
-<span class="s1">def __walrus_wrapper_lambda_</span><span class="si">%(uuid)s</span><span class="s1">(</span><span class="si">%(param)s</span><span class="s1">):</span>
+<span class="s1">def _walrus_wrapper_lambda_</span><span class="si">%(uuid)s</span><span class="s1">(</span><span class="si">%(param)s</span><span class="s1">):</span>
 <span class="si">%(indentation)s</span><span class="s1">&quot;&quot;&quot;Wrapper function for lambda definitions.&quot;&quot;&quot;</span>
 <span class="si">%(indentation)s%(suite)s</span><span class="s1"></span>
 <span class="s1">&#39;&#39;&#39;</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>  <span class="c1"># `str.splitlines` will remove trailing newline</span>
@@ -1740,6 +1740,12 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">+=</span> <span class="n">indent</span> <span class="o">+</span> <span class="p">(</span>
                 <span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_linesep</span><span class="p">,</span> <span class="n">indent</span><span class="p">)</span>
             <span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">FUNC_TEMPLATE</span><span class="p">)</span> <span class="o">%</span> <span class="nb">dict</span><span class="p">(</span><span class="n">indentation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_indentation</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_cls_ctx</span><span class="p">,</span> <span class="o">**</span><span class="n">func</span><span class="p">)</span> <span class="o">+</span> <span class="n">linesep</span>
+        <span class="k">for</span> <span class="n">lamb</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_lamb</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">+=</span> <span class="n">linesep</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_buffer</span> <span class="o">+=</span> <span class="n">indent</span> <span class="o">+</span> <span class="p">(</span>
+                <span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_linesep</span><span class="p">,</span> <span class="n">indent</span><span class="p">)</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">LAMBDA_FUNC_TEMPLATE</span><span class="p">)</span> <span class="o">%</span> <span class="nb">dict</span><span class="p">(</span><span class="n">indentation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_indentation</span><span class="p">,</span> <span class="o">**</span><span class="n">lamb</span><span class="p">)</span> <span class="o">+</span> <span class="n">linesep</span>
 
         <span class="c1"># finally, the suffix code</span>
         <span class="k">if</span> <span class="n">flag</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pep8</span><span class="p">:</span>

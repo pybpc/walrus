@@ -280,9 +280,9 @@ NAME_TEMPLATE = '''\
 if False:
 %(indentation)s%(name_list)s = NotImplemented
 '''.splitlines()  # `str.splitlines` will remove trailing newline
-CALL_TEMPLATE = '__walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
+CALL_TEMPLATE = '_walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
 FUNC_TEMPLATE = '''\
-def __walrus_wrapper_%(name)s_%(uuid)s(expr):
+def _walrus_wrapper_%(name)s_%(uuid)s(expr):
 %(indentation)s"""Wrapper function for assignment expression."""
 %(indentation)s%(scope_keyword)s %(name)s
 %(indentation)s%(name)s = expr
@@ -290,9 +290,9 @@ def __walrus_wrapper_%(name)s_%(uuid)s(expr):
 '''.splitlines()  # `str.splitlines` will remove trailing newline
 
 # special template for lambda
-LAMBDA_CALL_TEMPLATE = '__walrus_wrapper_lambda_%(uuid)s'
+LAMBDA_CALL_TEMPLATE = '_walrus_wrapper_lambda_%(uuid)s'
 LAMBDA_FUNC_TEMPLATE = '''\
-def __walrus_wrapper_lambda_%(uuid)s(%(param)s):
+def _walrus_wrapper_lambda_%(uuid)s(%(param)s):
 %(indentation)s"""Wrapper function for lambda definitions."""
 %(indentation)s%(suite)s
 '''.splitlines()  # `str.splitlines` will remove trailing newline
@@ -1707,6 +1707,12 @@ class ClassContext(Context):
             self._buffer += indent + (
                 '%s%s' % (self._linesep, indent)
             ).join(FUNC_TEMPLATE) % dict(indentation=self._indentation, cls=self._cls_ctx, **func) + linesep
+        for lamb in self._lamb:
+            if self._buffer:
+                self._buffer += linesep
+            self._buffer += indent + (
+                '%s%s' % (self._linesep, indent)
+            ).join(LAMBDA_FUNC_TEMPLATE) % dict(indentation=self._indentation, **lamb) + linesep
 
         # finally, the suffix code
         if flag and self._pep8:

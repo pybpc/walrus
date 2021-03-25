@@ -152,7 +152,7 @@ rendered based on the following templates.
 
    .. code-block:: python
 
-      '__walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
+      '_walrus_wrapper_%(name)s_%(uuid)s(%(expr)s)'
 
    Wrapper function call to replace the original assignment expression.
 
@@ -166,7 +166,7 @@ rendered based on the following templates.
 
    .. code-block:: python
 
-      ['def __walrus_wrapper_%(name)s_%(uuid)s(expr):',
+      ['def _walrus_wrapper_%(name)s_%(uuid)s(expr):',
        '%(indentation)s"""Wrapper function for assignment expression."""',
        '%(indentation)s%(scope_keyword)s %(name)s',
        '%(indentation)s%(name)s = expr',
@@ -187,7 +187,7 @@ function will be rendered based on the following templates.
 
    .. code-block:: python
 
-      '__walrus_wrapper_lambda_%(uuid)s'
+      '_walrus_wrapper_lambda_%(uuid)s'
 
    Wrapper function call to replace the original assignment expression.
 
@@ -199,7 +199,7 @@ function will be rendered based on the following templates.
 
    .. code-block:: python
 
-      ['def __walrus_wrapper_lambda_%(uuid)s(%(param)s):',
+      ['def _walrus_wrapper_lambda_%(uuid)s(%(param)s):',
        '%(indentation)s"""Wrapper function for lambda definitions."""',
        '%(indentation)s%(suite)s']
 

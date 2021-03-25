@@ -316,7 +316,7 @@ declaring such variables at runtime.</p>
 <dl class="py data">
 <dt id="walrus.CALL_TEMPLATE">
 <code class="sig-prename descclassname"><span class="pre">walrus.</span></code><code class="sig-name descname"><span class="pre">CALL_TEMPLATE</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></em><a class="headerlink" href="#walrus.CALL_TEMPLATE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;__walrus_wrapper_</span><span class="si">%(name)s</span><span class="s1">_</span><span class="si">%(uuid)s</span><span class="s1">(</span><span class="si">%(expr)s</span><span class="s1">)&#39;</span>
+<dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;_walrus_wrapper_</span><span class="si">%(name)s</span><span class="s1">_</span><span class="si">%(uuid)s</span><span class="s1">(</span><span class="si">%(expr)s</span><span class="s1">)&#39;</span>
 </pre></div>
 </div>
 <p>Wrapper function call to replace the original assignment expression.</p>
@@ -334,7 +334,7 @@ declaring such variables at runtime.</p>
 <dl class="py data">
 <dt id="walrus.FUNC_TEMPLATE">
 <code class="sig-prename descclassname"><span class="pre">walrus.</span></code><code class="sig-name descname"><span class="pre">FUNC_TEMPLATE</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#walrus.FUNC_TEMPLATE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="s1">&#39;def __walrus_wrapper_</span><span class="si">%(name)s</span><span class="s1">_</span><span class="si">%(uuid)s</span><span class="s1">(expr):&#39;</span><span class="p">,</span>
+<dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="s1">&#39;def _walrus_wrapper_</span><span class="si">%(name)s</span><span class="s1">_</span><span class="si">%(uuid)s</span><span class="s1">(expr):&#39;</span><span class="p">,</span>
  <span class="s1">&#39;</span><span class="si">%(indentation)s</span><span class="s1">&quot;&quot;&quot;Wrapper function for assignment expression.&quot;&quot;&quot;&#39;</span><span class="p">,</span>
  <span class="s1">&#39;</span><span class="si">%(indentation)s%(scope_keyword)s</span><span class="s1"> </span><span class="si">%(name)s</span><span class="s1">&#39;</span><span class="p">,</span>
  <span class="s1">&#39;</span><span class="si">%(indentation)s%(name)s</span><span class="s1"> = expr&#39;</span><span class="p">,</span>
@@ -358,7 +358,7 @@ function will be rendered based on the following templates.</p>
 <dl class="py data">
 <dt id="walrus.LAMBDA_CALL_TEMPLATE">
 <code class="sig-prename descclassname"><span class="pre">walrus.</span></code><code class="sig-name descname"><span class="pre">LAMBDA_CALL_TEMPLATE</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></em><a class="headerlink" href="#walrus.LAMBDA_CALL_TEMPLATE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;__walrus_wrapper_lambda_</span><span class="si">%(uuid)s</span><span class="s1">&#39;</span>
+<dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="s1">&#39;_walrus_wrapper_lambda_</span><span class="si">%(uuid)s</span><span class="s1">&#39;</span>
 </pre></div>
 </div>
 <p>Wrapper function call to replace the original assignment expression.</p>
@@ -374,7 +374,7 @@ function will be rendered based on the following templates.</p>
 <dl class="py data">
 <dt id="walrus.LAMBDA_FUNC_TEMPLATE">
 <code class="sig-prename descclassname"><span class="pre">walrus.</span></code><code class="sig-name descname"><span class="pre">LAMBDA_FUNC_TEMPLATE</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#walrus.LAMBDA_FUNC_TEMPLATE" title="Permalink to this definition">¶</a></dt>
-<dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="s1">&#39;def __walrus_wrapper_lambda_</span><span class="si">%(uuid)s</span><span class="s1">(</span><span class="si">%(param)s</span><span class="s1">):&#39;</span><span class="p">,</span>
+<dd><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="s1">&#39;def _walrus_wrapper_lambda_</span><span class="si">%(uuid)s</span><span class="s1">(</span><span class="si">%(param)s</span><span class="s1">):&#39;</span><span class="p">,</span>
  <span class="s1">&#39;</span><span class="si">%(indentation)s</span><span class="s1">&quot;&quot;&quot;Wrapper function for lambda definitions.&quot;&quot;&quot;&#39;</span><span class="p">,</span>
  <span class="s1">&#39;</span><span class="si">%(indentation)s%(suite)s</span><span class="s1">&#39;</span><span class="p">]</span>
 </pre></div>

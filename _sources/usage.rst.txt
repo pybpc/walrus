@@ -17,14 +17,14 @@ To convert a single file:
        hello = NotImplemented
 
 
-   def __walrus_wrapper_hello_5adbf5ee911449cba75e35b9ef97ea80(expr):
+   def _walrus_wrapper_hello_5adbf5ee911449cba75e35b9ef97ea80(expr):
        """Wrapper function for assignment expression."""
        global hello
        hello = expr
        return hello
 
 
-   print(__walrus_wrapper_hello_5adbf5ee911449cba75e35b9ef97ea80('world'))
+   print(_walrus_wrapper_hello_5adbf5ee911449cba75e35b9ef97ea80('world'))
 
 
 To convert the whole project at the current working directory (overwrites all
@@ -60,13 +60,13 @@ Simple mode with no arguments (read from stdin, write to stdout):
        hello = NotImplemented
 
 
-   def __walrus_wrapper_hello_fbf3a9dabd2b40348815e3f2b22a1683(expr):
+   def _walrus_wrapper_hello_fbf3a9dabd2b40348815e3f2b22a1683(expr):
        """Wrapper function for assignment expression."""
        global hello
        hello = expr
        return hello
 
-   print(__walrus_wrapper_hello_fbf3a9dabd2b40348815e3f2b22a1683("world"))
+   print(_walrus_wrapper_hello_fbf3a9dabd2b40348815e3f2b22a1683("world"))
 
 Simple mode with a file name argument (read from file, write to stdout):
 
@@ -79,13 +79,13 @@ Simple mode with a file name argument (read from file, write to stdout):
        hello = NotImplemented
 
 
-   def __walrus_wrapper_hello_d1e6c2a11a76400aa9745bd90b3fb52a(expr):
+   def _walrus_wrapper_hello_d1e6c2a11a76400aa9745bd90b3fb52a(expr):
        """Wrapper function for assignment expression."""
        global hello
        hello = expr
        return hello
 
-   print(__walrus_wrapper_hello_d1e6c2a11a76400aa9745bd90b3fb52a('world'))
+   print(_walrus_wrapper_hello_d1e6c2a11a76400aa9745bd90b3fb52a('world'))
    $ cat myscript.py
    print(hello := 'world')
 

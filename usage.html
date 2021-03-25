@@ -46,14 +46,14 @@
 <span class="go">    hello = NotImplemented</span>
 
 
-<span class="go">def __walrus_wrapper_hello_5adbf5ee911449cba75e35b9ef97ea80(expr):</span>
+<span class="go">def _walrus_wrapper_hello_5adbf5ee911449cba75e35b9ef97ea80(expr):</span>
 <span class="go">    &quot;&quot;&quot;Wrapper function for assignment expression.&quot;&quot;&quot;</span>
 <span class="go">    global hello</span>
 <span class="go">    hello = expr</span>
 <span class="go">    return hello</span>
 
 
-<span class="go">print(__walrus_wrapper_hello_5adbf5ee911449cba75e35b9ef97ea80(&#39;world&#39;))</span>
+<span class="go">print(_walrus_wrapper_hello_5adbf5ee911449cba75e35b9ef97ea80(&#39;world&#39;))</span>
 </pre></div>
 </div>
 <p>To convert the whole project at the current working directory (overwrites all
@@ -81,13 +81,13 @@ use the <strong>simple mode</strong>.</p>
 <span class="go">    hello = NotImplemented</span>
 
 
-<span class="go">def __walrus_wrapper_hello_fbf3a9dabd2b40348815e3f2b22a1683(expr):</span>
+<span class="go">def _walrus_wrapper_hello_fbf3a9dabd2b40348815e3f2b22a1683(expr):</span>
 <span class="go">    &quot;&quot;&quot;Wrapper function for assignment expression.&quot;&quot;&quot;</span>
 <span class="go">    global hello</span>
 <span class="go">    hello = expr</span>
 <span class="go">    return hello</span>
 
-<span class="go">print(__walrus_wrapper_hello_fbf3a9dabd2b40348815e3f2b22a1683(&quot;world&quot;))</span>
+<span class="go">print(_walrus_wrapper_hello_fbf3a9dabd2b40348815e3f2b22a1683(&quot;world&quot;))</span>
 </pre></div>
 </div>
 <p>Simple mode with a file name argument (read from file, write to stdout):</p>
@@ -98,13 +98,13 @@ use the <strong>simple mode</strong>.</p>
 <span class="go">    hello = NotImplemented</span>
 
 
-<span class="go">def __walrus_wrapper_hello_d1e6c2a11a76400aa9745bd90b3fb52a(expr):</span>
+<span class="go">def _walrus_wrapper_hello_d1e6c2a11a76400aa9745bd90b3fb52a(expr):</span>
 <span class="go">    &quot;&quot;&quot;Wrapper function for assignment expression.&quot;&quot;&quot;</span>
 <span class="go">    global hello</span>
 <span class="go">    hello = expr</span>
 <span class="go">    return hello</span>
 
-<span class="go">print(__walrus_wrapper_hello_d1e6c2a11a76400aa9745bd90b3fb52a(&#39;world&#39;))</span>
+<span class="go">print(_walrus_wrapper_hello_d1e6c2a11a76400aa9745bd90b3fb52a(&#39;world&#39;))</span>
 <span class="gp">$ </span>cat myscript.py
 <span class="go">print(hello := &#39;world&#39;)</span>
 </pre></div>

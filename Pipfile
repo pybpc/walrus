@@ -17,13 +17,9 @@ verify_ssl = true
 walrus = {editable = true,path = "."}
 autopep8 = "*"
 bandit = "*"
-codecov = "*"
-coverage = "*"
-homebrew-pypi-poet = "*"
 ipython = "*"
 mypy = "*"
 pylint = "*"
-requests = "*"
 rstcheck = "*"
 sphinx = "*"
 sphinxemoji = "*"

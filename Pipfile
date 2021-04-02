@@ -14,22 +14,15 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-walrus = {editable = true,path = "."}
+bpc-template = {editable = true, path = ".", extras = ["lint", "test", "docs"]}
 autopep8 = "*"
-bandit = "*"
-ipython = "*"
-mypy = "*"
-pylint = "*"
 rstcheck = "*"
-sphinx = "*"
-sphinxemoji = "*"
-sphinx-autodoc-typehints = "*"
+ipython = "*"
+tox = "*"
 
 [packages]
-tbtrim = "*"
-parso = ">=0.6.0"
 bpc-f2format = {git = "https://github.com/pybpc/f2format.git"}
 bpc-utils = {git = "https://github.com/pybpc/bpc-utils.git"}
 
 [requires]
-python_version = "3.9"
+python_version = "*"

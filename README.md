@@ -4,14 +4,12 @@
 
 # walrus
 
-[![PyPI - Downloads](https://pepy.tech/badge/python-walrus)](https://pepy.tech/count/python-walrus)
-[![PyPI - Version](https://img.shields.io/pypi/v/python-walrus.svg)](https://pypi.org/project/python-walrus)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/python-walrus.svg)](https://pypi.org/project/python-walrus)
+[![PyPI - Version](https://img.shields.io/pypi/v/bpc-walrus.svg)](https://pypi.org/project/bpc-walrus)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bpc-walrus.svg)](https://pypi.org/project/bpc-walrus)
 
-[![Travis CI - Status](https://img.shields.io/travis/pybpc/walrus.svg)](https://travis-ci.com/pybpc/walrus)
-[![Codecov - Coverage](https://codecov.io/gh/pybpc/walrus/branch/master/graph/badge.svg)](https://codecov.io/gh/pybpc/walrus)
+[![GitHub Actions - Status](https://github.com/pybpc/bpc-walrus/workflows/Build/badge.svg)](https://github.com/pybpc/bpc-walrus/actions?query=workflow%3ABuild)
+[![Codecov - Coverage](https://codecov.io/gh/pybpc/bpc-walrus/branch/master/graph/badge.svg)](https://codecov.io/gh/pybpc/bpc-walrus)
 [![Documentation Status](https://readthedocs.org/projects/bpc-walrus/badge/?version=latest)](https://bpc-walrus.readthedocs.io/en/latest/)
-<!-- [![LICENSE](https://img.shields.io/badge/license-Anti%20996-blue.svg)](https://github.com/996icu/996.ICU/blob/master/LICENSE) -->
 
 > Write *assignment expressions* in Python 3.8 flavour, and let `walrus` worry about back-port issues :beer:
 
@@ -35,4 +33,5 @@ Note that code must remain valid and reasonable.
 - [`pybpc`](https://github.com/pybpc/bpc) (formerly known as `python-babel`)
 - [`f2format`](https://github.com/pybpc/f2format)
 - [`poseur`](https://github.com/pybpc/poseur)
+- [`relaxedecor`](https://github.com/pybpc/relaxedecor)
 - [`vermin`](https://github.com/netromdk/vermin)

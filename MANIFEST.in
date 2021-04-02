@@ -1,13 +1,1 @@
-global-include *.py
-
-include README.md
-include LICENSE
-
-prune .github
-prune .venv
-prune .vscode
-
-prune scripts
-prune share
-prune tests
-prune Tap
+include scripts/find_version.py

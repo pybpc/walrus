@@ -3,4 +3,5 @@
 max-line-length = 120
 
 per-file-ignores =
+    ci/run_pylint.py:E501
     tests/test.py:E501

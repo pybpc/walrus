@@ -7,7 +7,7 @@ back-port compiler for Python 3.8 assignment expression
 -------------------------------------------------------
 
 :Version: v0.1.5rc1
-:Date: April 19, 2020
+:Date: April 03, 2021
 :Manual section: 1
 :Author:
     Contributors of the Python Backport Compiler project.

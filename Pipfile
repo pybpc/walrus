@@ -14,13 +14,15 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-bpc-template = {editable = true, path = ".", extras = ["lint", "test", "docs"]}
+bpc-walrus = {editable = true, path = ".", extras = ["lint", "test", "docs"]}
 autopep8 = "*"
 rstcheck = "*"
 ipython = "*"
 tox = "*"
 
 [packages]
+parso = "*"
+tbtrim = "*"
 bpc-f2format = {git = "https://github.com/pybpc/f2format.git"}
 bpc-utils = {git = "https://github.com/pybpc/bpc-utils.git"}
 

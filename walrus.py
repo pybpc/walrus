@@ -764,50 +764,8 @@ class Context(BaseContext):
         Args:
             node (parso.python.tree.Lambda): lambda node
 
-        This method first checks if ``node`` contains assignment expressions.
-        If not, it will append the original source code directly to the buffer.
-
-        For *lambda* expressions with assignment expressions, this method
-        will extract the parameter list and initialise a :class:`LambdaContext`
-        instance to convert the lambda suite. Such information will be recorded
-        as :class:`LambdaEntry` in :attr:`self._lamb <Context._lamb>`.
-
-        .. note:: For :class:`LambdaContext`, ``scope_keyword`` should always be ``'nonlocal'``.
-
-        Then it will replace the original lambda expression with a wrapper function
-        call rendered from :data:`LAMBDA_CALL_TEMPLATE`.
-
         """
-        if not self.has_expr(node):
-            self += node.get_code()
-            return
-
-        children = iter(node.children)
-
-        # <Keyword: lambda>
-        next(children)
-
-        # vararglist
-        para_list = []
-        for child in children:
-            if child.type == 'operator' and child.value == ':':
-                break
-            para_list.append(child)
-        param = ''.join(map(lambda n: n.get_code(), para_list))
-
-        # test_nocond | test
-        indent = self._indent_level + 1
-        ctx = LambdaContext(node=next(children), config=self.config,  # type: ignore[arg-type]
-                            context=self._context, indent_level=indent,
-                            scope_keyword='nonlocal')
-        suite = ctx.string.strip()
-
-        # keep record
-        nuid = self._uuid_gen.gen()
-        self._lamb.append(dict(param=param, suite=suite, uuid=nuid))
-
-        # replacing lambda
-        self += LAMBDA_CALL_TEMPLATE % dict(uuid=nuid)
+        self._process_lambdef(node)
 
     def _process_if_stmt(self, node: parso.python.tree.IfStmt) -> None:
         """Process if statement (:token:`if_stmt`).

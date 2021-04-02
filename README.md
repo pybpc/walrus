@@ -4,6 +4,7 @@
 
 # walrus
 
+[![PyPI - Downloads](https://pepy.tech/badge/python-walrus)](https://pepy.tech/count/python-walrus)
 [![PyPI - Version](https://img.shields.io/pypi/v/bpc-walrus.svg)](https://pypi.org/project/bpc-walrus)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bpc-walrus.svg)](https://pypi.org/project/bpc-walrus)
 

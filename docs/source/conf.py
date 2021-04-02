@@ -12,6 +12,7 @@
 #
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath(
     os.path.dirname(  # docs/
         os.path.dirname(  # docs/source
@@ -23,7 +24,7 @@ sys.path.insert(0, os.path.abspath(
 # -- Project information -----------------------------------------------------
 
 project = 'walrus'
-copyright = '2020-2021, Python Backport Compiler Project'
+copyright = '2019-2021, Python Backport Compiler Project'  # pylint: disable=redefined-builtin
 author = 'Python Backport Compiler Project'
 
 # The full version, including alpha/beta/rc tags

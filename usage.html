@@ -32,9 +32,9 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="usage">
+  <section id="usage">
 <h1>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="specifying-files-and-directories-to-convert">
+<section id="specifying-files-and-directories-to-convert">
 <h2>Specifying Files And Directories To Convert<a class="headerlink" href="#specifying-files-and-directories-to-convert" title="Permalink to this headline">¶</a></h2>
 <p>To convert a single file:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cat myscript.py
@@ -110,8 +110,8 @@ use the <strong>simple mode</strong>.</p>
 </pre></div>
 </div>
 <p>In simple mode, no file names shall be provided via positional arguments.</p>
-</div>
-<div class="section" id="archiving-and-recovering-files">
+</section>
+<section id="archiving-and-recovering-files">
 <h2>Archiving And Recovering Files<a class="headerlink" href="#archiving-and-recovering-files" title="Permalink to this headline">¶</a></h2>
 <p>If you are not using the simple mode, <code class="docutils literal notranslate"><span class="pre">walrus</span></code> overwrites Python source
 files, which could potentially cause data loss. Therefore, a built-in archiving
@@ -155,8 +155,8 @@ was created. Never perform the recovery operation on an arbitrary untrusted
 archive file. Doing so may allow attackers to overwrite any files in the
 system.</p>
 </div>
-</div>
-<div class="section" id="conversion-options">
+</section>
+<section id="conversion-options">
 <h2>Conversion Options<a class="headerlink" href="#conversion-options" title="Permalink to this headline">¶</a></h2>
 <p>By default, <code class="docutils literal notranslate"><span class="pre">walrus</span></code> automatically detects file line endings and use the
 same line ending for code insertion. If you want to manually specify the line
@@ -173,8 +173,8 @@ If you want to manually specify a version for parsing, use the CLI option
 <p>By default, code insertion of <code class="docutils literal notranslate"><span class="pre">walrus</span></code> conforms to <span class="target" id="index-0"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0008"><strong>PEP 8</strong></a>. To opt out
 and get a more compact result, specify the CLI option <code class="docutils literal notranslate"><span class="pre">-n8</span></code> (<code class="docutils literal notranslate"><span class="pre">--no-pep8</span></code>)
 or set environment variable <code class="docutils literal notranslate"><span class="pre">WALRUS_PEP8=0</span></code>.</p>
-</div>
-<div class="section" id="runtime-options">
+</section>
+<section id="runtime-options">
 <h2>Runtime Options<a class="headerlink" href="#runtime-options" title="Permalink to this headline">¶</a></h2>
 <p>Specify the CLI option <code class="docutils literal notranslate"><span class="pre">-q</span></code> (<code class="docutils literal notranslate"><span class="pre">--quiet</span></code>) or set environment variable
 <code class="docutils literal notranslate"><span class="pre">WALRUS_QUIET=1</span></code> to run in quiet mode.</p>
@@ -185,14 +185,14 @@ for conversion.</p>
 actually performing conversion and archiving.</p>
 <p>By running <code class="docutils literal notranslate"><span class="pre">walrus</span> <span class="pre">--help</span></code>, you can see the current values of all the options,
 based on their default values and your environment variables.</p>
-</div>
-<div class="section" id="api-usage">
+</section>
+<section id="api-usage">
 <h2>API Usage<a class="headerlink" href="#api-usage" title="Permalink to this headline">¶</a></h2>
 <p>If you want to programmatically invoke <code class="docutils literal notranslate"><span class="pre">walrus</span></code>, you may want to look at
 <a class="reference internal" href="api.html"><span class="doc">API Reference</span></a>. The <a class="reference internal" href="api.html#walrus.convert" title="walrus.convert"><code class="xref py py-func docutils literal notranslate"><span class="pre">walrus.convert()</span></code></a> and <a class="reference internal" href="api.html#walrus.walrus" title="walrus.walrus"><code class="xref py py-func docutils literal notranslate"><span class="pre">walrus.walrus()</span></code></a>
 functions should be most commonly used.</p>
-</div>
-<div class="section" id="distutils-setuptools-integration">
+</section>
+<section id="distutils-setuptools-integration">
 <h2>Distutils/Setuptools Integration<a class="headerlink" href="#distutils-setuptools-integration" title="Permalink to this headline">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">walrus</span></code> can also be directly integrated within your <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> script
 to dynamically convert <em>assignment expressions</em> upon installation:</p>
@@ -245,8 +245,8 @@ the <code class="docutils literal notranslate"><span class="pre">requires</span>
 </span><span class="p">...</span>
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -318,7 +318,7 @@ the <code class="docutils literal notranslate"><span class="pre">requires</span>
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2020, Python Backport Compiler Project.
+      &copy;2019-2021, Python Backport Compiler Project.
       
       |
       <a href="_sources/usage.rst.txt"

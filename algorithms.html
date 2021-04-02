@@ -32,12 +32,12 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="algorithms">
+  <section id="algorithms">
 <h1>Algorithms<a class="headerlink" href="#algorithms" title="Permalink to this headline">¶</a></h1>
 <p>As discussed in <span class="target" id="index-0"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0572"><strong>PEP 572</strong></a>, <em>assignment expression</em> is a way to assign to variables within
 an expression using the notation <code class="docutils literal notranslate"><span class="pre">NAME</span> <span class="pre">:=</span> <span class="pre">expr</span></code>. It is roughly equivalent to first assigning
 <code class="docutils literal notranslate"><span class="pre">expr</span></code> to the variable <code class="docutils literal notranslate"><span class="pre">NAME</span></code>, then referencing such variable <code class="docutils literal notranslate"><span class="pre">NAME</span></code> at the current scope.</p>
-<div class="section" id="basic-concepts">
+<section id="basic-concepts">
 <h2>Basic Concepts<a class="headerlink" href="#basic-concepts" title="Permalink to this headline">¶</a></h2>
 <p>To convert, <code class="docutils literal notranslate"><span class="pre">walrus</span></code> will need to evaluate the expression, assign to the variable,
 make sure such variable is available from the current scope and replace the original
@@ -95,7 +95,7 @@ we were using an <em>assignment expression</em>.</p>
 <li><p>wrapper function definition – <a class="reference internal" href="api.html#walrus.FUNC_TEMPLATE" title="walrus.FUNC_TEMPLATE"><code class="xref py py-data docutils literal notranslate"><span class="pre">walrus.FUNC_TEMPLATE</span></code></a></p></li>
 </ul>
 </div>
-<div class="section" id="scope-keyword-selection">
+<section id="scope-keyword-selection">
 <h3>Scope Keyword Selection<a class="headerlink" href="#scope-keyword-selection" title="Permalink to this headline">¶</a></h3>
 <p>Python provides <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-global-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">global</span></code></a> and <a class="reference external" href="https://docs.python.org/3/reference/simple_stmts.html#grammar-token-nonlocal-stmt" title="(in Python v3.9)"><code class="xref std std-token docutils literal notranslate"><span class="pre">nonlocal</span></code></a>
 keywords for interacting with variables not in the current namespace. Following the Python
@@ -111,8 +111,8 @@ i.e. in the <a class="reference external" href="https://docs.python.org/3/glossa
 </ol>
 <p>For assignment expression in <a class="reference external" href="https://docs.python.org/3/glossary.html#term-lambda" title="(in Python v3.9)"><span class="xref std std-term">lambda</span></a> functions, it shall be treated as another
 special case.</p>
-</div>
-<div class="section" id="formatted-string-literals">
+</section>
+<section id="formatted-string-literals">
 <h3>Formatted String Literals<a class="headerlink" href="#formatted-string-literals" title="Permalink to this headline">¶</a></h3>
 <p>Since Python 3.6, formatted string literals (<a class="reference external" href="https://docs.python.org/3/glossary.html#term-f-string" title="(in Python v3.9)"><span class="xref std std-term">f-string</span></a>) were introduced in
 <span class="target" id="index-3"></span><a class="pep reference external" href="https://www.python.org/dev/peps/pep-0498"><strong>PEP 498</strong></a>. And since Python 3.8, <em>f-string debugging syntax</em> were added to the grammar. However,
@@ -127,9 +127,9 @@ code from changing the original expression for self-documenting and debugging.)<
 <li><p>When an <em>assignment expression</em> is in an <a class="reference external" href="https://docs.python.org/3/glossary.html#term-f-string" title="(in Python v3.9)"><span class="xref std std-term">f-string</span></a> inside a class scope.
 (To prevent the converted code from breaking the quotes of the original string.)</p></li>
 </ol>
-</div>
-</div>
-<div class="section" id="lambda-functions">
+</section>
+</section>
+<section id="lambda-functions">
 <h2>Lambda Functions<a class="headerlink" href="#lambda-functions" title="Permalink to this headline">¶</a></h2>
 <p><a class="reference external" href="https://docs.python.org/3/glossary.html#term-lambda" title="(in Python v3.9)"><span class="xref std std-term">lambda</span></a> functions can always be transformed into a regular <a class="reference external" href="https://docs.python.org/3/glossary.html#term-function" title="(in Python v3.9)"><span class="xref std std-term">function</span></a>.
 This is the foundation of converting <em>assignment expressions</em> in <a class="reference external" href="https://docs.python.org/3/glossary.html#term-lambda" title="(in Python v3.9)"><span class="xref std std-term">lambda</span></a> functions.</p>
@@ -166,8 +166,8 @@ This is the foundation of converting <em>assignment expressions</em> in <a class
 <li><p><a class="reference internal" href="api.html#walrus.LAMBDA_FUNC_TEMPLATE" title="walrus.LAMBDA_FUNC_TEMPLATE"><code class="xref py py-data docutils literal notranslate"><span class="pre">walrus.LAMBDA_FUNC_TEMPLATE</span></code></a></p></li>
 </ul>
 </div>
-</div>
-<div class="section" id="class-definitions">
+</section>
+<section id="class-definitions">
 <h2>Class Definitions<a class="headerlink" href="#class-definitions" title="Permalink to this headline">¶</a></h2>
 <p>As the <a class="reference external" href="https://docs.python.org/3/glossary.html#term-class" title="(in Python v3.9)"><span class="xref std std-term">class</span></a> context is slightly different from regular <a class="reference external" href="https://docs.python.org/3/glossary.html#term-module" title="(in Python v3.9)"><span class="xref std std-term">module</span></a>
 and/or <a class="reference external" href="https://docs.python.org/3/glossary.html#term-function" title="(in Python v3.9)"><span class="xref std std-term">function</span></a> contexts, the generic conversion strategies are <strong>NOT</strong>
@@ -205,8 +205,8 @@ which will then be applicable to the <em>regular</em> conversion templates as di
 <p>In some corner cases, the first argument (variable name) to the <code class="docutils literal notranslate"><span class="pre">__setitem__</span></code> call
 must be <em>mangled</em> and <em>normalised</em> instead of used directly. See
 <a class="reference external" href="https://bpc-utils.readthedocs.io/en/latest/index.html#bpc_utils.BaseContext.mangle" title="(in bpc-utils)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">bpc_utils.BaseContext.mangle()</span></code></a> for more information.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -279,7 +279,7 @@ must be <em>mangled</em> and <em>normalised</em> instead of used directly. See
       <div class="clearer"></div>
     </div>
     <div class="footer">
-      &copy;2020, Python Backport Compiler Project.
+      &copy;2019-2021, Python Backport Compiler Project.
       
       |
       <a href="_sources/algorithms.rst.txt"

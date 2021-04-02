@@ -47,6 +47,7 @@ setup(
     py_modules=[module_name],
     python_requires='>=3.4',
     install_requires=[
+        'f2format',  # bpc-f2format
         'bpc-utils~=0.10.0',    # utility library
     ],
     extras_require={

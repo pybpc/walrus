@@ -44,12 +44,6 @@
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>code</strong> (<em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.9)"><em>bytes</em></a><em>]</em>) – the source code to be converted</p></li>
 <li><p><strong>filename</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em>) – an optional source file name to provide a context in case of error</p></li>
-<li><p><strong>source_version</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em>) – </p></li>
-<li><p><strong>linesep</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[
-</em><em>, 
-</em><em>, </em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>indentation</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>pep8</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a><em>]</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Keyword Arguments</dt>
@@ -89,17 +83,7 @@ or <code class="docutils literal notranslate"><span class="pre">'t'</span></code
 <dd><p>Convert the given Python source code file. The file will be overwritten.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – the file to convert</p></li>
-<li><p><strong>source_version</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em>) – </p></li>
-<li><p><strong>linesep</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[
-</em><em>, 
-</em><em>, </em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>indentation</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>pep8</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a><em>]</em>) – </p></li>
-<li><p><strong>quiet</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a><em>]</em>) – </p></li>
-<li><p><strong>dry_run</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – </p></li>
-</ul>
+<dd class="field-odd"><p><strong>filename</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – the file to convert</p>
 </dd>
 <dt class="field-even">Keyword Arguments</dt>
 <dd class="field-even"><ul class="simple">
@@ -431,10 +415,6 @@ statements, then <code class="docutils literal notranslate"><span class="pre">wa
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.tree.NodeOrLeaf" title="(in parso v0.7)"><em>parso.tree.NodeOrLeaf</em></a>) – parso AST</p></li>
 <li><p><strong>config</strong> (<a class="reference internal" href="#walrus.Config" title="walrus.Config"><em>Config</em></a>) – conversion configurations</p></li>
-<li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – </p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Keyword Arguments</dt>
@@ -552,8 +532,6 @@ it will process nodes with following methods:</p>
 <li><p><strong>config</strong> (<a class="reference external" href="https://bpc-utils.readthedocs.io/en/latest/index.html#bpc_utils.Config" title="(in bpc-utils)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a>) – conversion configurations</p></li>
 <li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – current indentation level</p></li>
 <li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – raw processing flag</p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -585,17 +563,11 @@ between the converted code as <code class="xref py py-attr docutils literal notr
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – argument node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method processes arguments from function argument list.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -608,9 +580,6 @@ between the converted code as <code class="xref py py-attr docutils literal notr
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Class" title="(in parso v0.7)"><em>parso.python.tree.Class</em></a>) – class node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method converts the whole class suite context with
 <a class="reference internal" href="#walrus.Context._process_suite_node" title="walrus.Context._process_suite_node"><code class="xref py py-meth docutils literal notranslate"><span class="pre">_process_suite_node()</span></code></a> through
@@ -618,9 +587,6 @@ between the converted code as <code class="xref py py-attr docutils literal notr
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Class" title="(in parso v0.7)"><em>parso.python.tree.Class</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -633,18 +599,12 @@ between the converted code as <code class="xref py py-attr docutils literal notr
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.ForStmt" title="(in parso v0.7)"><em>parso.python.tree.ForStmt</em></a>) – for node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method processes the indented suite under the <em>for</em> and optional
 <em>else</em> statements.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.ForStmt" title="(in parso v0.7)"><em>parso.python.tree.ForStmt</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -671,18 +631,12 @@ between the converted code as <code class="xref py py-attr docutils literal notr
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Function" title="(in parso v0.7)"><em>parso.python.tree.Function</em></a>) – function node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method converts the function suite with
 <a class="reference internal" href="#walrus.Context._process_suite_node" title="walrus.Context._process_suite_node"><code class="xref py py-meth docutils literal notranslate"><span class="pre">_process_suite_node()</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Function" title="(in parso v0.7)"><em>parso.python.tree.Function</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -695,18 +649,12 @@ between the converted code as <code class="xref py py-attr docutils literal notr
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.GlobalStmt" title="(in parso v0.7)"><em>parso.python.tree.GlobalStmt</em></a>) – global statement node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method records all variables declared in a <em>global</em> statement
 into <a class="reference internal" href="#walrus.Context._context" title="walrus.Context._context"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self._context</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.GlobalStmt" title="(in parso v0.7)"><em>parso.python.tree.GlobalStmt</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -719,18 +667,12 @@ into <a class="reference internal" href="#walrus.Context._context" title="walrus
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.IfStmt" title="(in parso v0.7)"><em>parso.python.tree.IfStmt</em></a>) – if node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method processes each indented suite under the <em>if</em>, <em>elif</em>,
 and <em>else</em> statements.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.IfStmt" title="(in parso v0.7)"><em>parso.python.tree.IfStmt</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -742,9 +684,6 @@ and <em>else</em> statements.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Lambda" title="(in parso v0.7)"><em>parso.python.tree.Lambda</em></a>) – lambda node</p>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
 </dd>
 </dl>
 <p>This method first checks if <code class="docutils literal notranslate"><span class="pre">node</span></code> contains assignment expressions.
@@ -763,9 +702,6 @@ call rendered from <a class="reference internal" href="#walrus.LAMBDA_CALL_TEMPL
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
 </dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Lambda" title="(in parso v0.7)"><em>parso.python.tree.Lambda</em></a>) – </p>
-</dd>
 </dl>
 </dd></dl>
 
@@ -776,9 +712,6 @@ call rendered from <a class="reference internal" href="#walrus.LAMBDA_CALL_TEMPL
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – assignment expression node</p>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
 </dd>
 </dl>
 <p>This method converts the assignment expression into wrapper function
@@ -795,9 +728,6 @@ rendered from <a class="reference internal" href="#walrus.CALL_TEMPLATE" title="
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
 </dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – </p>
-</dd>
 </dl>
 </dd></dl>
 
@@ -808,9 +738,6 @@ rendered from <a class="reference internal" href="#walrus.CALL_TEMPLATE" title="
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – string literals node</p>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
 </dd>
 </dl>
 <p>This method first checks if <code class="docutils literal notranslate"><span class="pre">node</span></code> contains assignment expression.
@@ -839,9 +766,6 @@ and <em>left-hand-side</em> variable names (<a class="reference internal" href="
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
 </dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – </p>
-</dd>
 </dl>
 </dd></dl>
 
@@ -853,9 +777,6 @@ and <em>left-hand-side</em> variable names (<a class="reference internal" href="
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – concatentable strings node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>As in Python, adjacent string literals can be concatenated in certain
 cases, as described in the <a href="#id1"><span class="problematic" id="id2">`documentation`_</span></a>. Such concatenable strings
@@ -864,9 +785,6 @@ may contain formatted string literals (<a class="reference external" href="https
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -883,9 +801,6 @@ may contain formatted string literals (<a class="reference external" href="https
 <li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – raw processing flag</p></li>
 <li><p><strong>cls_ctx</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em>) – class name if <code class="docutils literal notranslate"><span class="pre">node</span></code> is in class context</p></li>
 </ul>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
 </dd>
 </dl>
 <p>This method first checks if <code class="docutils literal notranslate"><span class="pre">node</span></code> contains assignment expression.
@@ -917,14 +832,6 @@ where the converted wrapper functions should be inserted.</p>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
 </dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><ul class="simple">
-<li><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.tree.NodeOrLeaf" title="(in parso v0.7)"><em>parso.tree.NodeOrLeaf</em></a>) – </p></li>
-<li><p><strong>func</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – </p></li>
-<li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – </p></li>
-<li><p><strong>cls_ctx</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em>) – </p></li>
-</ul>
-</dd>
 </dl>
 </dd></dl>
 
@@ -936,18 +843,12 @@ where the converted wrapper functions should be inserted.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.TryStmt" title="(in parso v0.7)"><em>parso.python.tree.TryStmt</em></a>) – try node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method processes the indented suite under the <em>try</em>, <em>except</em>,
 <em>else</em>, and <em>finally</em> statements.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.TryStmt" title="(in parso v0.7)"><em>parso.python.tree.TryStmt</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -960,18 +861,12 @@ where the converted wrapper functions should be inserted.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.WhileStmt" title="(in parso v0.7)"><em>parso.python.tree.WhileStmt</em></a>) – while node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method processes the indented suite under the <em>while</em> and optional
 <em>else</em> statements.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.WhileStmt" title="(in parso v0.7)"><em>parso.python.tree.WhileStmt</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -984,17 +879,11 @@ where the converted wrapper functions should be inserted.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.WithStmt" title="(in parso v0.7)"><em>parso.python.tree.WithStmt</em></a>) – with node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method processes the indented suite under the <em>with</em> statement.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.WithStmt" title="(in parso v0.7)"><em>parso.python.tree.WithStmt</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1194,10 +1083,6 @@ The <a class="reference external" href="https://docs.python.org/3/reference/simp
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – parso AST</p></li>
 <li><p><strong>config</strong> (<a class="reference internal" href="#walrus.Config" title="walrus.Config"><em>Config</em></a>) – conversion configurations</p></li>
-<li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – </p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>raw</strong> (<em>Literal</em><em>[</em><em>True</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Keyword Arguments</dt>
@@ -1225,8 +1110,6 @@ which may change the content of <em>debug f-string</em>.</p>
 <li><p><strong>config</strong> (<a class="reference external" href="https://bpc-utils.readthedocs.io/en/latest/index.html#bpc_utils.Config" title="(in bpc-utils)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a>) – conversion configurations</p></li>
 <li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – current indentation level</p></li>
 <li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.9)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[True]) – raw processing flag</p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1376,10 +1259,6 @@ The <a class="reference external" href="https://docs.python.org/3/reference/simp
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Lambda" title="(in parso v0.7)"><em>parso.python.tree.Lambda</em></a>) – parso AST</p></li>
 <li><p><strong>config</strong> (<a class="reference internal" href="#walrus.Config" title="walrus.Config"><em>Config</em></a>) – conversion configurations</p></li>
-<li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – </p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>raw</strong> (<em>Literal</em><em>[</em><em>False</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Keyword Arguments</dt>
@@ -1406,8 +1285,6 @@ The <a class="reference external" href="https://docs.python.org/3/reference/simp
 <li><p><strong>config</strong> (<a class="reference external" href="https://bpc-utils.readthedocs.io/en/latest/index.html#bpc_utils.Config" title="(in bpc-utils)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a>) – conversion configurations</p></li>
 <li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – current indentation level</p></li>
 <li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.9)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[False]) – raw processing flag</p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1578,13 +1455,6 @@ The <a class="reference external" href="https://docs.python.org/3/reference/simp
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Class" title="(in parso v0.7)"><em>parso.python.tree.Class</em></a>) – parso AST</p></li>
 <li><p><strong>config</strong> (<a class="reference internal" href="#walrus.Config" title="walrus.Config"><em>Config</em></a>) – conversion configurations</p></li>
-<li><p><strong>cls_ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – </p></li>
-<li><p><strong>cls_var</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – </p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – </p></li>
-<li><p><strong>external</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Keyword Arguments</dt>
@@ -1615,11 +1485,6 @@ where the converted wrapper functions should be inserted.</p>
 <li><p><strong>config</strong> (<a class="reference external" href="https://bpc-utils.readthedocs.io/en/latest/index.html#bpc_utils.Config" title="(in bpc-utils)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a>) – conversion configurations</p></li>
 <li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – current indentation level</p></li>
 <li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – raw processing flag</p></li>
-<li><p><strong>cls_ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – </p></li>
-<li><p><strong>cls_var</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>external</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 </dl>
@@ -1651,9 +1516,6 @@ rendered from <a class="reference internal" href="#walrus.FUNC_TEMPLATE" title="
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Name" title="(in parso v0.7)"><em>parso.python.tree.Name</em></a>) – defined name node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method processes name of defined <span class="xref std std-term">class variable</span>. The original
 variable name will be recorded in <a class="reference internal" href="#walrus.Context._vars" title="walrus.Context._vars"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self._vars</span></code></a>;
@@ -1670,9 +1532,6 @@ considered as <em>class variable</em>.</p>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
 </dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Name" title="(in parso v0.7)"><em>parso.python.tree.Name</em></a>) – </p>
-</dd>
 </dl>
 </dd></dl>
 
@@ -1684,9 +1543,6 @@ considered as <em>class variable</em>.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.ExprStmt" title="(in parso v0.7)"><em>parso.python.tree.ExprStmt</em></a>) – expression statement</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method processes expression statements in the class context.
 It will search for <em>left-hand-side</em> variable names of defined
@@ -1695,9 +1551,6 @@ to process such nodes.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.ExprStmt" title="(in parso v0.7)"><em>parso.python.tree.ExprStmt</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1710,9 +1563,6 @@ to process such nodes.</p>
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.GlobalStmt" title="(in parso v0.7)"><em>parso.python.tree.GlobalStmt</em></a>) – global statement node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method records all variables declared in a <em>global</em> statement
 into <a class="reference internal" href="#walrus.Context._context" title="walrus.Context._context"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self._context</span></code></a> and
@@ -1720,9 +1570,6 @@ into <a class="reference internal" href="#walrus.Context._context" title="walrus
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.GlobalStmt" title="(in parso v0.7)"><em>parso.python.tree.GlobalStmt</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1734,9 +1581,6 @@ into <a class="reference internal" href="#walrus.Context._context" title="walrus
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – assignment expression node</p>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
 </dd>
 </dl>
 <p>This method converts the assignment expression into wrapper function
@@ -1768,9 +1612,6 @@ recorded into <a class="reference internal" href="#walrus.ClassContext._ext_func
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
 </dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – </p>
-</dd>
 </dl>
 </dd></dl>
 
@@ -1782,18 +1623,12 @@ recorded into <a class="reference internal" href="#walrus.ClassContext._ext_func
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.KeywordStatement" title="(in parso v0.7)"><em>parso.python.tree.KeywordStatement</em></a>) – nonlocal statement node</p>
 </dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
-</dd>
 </dl>
 <p>This method records all variables declared in a <em>nonlocal</em> statement
 into <a class="reference internal" href="#walrus.ClassContext._ext_vars" title="walrus.ClassContext._ext_vars"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self._ext_vars</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.KeywordStatement" title="(in parso v0.7)"><em>parso.python.tree.KeywordStatement</em></a>) – </p>
 </dd>
 </dl>
 </dd></dl>
@@ -1805,9 +1640,6 @@ into <a class="reference internal" href="#walrus.ClassContext._ext_vars" title="
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – string literals node</p>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
 </dd>
 </dl>
 <p>This method first checks if <code class="docutils literal notranslate"><span class="pre">node</span></code> contains assignment expression.
@@ -1833,9 +1665,6 @@ instance as well.</p>
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
 </dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – </p>
-</dd>
 </dl>
 </dd></dl>
 
@@ -1851,9 +1680,6 @@ instance as well.</p>
 <li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – raw processing flag</p></li>
 <li><p><strong>cls_ctx</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em>) – class name if <code class="docutils literal notranslate"><span class="pre">node</span></code> is in class context</p></li>
 </ul>
-</dd>
-<dt class="field-even">Return type</dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)">None</a></p>
 </dd>
 </dl>
 <p>This method first checks if <code class="docutils literal notranslate"><span class="pre">node</span></code> contains assignment expression.
@@ -1887,14 +1713,6 @@ where the converted wrapper functions should be inserted.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type</dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
-</dd>
-<dt class="field-even">Parameters</dt>
-<dd class="field-even"><ul class="simple">
-<li><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.tree.NodeOrLeaf" title="(in parso v0.7)"><em>parso.tree.NodeOrLeaf</em></a>) – </p></li>
-<li><p><strong>func</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – </p></li>
-<li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><em>bool</em></a>) – </p></li>
-<li><p><strong>cls_ctx</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em>) – </p></li>
-</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -2145,13 +1963,6 @@ inside a class suite (<span class="xref std std-term">ClassVar</span>).</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.PythonNode" title="(in parso v0.7)"><em>parso.python.tree.PythonNode</em></a>) – parso AST</p></li>
 <li><p><strong>config</strong> (<a class="reference internal" href="#walrus.Config" title="walrus.Config"><em>Config</em></a>) – conversion configurations</p></li>
-<li><p><strong>cls_ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – </p></li>
-<li><p><strong>cls_var</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><em>int</em></a>) – </p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>raw</strong> (<em>Literal</em><em>[</em><em>True</em><em>]</em>) – </p></li>
-<li><p><strong>external</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 <dt class="field-even">Keyword Arguments</dt>
@@ -2185,11 +1996,6 @@ expressions it may contain.</p>
 <li><p><strong>config</strong> (<a class="reference external" href="https://bpc-utils.readthedocs.io/en/latest/index.html#bpc_utils.Config" title="(in bpc-utils)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Config</span></code></a>) – conversion configurations</p></li>
 <li><p><strong>indent_level</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – current indentation level</p></li>
 <li><p><strong>raw</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.9)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Literal</span></code></a>[True]) – raw processing flag</p></li>
-<li><p><strong>cls_ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a>) – </p></li>
-<li><p><strong>cls_var</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>scope_keyword</strong> (<em>Optional</em><em>[</em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>context</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>]</em><em>]</em>) – </p></li>
-<li><p><strong>external</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><em>str</em></a><em>, </em><em>Literal</em><em>[</em><em>global</em><em>, </em><em>nonlocal</em><em>]</em><em>]</em><em>]</em>) – </p></li>
 </ul>
 </dd>
 </dl>

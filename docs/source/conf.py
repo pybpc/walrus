@@ -12,14 +12,16 @@
 #
 import os
 import sys
+from typing import List
 
-sys.path.insert(0, os.path.abspath(
+PROJECT_ROOT = os.path.abspath(
     os.path.dirname(  # docs/
         os.path.dirname(  # docs/source
             os.path.dirname(__file__)  # docs/source/conf.py
         )
     )
-))
+)
+sys.path.insert(0, PROJECT_ROOT)
 
 # -- Project information -----------------------------------------------------
 
@@ -28,7 +30,7 @@ copyright = '2019-2021, Python Backport Compiler Project'  # pylint: disable=red
 author = 'Python Backport Compiler Project'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.5rc1'
+release = __import__('walrus').__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -52,7 +54,9 @@ intersphinx_mapping = {
     'f2format': ('https://bpc-f2format.readthedocs.io/en/latest/', None),
 }
 
-autodoc_typehints = 'description'
+# type hints will be taken care of by sphinx_autodoc_typehints instead of sphinx.ext.autodoc.typehints
+autodoc_typehints = 'none'
+
 # autodoc_member_order = 'bysource'
 # autodoc_member_order = 'alphabetic'
 autodoc_member_order = 'groupwise'
@@ -80,7 +84,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = []  # type: List[str]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -103,5 +107,5 @@ html_theme_options = {
     'github_user': 'pybpc',
     'github_repo': 'walrus',
     'github_banner': True,
-    #'github_type': 'star',
+    # 'github_type': 'star',
 }

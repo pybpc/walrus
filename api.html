@@ -715,22 +715,8 @@ call rendered from <a class="reference internal" href="#walrus.LAMBDA_CALL_TEMPL
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>node</strong> (<a class="reference external" href="https://parso.readthedocs.io/en/latest/docs/parser-tree.html#parso.python.tree.Lambda" title="(in parso v0.7)"><em>parso.python.tree.Lambda</em></a>) – lambda node</p>
 </dd>
-</dl>
-<p>This method first checks if <code class="docutils literal notranslate"><span class="pre">node</span></code> contains assignment expressions.
-If not, it will append the original source code directly to the buffer.</p>
-<p>For <em>lambda</em> expressions with assignment expressions, this method
-will extract the parameter list and initialise a <a class="reference internal" href="#walrus.LambdaContext" title="walrus.LambdaContext"><code class="xref py py-class docutils literal notranslate"><span class="pre">LambdaContext</span></code></a>
-instance to convert the lambda suite. Such information will be recorded
-as <a class="reference internal" href="#walrus.LambdaEntry" title="walrus.LambdaEntry"><code class="xref py py-class docutils literal notranslate"><span class="pre">LambdaEntry</span></code></a> in <a class="reference internal" href="#walrus.Context._lamb" title="walrus.Context._lamb"><code class="xref py py-attr docutils literal notranslate"><span class="pre">self._lamb</span></code></a>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>For <a class="reference internal" href="#walrus.LambdaContext" title="walrus.LambdaContext"><code class="xref py py-class docutils literal notranslate"><span class="pre">LambdaContext</span></code></a>, <code class="docutils literal notranslate"><span class="pre">scope_keyword</span></code> should always be <code class="docutils literal notranslate"><span class="pre">'nonlocal'</span></code>.</p>
-</div>
-<p>Then it will replace the original lambda expression with a wrapper function
-call rendered from <a class="reference internal" href="#walrus.LAMBDA_CALL_TEMPLATE" title="walrus.LAMBDA_CALL_TEMPLATE"><code class="xref py py-data docutils literal notranslate"><span class="pre">LAMBDA_CALL_TEMPLATE</span></code></a>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.9)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>

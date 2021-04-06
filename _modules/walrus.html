@@ -383,6 +383,7 @@
 <span class="sd">    * :token:`lambdef`</span>
 
 <span class="sd">      - :meth:`Context._process_lambdef`</span>
+<span class="sd">      - :meth:`Context._process_lambdef_nocond`</span>
 
 <span class="sd">    * :token:`if_stmt`</span>
 
@@ -740,6 +741,57 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_process_suite_node</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">func</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Context._process_lambdef"><a class="viewcode-back" href="../api.html#walrus.Context._process_lambdef">[docs]</a>    <span class="k">def</span> <span class="nf">_process_lambdef</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">parso</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">Lambda</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Process lambda definition (``lambdef``).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            node (parso.python.tree.Lambda): lambda node</span>
+
+<span class="sd">        This method first checks if ``node`` contains assignment expressions.</span>
+<span class="sd">        If not, it will append the original source code directly to the buffer.</span>
+
+<span class="sd">        For *lambda* expressions with assignment expressions, this method</span>
+<span class="sd">        will extract the parameter list and initialise a :class:`LambdaContext`</span>
+<span class="sd">        instance to convert the lambda suite. Such information will be recorded</span>
+<span class="sd">        as :class:`LambdaEntry` in :attr:`self._lamb &lt;Context._lamb&gt;`.</span>
+
+<span class="sd">        .. note:: For :class:`LambdaContext`, ``scope_keyword`` should always be ``&#39;nonlocal&#39;``.</span>
+
+<span class="sd">        Then it will replace the original lambda expression with a wrapper function</span>
+<span class="sd">        call rendered from :data:`LAMBDA_CALL_TEMPLATE`.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_expr</span><span class="p">(</span><span class="n">node</span><span class="p">):</span>
+            <span class="bp">self</span> <span class="o">+=</span> <span class="n">node</span><span class="o">.</span><span class="n">get_code</span><span class="p">()</span>
+            <span class="k">return</span>
+
+        <span class="n">children</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">node</span><span class="o">.</span><span class="n">children</span><span class="p">)</span>
+
+        <span class="c1"># &lt;Keyword: lambda&gt;</span>
+        <span class="nb">next</span><span class="p">(</span><span class="n">children</span><span class="p">)</span>
+
+        <span class="c1"># vararglist</span>
+        <span class="n">para_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">children</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">child</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s1">&#39;operator&#39;</span> <span class="ow">and</span> <span class="n">child</span><span class="o">.</span><span class="n">value</span> <span class="o">==</span> <span class="s1">&#39;:&#39;</span><span class="p">:</span>
+                <span class="k">break</span>
+            <span class="n">para_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+        <span class="n">param</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">n</span><span class="p">:</span> <span class="n">n</span><span class="o">.</span><span class="n">get_code</span><span class="p">(),</span> <span class="n">para_list</span><span class="p">))</span>
+
+        <span class="c1"># test_nocond | test</span>
+        <span class="n">indent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_indent_level</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">ctx</span> <span class="o">=</span> <span class="n">LambdaContext</span><span class="p">(</span><span class="n">node</span><span class="o">=</span><span class="nb">next</span><span class="p">(</span><span class="n">children</span><span class="p">),</span> <span class="n">config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>  <span class="c1"># type: ignore[arg-type]</span>
+                            <span class="n">context</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_context</span><span class="p">,</span> <span class="n">indent_level</span><span class="o">=</span><span class="n">indent</span><span class="p">,</span>
+                            <span class="n">scope_keyword</span><span class="o">=</span><span class="s1">&#39;nonlocal&#39;</span><span class="p">)</span>
+        <span class="n">suite</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">string</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+        <span class="c1"># keep record</span>
+        <span class="n">nuid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_uuid_gen</span><span class="o">.</span><span class="n">gen</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_lamb</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">param</span><span class="o">=</span><span class="n">param</span><span class="p">,</span> <span class="n">suite</span><span class="o">=</span><span class="n">suite</span><span class="p">,</span> <span class="n">uuid</span><span class="o">=</span><span class="n">nuid</span><span class="p">))</span>
+
+        <span class="c1"># replacing lambda</span>
+        <span class="bp">self</span> <span class="o">+=</span> <span class="n">LAMBDA_CALL_TEMPLATE</span> <span class="o">%</span> <span class="nb">dict</span><span class="p">(</span><span class="n">uuid</span><span class="o">=</span><span class="n">nuid</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Context._process_lambdef_nocond"><a class="viewcode-back" href="../api.html#walrus.Context._process_lambdef_nocond">[docs]</a>    <span class="k">def</span> <span class="nf">_process_lambdef_nocond</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">parso</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">Lambda</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Process lambda definition (``lambdef``).</span>
 
 <span class="sd">        Args:</span>

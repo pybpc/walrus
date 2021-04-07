@@ -383,7 +383,6 @@
 <span class="sd">    * :token:`lambdef`</span>
 
 <span class="sd">      - :meth:`Context._process_lambdef`</span>
-<span class="sd">      - :meth:`Context._process_lambdef_nocond`</span>
 
 <span class="sd">    * :token:`if_stmt`</span>
 
@@ -790,15 +789,6 @@
 
         <span class="c1"># replacing lambda</span>
         <span class="bp">self</span> <span class="o">+=</span> <span class="n">LAMBDA_CALL_TEMPLATE</span> <span class="o">%</span> <span class="nb">dict</span><span class="p">(</span><span class="n">uuid</span><span class="o">=</span><span class="n">nuid</span><span class="p">)</span></div>
-
-<div class="viewcode-block" id="Context._process_lambdef_nocond"><a class="viewcode-back" href="../api.html#walrus.Context._process_lambdef_nocond">[docs]</a>    <span class="k">def</span> <span class="nf">_process_lambdef_nocond</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">parso</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">Lambda</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="sd">&quot;&quot;&quot;Process lambda definition (``lambdef``).</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            node (parso.python.tree.Lambda): lambda node</span>
-
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_process_lambdef</span><span class="p">(</span><span class="n">node</span><span class="p">)</span></div>
 
 <div class="viewcode-block" id="Context._process_if_stmt"><a class="viewcode-back" href="../api.html#walrus.Context._process_if_stmt">[docs]</a>    <span class="k">def</span> <span class="nf">_process_if_stmt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">:</span> <span class="n">parso</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">IfStmt</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Process if statement (:token:`if_stmt`).</span>

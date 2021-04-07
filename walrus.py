@@ -350,7 +350,6 @@ class Context(BaseContext):
     * :token:`lambdef`
 
       - :meth:`Context._process_lambdef`
-      - :meth:`Context._process_lambdef_nocond`
 
     * :token:`if_stmt`
 
@@ -757,15 +756,6 @@ class Context(BaseContext):
 
         # replacing lambda
         self += LAMBDA_CALL_TEMPLATE % dict(uuid=nuid)
-
-    def _process_lambdef_nocond(self, node: parso.python.tree.Lambda) -> None:
-        """Process lambda definition (``lambdef``).
-
-        Args:
-            node (parso.python.tree.Lambda): lambda node
-
-        """
-        self._process_lambdef(node)
 
     def _process_if_stmt(self, node: parso.python.tree.IfStmt) -> None:
         """Process if statement (:token:`if_stmt`).

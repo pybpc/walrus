@@ -49,7 +49,7 @@ setup(
     install_requires=[
         'parso>=0.6.0',         # universal AST support
         'tbtrim>=0.2.1',        # traceback trim support
-        'f2format',             # bpc-f2format
+        'bpc-f2format',         # bpc-f2format
         'bpc-utils~=0.10.0',    # utility library
         'typing;python_version<"3.5"',
         'typing_extensions',
